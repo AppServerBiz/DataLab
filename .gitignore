@@ -1,0 +1,17 @@
+# MT5/MT4 compiled files
+*.ex5
+*.ex4
+
+# Logs
+*.log
+
+# Backups
+*.bak
+
+# Temporary files
+*.tmp
+*.crp
+
+# OS generated files
+.DS_Store
+Thumbs.db
