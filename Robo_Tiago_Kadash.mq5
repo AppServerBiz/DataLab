@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //|                                           Robo_Tiago_Kadash.mq5 |
-//|                                      Copyright 2026, Antigravity |
+//|         teste                             Copyright 2026, Antigravity |
 //|                                                                  |
 //| Robô baseado no cruzamento da Máxima e Mínima do 1º candle do dia|
 //| com sistema de Martingale reverso em grade de 600 pontos.        |
