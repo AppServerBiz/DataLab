@@ -9,7 +9,7 @@
 #property description "Headless EA for Data Collection (Nautilus Ultimate Bridge based on v2.12)"
 
 input int InpRefreshRate = 1;     // Update Rate (seconds)
-input string InpDashURL = "http://localhost:3001/api/update"; // Dashboard URL (API)
+input string InpDashURL = "http://127.0.0.1:3001/api/update"; // Dashboard URL (API)
 
 //+------------------------------------------------------------------+
 //| Envio Remoto via WebRequest                                      |
@@ -18,18 +18,25 @@ void SendToWeb(string json) {
    if(InpDashURL == "") return;
    
    char data[], result[];
-   string headers;
+   string responseHeaders;
+   string requestHeaders = "Content-Type: application/json\r\n";
    int res;
    
-   StringToCharArray(json, data, 0, WHOLE_ARRAY, CP_UTF8);
-   headers = "Content-Type: application/json\r\n";
+   // Converter para array de char SEM o terminador nulo (essencial para alguns servidores)
+   int len = StringLen(json);
+   if(len == 0) return;
    
-   res = WebRequest("POST", InpDashURL, headers, 1000, data, result, headers);
+   ArrayResize(data, len);
+   StringToCharArray(json, data, 0, len, CP_UTF8);
+   
+   // Aumentado timeout para 5000ms para maior estabilidade
+   res = WebRequest("POST", InpDashURL, requestHeaders, 5000, data, result, responseHeaders);
    
    if(res == -1) {
       int err = GetLastError();
-      if(err == 4060) Print("WebRequest Error 4060: Add ", InpDashURL, " to allowed list in MT5 settings.");
-      else Print("WebRequest Error: ", err);
+      if(err == 4060) Print("WebRequest Error 4060: Adicione ", InpDashURL, " na lista de URLs permitidas no MT5 (Opcoes > EAs).");
+      else if(err == 4014) Print("WebRequest Error 4014: Funcao nao permitida. Verifique se nao esta no Testador de Estrategia ou se a URL esta correta.");
+      else Print("WebRequest Error: ", err, " URL: ", InpDashURL);
    }
 }
 
@@ -167,10 +174,6 @@ void CollectData() {
 //+------------------------------------------------------------------+
 string ExportToJSON() {
    long acctNumber = AccountInfoInteger(ACCOUNT_LOGIN);
-   string filename = "supervision_data_" + IntegerToString(acctNumber) + ".json";
-   int handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_COMMON|FILE_ANSI);
-   if(handle == INVALID_HANDLE) return "";
-   
    double current_bal = AccountInfoDouble(ACCOUNT_BALANCE);
    double current_eq = AccountInfoDouble(ACCOUNT_EQUITY);
    
@@ -242,8 +245,6 @@ string ExportToJSON() {
    }
    js += "  ]\n}";
    
-   FileWriteString(handle, js);
-   FileClose(handle);
    return js;
 }
 

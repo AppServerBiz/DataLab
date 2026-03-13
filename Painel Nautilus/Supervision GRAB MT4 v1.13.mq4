@@ -5,32 +5,39 @@
 //+------------------------------------------------------------------+
 #property copyright "Nautilus Investing"
 #property link      "https://www.nautilusinvesting.com"
-#property version   "1.12"
+#property version   "1.13"
 #property strict
 #property description "Headless EA for Data Collection (Nautilus Ultimate Bridge) - MT4 Version"
 
 input int InpRefreshRate = 1;     // Update Rate (seconds)
-input string InpDashURL = "http://localhost:3001/api/update"; // Dashboard URL (API)
+input string InpDashURL = "http://127.0.0.1:3001/api/update"; // Dashboard URL (API)
 
 //+------------------------------------------------------------------+
 //| Envio Remoto via WebRequest                                      |
 //+------------------------------------------------------------------+
 void SendToWeb(string json) {
-   if(InpDashURL == "") return;
+   if(InpDashURL == "" || json == "") return;
    
    char data[], result[];
-   string headers;
+   string responseHeaders;
+   string requestHeaders = "Content-Type: application/json"; 
    int res;
    
-   StringToCharArray(json, data, 0, WHOLE_ARRAY, CP_UTF8);
-   headers = "Content-Type: application/json\r\n";
+   // Conversao limpa para UTF-8 sem terminador nulo
+   ArrayFree(data);
+   StringToCharArray(json, data, 0, StringLen(json), CP_UTF8);
    
-   res = WebRequest("POST", InpDashURL, headers, 1000, data, result, headers);
+   ResetLastError();
+   
+   res = WebRequest("POST", InpDashURL, requestHeaders, 5000, data, result, responseHeaders);
    
    if(res == -1) {
       int err = GetLastError();
-      if(err == 4060) Print("WebRequest Error 4060: Add ", InpDashURL, " to allowed list in MT4 settings.");
-      else Print("WebRequest Error: ", err);
+      if(err == 4060) Print("WebRequest Error 4060: Verifique o whitelisting de '", InpDashURL, "'");
+      else {
+         string resp = CharArrayToString(result);
+         Print("WebRequest Error: ", err, " | Resposta do Servidor: ", resp);
+      }
    }
 }
 
@@ -178,10 +185,6 @@ void CollectData() {
 //+------------------------------------------------------------------+
 string ExportToJSON() {
    long acctNumber = AccountNumber();
-   string filename = "supervision_data_" + IntegerToString(acctNumber) + ".json";
-   int handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_COMMON|FILE_ANSI);
-   if(handle == INVALID_HANDLE) return "";
-   
    double current_bal = AccountBalance();
    double current_eq = AccountEquity();
    
@@ -250,10 +253,8 @@ string ExportToJSON() {
       if(c < numEAs - 1) js += ",";
       js += "\n";
    }
-   js += "  ]\n}\n";
+   js += "  ]\n}";
    
-   FileWriteString(handle, js);
-   FileClose(handle);
    return js;
 }
 

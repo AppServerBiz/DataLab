@@ -1,0 +1,7 @@
+.next
+node_modules
+data/*.json
+*.mq4
+*.mq5
+deploy.ps1
+server.js
