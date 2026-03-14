@@ -283,7 +283,6 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
     <div className="dashboard-container animate-fade-in">
       <header className="app-header">
         <div className="app-title" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button className="sidebar-toggle-btn" onClick={toggleSidebar} title="Recolher/Expandir Menu">☰</button>
           <div>
             <h1>Supervision Nautilus Ultimate</h1>
             <p>Terminal Data • Servidor: {data.serverTime || '--:--'} • DataBase: {data.dbDate || '--'}</p>
@@ -298,8 +297,8 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
       <div className="account-summary">
         <div className="summary-card">
           <h3>Drawdown & Exposição</h3>
-          <div className={`summary-value ${tFloat >= 0 ? 'profit-text' : 'loss-text'}`}>
-            {formatCurrency(tFloat)}
+          <div className={`summary-value ${tFloat > 0 ? 'profit-text' : tFloat < 0 ? 'loss-text' : ''}`}>
+            {tFloat > 0 ? '+' : tFloat < 0 ? '-' : ''}{formatCurrency(Math.abs(tFloat))}
           </div>
           <div className="summary-subtitle">Flutuante Global no Momento</div>
 
@@ -318,13 +317,13 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
           <h3>Saúde Financeira</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '0.5rem' }}>
             <div>
-              <div className="summary-value" style={{ color: 'var(--text-main)', fontSize: '2rem', lineHeight: '1.2' }}>
+              <div className="summary-value equity-value" style={{ fontSize: '1.65rem', lineHeight: '1.2' }}>
                 {formatCurrency(data.equity || 0)}
               </div>
               <div className="summary-subtitle" style={{ marginTop: '0' }}>Saldo Líquido (Equity)</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div className="summary-value" style={{ color: 'var(--text-muted)', fontSize: '1.6rem', lineHeight: '1.2' }}>
+              <div className="summary-value" style={{ color: 'var(--text-muted)', fontSize: '1.65rem', lineHeight: '1.2' }}>
                 {formatCurrency(data.balance || 0)}
               </div>
               <div className="summary-subtitle" style={{ marginTop: '0' }}>Saldo Bruto (Balance)</div>
@@ -335,14 +334,17 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
             <div className="perf-item">
               <span className="perf-label">Dia</span>
               <span className={`perf-val ${dProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.45rem' }}>{dProf > 0 ? '+' : ''}{dProf.toFixed(1)}</span>
+              <span className={`pct-small ${dProf >= 0 ? 'profit-text' : 'loss-text'}`}>{((dProf) / (dbal || 1) * 100).toFixed(2)}%</span>
             </div>
             <div className="perf-item">
               <span className="perf-label">Semana</span>
               <span className={`perf-val ${wProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.45rem' }}>{wProf > 0 ? '+' : ''}{wProf.toFixed(1)}</span>
+              <span className={`pct-small ${wProf >= 0 ? 'profit-text' : 'loss-text'}`}>{((wProf) / (dbal || 1) * 100).toFixed(2)}%</span>
             </div>
             <div className="perf-item">
               <span className="perf-label">Total</span>
               <span className={`perf-val ${tProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.45rem' }}>{tProf > 0 ? '+' : ''}{tProf.toFixed(1)}</span>
+              <span className={`pct-small ${tProf >= 0 ? 'profit-text' : 'loss-text'}`}>{((tProf) / (dbal || 1) * 100).toFixed(2)}%</span>
             </div>
           </div>
         </div>
@@ -357,11 +359,11 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
             <div>
-              <div className="perf-label" style={{ marginBottom: '0.25rem' }}>Robôs Atrib.</div>
+              <div className="perf-label" style={{ marginBottom: '0.25rem' }}>ROBÔS<br/>ATRIBUÍDOS</div>
               <div className="summary-value" style={{ fontSize: '1.25rem' }}>{data.activeEAs || 0}</div>
             </div>
             <div>
-              <div className="perf-label" style={{ marginBottom: '0.25rem' }}>Robôs Operando</div>
+              <div className="perf-label" style={{ marginBottom: '0.25rem' }}>ROBÔS<br/>OPERANDO</div>
               <div className="summary-value" style={{ fontSize: '1.25rem' }}>{activeWorkingEAs}</div>
             </div>
             <div>
@@ -477,7 +479,7 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
   );
 }
 
-function HomeView({ accounts, status, toggleSidebar }) {
+function HomeView({ accounts, status, toggleSidebar, setCurrentView }) {
   const totalBalance = accounts.reduce((acc, obj) => acc + (obj.balance || 0), 0);
   const totalEquity = accounts.reduce((acc, obj) => acc + (obj.equity || 0), 0);
   const totalDayProfit = accounts.reduce((acc, obj) => acc + (obj.dayProfit || 0), 0);
@@ -493,10 +495,9 @@ function HomeView({ accounts, status, toggleSidebar }) {
     <div className="dashboard-container animate-fade-in">
       <header className="app-header">
         <div className="app-title" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button className="sidebar-toggle-btn" onClick={toggleSidebar} title="Recolher/Expandir Menu">☰</button>
           <div>
-            <h1>Resumo Global da Gestão</h1>
-            <p>Visão Sintética de Múltiplas Contas</p>
+            <h1>Gestão Global Consolidada</h1>
+            <p>Visão Sintética de Múltiplas Contas Selecionadas</p>
           </div>
         </div>
         <div className={`status-badge ${status === 'Sincronizado' ? 'sync' : 'offline'}`}>
@@ -507,8 +508,8 @@ function HomeView({ accounts, status, toggleSidebar }) {
       <div className="account-summary">
         <div className="summary-card">
           <h3>Drawdown & Exposição</h3>
-          <div className={`summary-value ${totalFloating >= 0 ? 'profit-text' : 'loss-text'}`}>
-            {totalFloating >= 0 ? '+' : ''}{formatCurrency(totalFloating)}
+          <div className={`summary-value ${totalFloating > 0 ? 'profit-text' : totalFloating < 0 ? 'loss-text' : ''}`}>
+            {totalFloating > 0 ? '+' : totalFloating < 0 ? '-' : ''}{formatCurrency(Math.abs(totalFloating))}
           </div>
           <div className="summary-subtitle">Flutuante Global no Momento</div>
 
@@ -523,16 +524,16 @@ function HomeView({ accounts, status, toggleSidebar }) {
         </div>
 
         <div className="summary-card">
-          <h3>Saúde Financeira</h3>
+          <h3>Capital Global</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '0.5rem' }}>
             <div>
-              <div className="summary-value" style={{ color: 'var(--text-main)', fontSize: '2rem', lineHeight: '1.2' }}>
+              <div className="summary-value equity-value" style={{ fontSize: '1.65rem', lineHeight: '1.2' }}>
                 {formatCurrency(totalEquity)}
               </div>
               <div className="summary-subtitle" style={{ marginTop: '0' }}>Saldo Líquido (Equity)</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div className="summary-value" style={{ color: 'var(--text-muted)', fontSize: '1.6rem', lineHeight: '1.2' }}>
+              <div className="summary-value" style={{ color: 'var(--text-muted)', fontSize: '1.65rem', lineHeight: '1.2' }}>
                 {formatCurrency(totalBalance)}
               </div>
               <div className="summary-subtitle" style={{ marginTop: '0' }}>Saldo Bruto (Balance)</div>
@@ -565,11 +566,11 @@ function HomeView({ accounts, status, toggleSidebar }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
             <div>
-              <div className="perf-label" style={{ marginBottom: '0.25rem' }}>Robôs Atrib.</div>
+              <div className="perf-label" style={{ marginBottom: '0.25rem' }}>ROBÔS<br/>ATRIBUÍDOS</div>
               <div className="summary-value" style={{ fontSize: '1.25rem' }}>{accounts.reduce((sum, acc) => sum + (acc.activeEAs || 0), 0)}</div>
             </div>
             <div>
-              <div className="perf-label" style={{ marginBottom: '0.25rem' }}>Robôs Operando</div>
+              <div className="perf-label" style={{ marginBottom: '0.25rem' }}>ROBÔS<br/>OPERANDO</div>
               <div className="summary-value" style={{ fontSize: '1.25rem' }}>{activeWorkingEAs}</div>
             </div>
             <div>
@@ -594,19 +595,19 @@ function HomeView({ accounts, status, toggleSidebar }) {
               <th>Dia</th>
               <th>Semana</th>
               <th>Mês</th>
-              <th>Meta</th>
+              <th>Meta Mes</th>
               <th>Total</th>
-              <th>Trades</th>
+              <th>Trades Mês</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {accounts.map((acc, i) => {
-              const gross = acc.balance || 1;
-              const shortAcc = (acc.account || 'DESCONHECIDA').split('-')[0].trim().substring(0, 6).toUpperCase();
+               const gross = acc.balance || 1;
+               const shortAcc = (acc.account || 'DESCONHECIDA').split('-')[0].trim().substring(0, 15).toUpperCase();
               const brokerStr = acc.broker || 'N/A';
               return (
-                <tr key={i} className="oakmont-row">
+                <tr key={i} className="oakmont-row" onClick={() => setCurrentView(acc.account)}>
                   <td>
                     <div className="val-stack">
                       <span className="ticker-name">{shortAcc}</span>
@@ -661,7 +662,7 @@ function HomeView({ accounts, status, toggleSidebar }) {
                       </span>
                     </div>
                   </td>
-                  <td>{acc.tradesToday || 0}</td>
+                   <td>{acc.tradesMonth || acc.tradesToday || 0}</td>
                   <td className={acc.activeEAs > 0 ? 'profit-text' : 'loss-text'}>
                     {acc.activeEAs || 0} EAs
                   </td>
@@ -733,14 +734,22 @@ function App() {
     <div className="app-layout">
       {/* Sidebar Navigation */}
       <aside className={`app-sidebar ${isSidebarOpen ? '' : 'closed'}`}>
-        <div className="sidebar-logo">Nautilus<br /><span style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-muted)', letterSpacing: '1px' }}>WEALTH MANAGER</span></div>
+         <div className="sidebar-header">
+           <div className="sidebar-logo">
+             <span className="logo-small">Supervision</span>
+             <span className="logo-large">Nautilus</span>
+             <span className="logo-small">Ultimate</span>
+           </div>
+           <button className="sidebar-toggle-btn" onClick={handleToggleSidebar} title="Recolher/Expandir Menu">☰</button>
+         </div>
         <nav className="sidebar-nav">
-          <button
-            className={`nav-item ${currentView === 'home' ? 'active' : ''}`}
-            onClick={() => setCurrentView('home')}
-          >
-            🏠 Home (Visão Global)
-          </button>
+            <button
+              className={`nav-item ${currentView === 'home' ? 'active' : ''}`}
+              onClick={() => setCurrentView('home')}
+            >
+              <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span className="nav-text">Gestão Global</span>
+            </button>
 
           <div className="nav-group">Contas de Operação</div>
           {accounts.map(acc => (
@@ -749,7 +758,8 @@ function App() {
               className={`nav-item ${currentView === acc.account ? 'active' : ''}`}
               onClick={() => setCurrentView(acc.account)}
             >
-              💼 {acc.account}
+              <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              <span className="nav-text">{acc.account}</span>
             </button>
           ))}
         </nav>
@@ -758,7 +768,7 @@ function App() {
       {/* Main Content Area */}
       <main className="main-content">
         {currentView === 'home' ? (
-          <HomeView accounts={accounts} status={status} toggleSidebar={handleToggleSidebar} />
+          <HomeView accounts={accounts} status={status} toggleSidebar={handleToggleSidebar} setCurrentView={setCurrentView} />
         ) : (
           <AccountView data={activeAccountData} status={status} setSelectedRobot={setSelectedRobot} toggleSidebar={handleToggleSidebar} />
         )}
