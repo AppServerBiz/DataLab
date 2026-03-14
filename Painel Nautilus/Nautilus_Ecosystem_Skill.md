@@ -24,14 +24,15 @@ Esta Skill descreve os padrões arquiteturais, de design e técnicos para o ecos
     *   Pruning automático: Remove contas remotas inativas há mais de 60 segundos.
 
 ### 3. Dashboard Web (React + Vite)
-*   **Design Language**: **Oakmont Research / Bloomberg Terminal Style**.
+*   **Design Language**: **Nautilus Ultimate / Oakmont Style**.
     *   Fundo Ultra Dark (`#0B0E14`).
-    *   Tipografia Inter (500-700 weight).
+    *   Tipografia Inter com paridade de fontes para indicadores primários/secundários (Equity/Balance).
     *   Cores Institucionais: Blue Sky (`#38BDF8`), Emerald Green (`#22C55E`), Crimson Red (`#EF4444`).
 *   **Componentes Chave**:
-    *   **HomeView**: Visão sintetizada com quadrantes flutuantes sutilmente emoldurados e espaçamento generoso (`gap: 2.5rem`).
-    *   **AccountView**: Visão detalhada por conta com sistema de tabs (Status, Risk, MG).
-    *   **Oakmont Table**: Tabela minimalista com células de duas linhas (valor financeiro + % variação).
+    *   **Sidebar Retro-Iluminada**: Ícones SVG minimalistas com suporte a colapso total (apenas ícones).
+    *   **Gestão Global Consolidada**: Visão macro com navegação drill-down por linha.
+    *   **Account Performance Stack**: Valores financeiros empilhados com ROI percentual dinâmico logo abaixo.
+    *   **DME Max Alert**: Barra de Drawdown integrada à lógica de limites Oracle (Google Sheets).
 
 ---
 

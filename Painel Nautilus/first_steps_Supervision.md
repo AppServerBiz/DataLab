@@ -124,10 +124,12 @@ Para que tudo funcione online:
 ---
 
 ### 6. Integração Web e Ecossistema Nautilus (Nautilus Dashboard)
-- **Dashboard React Profissional:** Transpusemos o conceito do Supervision MQL5 para uma aplicação Web completa (`nautilus-web`). 
-- **Estética Oakmont Research:** Implementamos um design de alto nível (Institutional Dark) com paleta Navy/Black, tipografia limpa e espaçamento generoso. As métricas são exibidas em "pilhas" (Valor Financeiro + Porcentagem abaixo).
-- **Backend Consolidado:** Um servidor Node.js que atua como hub, lendo os arquivos JSON de múltiplas instâncias de Metatrader e entregando uma visão consolidada de todas as contas em uma única interface.
-- **Supervision GRAB v1.13:** Evoluído para ser um coletor purista. Removemos as travas de DME internas para que o controle de risco seja centralizado na Dashboard Web e em Planilhas Cloud (Google Sheets).
+- **Dashboard Supervision Nautilus Ultimate:** Transpusemos o conceito para uma plataforma institucional completa.
+- **Estética Institucional Aperfeiçoada:** Implementamos o design 'Oakmont Research' com paridade visual entre Saldo Líquido (Geralmente Verde) e Saldo Bruto (Muted) em 1.65rem.
+- **Sidebar Inteligente:** Menu retrátil que exibe apenas ícones SVG minimalistas quando recolhido, priorizando o espaço de dados.
+- **Navegação de Fluxo:** Implementada a interatividade total na tabela de terminais, permitindo o mergulho (*drill-down*) instantâneo para a visão da conta ao clicar em qualquer linha da Home.
+- **Métricas de Performance:** Adição de porcentagens dinâmicas abaixo de cada lucro financeiro (Dia/Semana/Total) para referência de ROI relativa ao saldo bruto.
+- **Supervision GRAB v1.13:** Coletor purista sem DME nativa.
 
 ---
 

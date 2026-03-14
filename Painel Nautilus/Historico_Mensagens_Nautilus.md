@@ -82,4 +82,12 @@ Vamos trabalhar com um grab para o mt4, tenho contas no mt4.
 > - Olha essa ideia que interessante... para nosso visual https://www.perplexity.ai/computer/a/nvda-valuation-dashboard-vqxfCK_pRemvQaDBbu_3WA
 
 **[2026-03-11]**
-> ainda podemos ajustar esses quadrantes estao muito proximos um do outro, ou colque as fontes menores ou colque uma borda bem sutil e transparente.
+85: > ainda podemos ajustar esses quadrantes estao muito proximos um do outro, ou colque as fontes menores ou colque uma borda bem sutil e transparente.
+86: 
+87: **[2026-03-14]**
+88: > - visao sintetica de multiplas contas selecionadas (plural).
+89: > - no quadrante da home e das contas o capital global, saldo liquido tem que estar no mesmo tamanho de fonte do soldo bruto.
+90: > - no quadrante da home e das contas robos atrib. mudar o texto para robos atribuidos, robos e atribuidos em baixo.
+91: > - os icones de home e das contas, altere para icones SVG premium.
+92: > - Quando encolhe o menu deixar apenas os icones, sem texto.
+93: > - na home todas as vezes que clicar em uma das contas abrir a pagina da conta.
