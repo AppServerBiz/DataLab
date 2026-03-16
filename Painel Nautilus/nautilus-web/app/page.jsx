@@ -384,6 +384,7 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
             <tr>
               <th>Identificação (Magic)</th>
               <th>Lucro Dia / Eficiência</th>
+              <th>Lucro Mês</th>
               <th>Lucro Total</th>
               <th>Status do Risco e Lotes</th>
               <th>Exposição Flutuante</th>
@@ -393,6 +394,7 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
           <tbody>
             {robotsArray.map(r => {
               const effD = r.d_tot > 0 ? (r.d_won / r.d_tot * 100).toFixed(0) : 0;
+              const effM = r.m_tot > 0 ? (r.m_won / r.m_tot * 100).toFixed(0) : 0;
               const effT = r.t_tot > 0 ? (r.t_won / r.t_tot * 100).toFixed(0) : 0;
               const alertClass = (r.alertLevel === 'danger') ? 'danger' : (r.alertLevel === 'warning') ? 'warning' : 'normal';
 
@@ -427,6 +429,14 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
                         {r.d_prof >= 0 ? '+' : ''}{(r.d_prof || 0).toFixed(2)} USD
                       </span>
                       <span className="metric-secondary">Acerto: {effD}% ({r.d_won || 0}/{r.d_tot || 0})</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="metric-group">
+                      <span className={`metric-primary ${r.m_prof >= 0 ? 'profit-text' : 'loss-text'}`}>
+                        {r.m_prof >= 0 ? '+' : ''}{(r.m_prof || 0).toFixed(2)} USD
+                      </span>
+                      <span className="metric-secondary">Acerto: {effM}% ({r.m_won || 0}/{r.m_tot || 0})</span>
                     </div>
                   </td>
                   <td>
