@@ -48,6 +48,165 @@ function SemanticCircles({ level }) {
   );
 }
 
+function LoginModal({ onLogin, allUsers }) {
+  const [username, setUsername] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (username === 'Naut1lus') {
+      onLogin('Naut1lus');
+    } else {
+      const found = allUsers.find(u => u.username === username);
+      if (found) {
+        onLogin(username);
+      } else {
+        setError('Usuário Inválido');
+      }
+    }
+  };
+
+  return (
+    <div className="login-overlay">
+      <div className="login-card">
+        <div className="sidebar-logo" style={{ marginBottom: '1.5rem', alignItems: 'center' }}>
+          <span className="logo-small">Supervision</span>
+          <span className="logo-large">Nautilus</span>
+          <span className="logo-small">Ultimate</span>
+        </div>
+        <h1>Área de Membros</h1>
+        <p>Acesse o terminal com sua credencial</p>
+        <form onSubmit={handleSubmit} className="login-form">
+          <input
+            type="text"
+            className="login-input"
+            placeholder="Nome de Usuário"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoFocus
+          />
+          <button type="submit" className="login-btn">Entrar no Terminal</button>
+        </form>
+        {error && <div className="login-error">{error}</div>}
+      </div>
+    </div>
+  );
+}
+
+function SettingsView({ users, onUpdateUsers }) {
+  const [newUsername, setNewUsername] = useState('');
+  const [newAccounts, setNewAccounts] = useState('');
+
+  const handleAdd = () => {
+    if (!newUsername) return;
+    const accList = newAccounts.split(',').map(s => s.trim()).filter(s => s);
+    const updated = [...users, { username: newUsername, accounts: accList }];
+    onUpdateUsers(updated);
+    setNewUsername('');
+    setNewAccounts('');
+  };
+
+  const handleRemove = (index) => {
+    if (!confirm('Deseja realmente excluir este usuário?')) return;
+    const updated = users.filter((_, i) => i !== index);
+    onUpdateUsers(updated);
+  };
+
+  const handleUpdateAccountList = (index, value) => {
+    const accList = value.split(',').map(s => s.trim()).filter(s => s);
+    const updated = [...users];
+    updated[index].accounts = accList;
+    onUpdateUsers(updated);
+  };
+
+  return (
+    <div className="dashboard-container animate-fade-in">
+      <header className="app-header">
+        <div className="app-title">
+          <h1>Painel de Controle de Acesso</h1>
+          <p>Gerencie as permissões dos usuários e vincule terminais ativos.</p>
+        </div>
+      </header>
+
+      <div className="settings-grid">
+        <div className="settings-group">
+          <div className="settings-title">
+            <h3>Novo Acesso Cliente</h3>
+          </div>
+          <div className="login-form" style={{ flexDirection: 'row', gap: '1rem', alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem', display: 'block' }}>NOME DO USUÁRIO</label>
+              <input 
+                className="login-input" 
+                placeholder="Ex: Alpha1" 
+                value={newUsername}
+                onChange={e => setNewUsername(e.target.value)}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem', display: 'block' }}>NÚMEROS DAS CONTAS (SEPARADOS POR VÍRGULA)</label>
+              <input 
+                className="login-input" 
+                placeholder="Ex: 87647958, 1529945" 
+                value={newAccounts}
+                onChange={e => setNewAccounts(e.target.value)}
+              />
+            </div>
+            <button className="login-btn" onClick={handleAdd} style={{ padding: '1rem 2rem' }}>ATIVAR</button>
+          </div>
+        </div>
+
+        <div className="settings-group">
+          <div className="settings-title">
+            <h3>Usuários Ativos</h3>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{users.length} FILTROS ATIVOS</span>
+          </div>
+          <div className="table-container">
+            <table className="robots-table">
+              <thead>
+                <tr>
+                  <th>Usuário</th>
+                  <th>Contas Autorizadas (Edição Rápida)</th>
+                  <th style={{ width: '150px' }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u, i) => (
+                  <tr key={i}>
+                    <td className="bot-name" style={{ fontSize: '1.1rem', color: '#fff' }}>{u.username}</td>
+                    <td>
+                      <input 
+                        className="login-input settings-table-input" 
+                        value={u.accounts.join(', ')}
+                        onChange={(e) => handleUpdateAccountList(i, e.target.value)}
+                      />
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="btn-danger-soft" onClick={() => handleRemove(i)}>
+                        REVOGAR ACESSO
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan="3" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                      Nenhum usuário configurado. Os dados globais serão visíveis apenas para Naut1lus.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <p style={{ marginTop: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
+        ⚠️ Alterações nas contas vinculadas são sincronizadas em tempo real.
+      </p>
+    </div>
+  );
+}
+
 function RobotModal({ robot, robotInfo, onClose }) {
   const [activeTab, setActiveTab] = useState('performance');
 
@@ -264,6 +423,17 @@ function RobotModal({ robot, robotInfo, onClose }) {
 }
 
 function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
+  if (!data || data.account === 'Offline') {
+    return (
+      <div className="dashboard-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div className="summary-card" style={{ textAlign: 'center' }}>
+          <h3>Aguardando Conexão</h3>
+          <p>Nenhuma conta vinculada está enviando dados no momento.</p>
+        </div>
+      </div>
+    );
+  }
+
   const riskClass = getRiskClass(data.globalRiskLevel || 0);
   const dProf = data.dayProfit || 0;
   const wProf = data.weekProfit || 0;
@@ -626,9 +796,14 @@ function HomeView({ accounts, status, toggleSidebar, setCurrentView }) {
                   </td>
                   <td>{formatCurrency(acc.balance || 0)}</td>
                   <td>{formatCurrency(acc.equity || 0)}</td>
-                  <td>
+                   <td>
                     <div className="val-stack">
-                      <span className={acc.ddPct > 0 ? 'loss-text' : ''}>{formatPercent(acc.ddPct || 0)}</span>
+                      <span className={(acc.totalFloating || 0) >= 0 ? 'profit-text' : 'loss-text'}>
+                        {formatCurrency(acc.totalFloating || 0)}
+                      </span>
+                      <span className={`pct-small ${acc.ddPct > 0 ? 'loss-text' : ''}`}>
+                        {formatPercent(acc.ddPct || 0)}
+                      </span>
                     </div>
                   </td>
                   <td>
@@ -687,15 +862,52 @@ function HomeView({ accounts, status, toggleSidebar, setCurrentView }) {
 }
 
 function App() {
-  const [accounts, setAccounts] = useState([{ ...fallbackData, account: 'Offline' }]);
+  const [accounts, setAccounts] = useState([]);
+  const [users, setUsers] = useState([]);
   const [robotsInfo, setRobotsInfo] = useState({});
-  const [status, setStatus] = useState('Desconectado');
+  const [status, setStatus] = useState('Sincronizando');
   const [selectedRobot, setSelectedRobot] = useState(null);
-  const [currentView, setCurrentView] = useState('home'); // 'home' or account string
+  const [currentView, setCurrentView] = useState('home'); // 'home' or account string or 'settings'
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [currentUser, setCurrentUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('nautilus_user');
+    }
+    return null;
+  });
+
+  const handleUpdateUsers = async (newUsers) => {
+    setUsers(newUsers);
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUsers)
+    });
+  };
+
+  const handleLogin = (user) => {
+    setCurrentUser(user);
+    localStorage.setItem('nautilus_user', user);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setCurrentView('home');
+    localStorage.removeItem('nautilus_user');
+  };
 
   useEffect(() => {
-    // Fetch Robot Detail Info from Sheets once or periodically
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const u = await response.json();
+          setUsers(u);
+        }
+      } catch (e) {}
+    };
+    fetchUsers();
+
     const fetchRobotsInfo = async () => {
       try {
         const response = await fetch('/api/robots-info');
@@ -703,9 +915,7 @@ function App() {
           const info = await response.json();
           setRobotsInfo(info);
         }
-      } catch (e) {
-        console.error("Sheets info error:", e);
-      }
+      } catch (e) {}
     };
     fetchRobotsInfo();
 
@@ -714,12 +924,10 @@ function App() {
         const response = await fetch('/api/data');
         if (response.ok) {
           const result = await response.json();
-
           if (Array.isArray(result)) {
-            setAccounts(result.length > 0 ? result : [{ ...fallbackData, account: 'Offline' }]);
-          } else {
-            const accountOriginal = { ...result, account: result.account || 'Desconhecida' };
-            setAccounts([accountOriginal]);
+            setAccounts(result);
+          } else if (result && result.account) {
+            setAccounts([result]);
           }
           setStatus('Sincronizado');
         } else {
@@ -731,12 +939,29 @@ function App() {
     };
 
     fetchData();
-    const fetchTimer = setInterval(fetchData, 60000);
+    const fetchTimer = setInterval(fetchData, 10000); 
 
     return () => clearInterval(fetchTimer);
   }, []);
 
-  const activeAccountData = accounts.find(a => a.account === currentView) || accounts[0];
+  // Filtra as contas baseadas no usuário
+  const filteredAccounts = accounts.filter(acc => {
+    if (!currentUser) return false;
+    if (currentUser === 'Naut1lus') return true;
+    const userConfig = users.find(u => u.username === currentUser);
+    if (!userConfig) return false;
+    
+    // Procura número da conta em qualquer parte da string 'account'
+    const match = acc.account?.match(/\d{5,}/);
+    const accNumber = match ? match[0] : '';
+    return userConfig.accounts.includes(accNumber);
+  });
+
+  const activeAccountData = filteredAccounts.find(a => a.account === currentView) || filteredAccounts[0];
+
+  if (!currentUser) {
+    return <LoginModal onLogin={handleLogin} allUsers={users} />;
+  }
 
   const handleToggleSidebar = () => setIsSidebarOpen(prev => !prev);
 
@@ -762,7 +987,7 @@ function App() {
             </button>
 
           <div className="nav-group">Contas de Operação</div>
-          {accounts.map(acc => (
+          {filteredAccounts.map(acc => (
             <button
               key={acc.account}
               className={`nav-item ${currentView === acc.account ? 'active' : ''}`}
@@ -772,13 +997,33 @@ function App() {
               <span className="nav-text">{acc.account}</span>
             </button>
           ))}
+
+          {currentUser === 'Naut1lus' && (
+            <>
+              <div className="nav-group">Sistema</div>
+              <button
+                className={`nav-item ${currentView === 'settings' ? 'active' : ''}`}
+                onClick={() => setCurrentView('settings')}
+              >
+                <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 \
+1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span className="nav-text">Configurações</span>
+              </button>
+            </>
+          )}
         </nav>
+        <div style={{ marginTop: 'auto', padding: '0.8rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Logado: <b style={{ color: 'var(--accent-blue)' }}>{currentUser}</b></span>
+          <button onClick={handleLogout} style={{ background: 'transparent', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
+        </div>
       </aside>
 
       {/* Main Content Area */}
       <main className="main-content">
-        {currentView === 'home' ? (
-          <HomeView accounts={accounts} status={status} toggleSidebar={handleToggleSidebar} setCurrentView={setCurrentView} />
+        {currentView === 'settings' && currentUser === 'Naut1lus' ? (
+          <SettingsView users={users} onUpdateUsers={handleUpdateUsers} />
+        ) : currentView === 'home' ? (
+          <HomeView accounts={filteredAccounts} status={status} toggleSidebar={handleToggleSidebar} setCurrentView={setCurrentView} />
         ) : (
           <AccountView data={activeAccountData} status={status} setSelectedRobot={setSelectedRobot} toggleSidebar={handleToggleSidebar} />
         )}
