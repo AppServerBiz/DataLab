@@ -30,6 +30,44 @@ function formatPercent(value) {
   return `${value.toFixed(2)}%`;
 }
 
+function formatAccountName(name) {
+  if (!name) return 'N/A';
+  const ALPHA_ACCOUNTS = ['1529945', '1529946', '1529947', '1539330'];
+  
+  // Se for uma conta Alpha específica ou tiver ALPHA no nome, mantém completo
+  if (name.toUpperCase().includes('ALPHA') || ALPHA_ACCOUNTS.some(num => name.includes(num))) {
+    return name;
+  }
+  
+  let namePart = name;
+  if (name.includes(' - ')) {
+    const parts = name.split(' - ').map(p => p.trim());
+    // Busca a parte que contém texto real (não apenas números e não é prefixo genérico)
+    const candidates = parts.filter(p => !/^\d+$/.test(p) && !p.toUpperCase().startsWith('#FUND'));
+    if (candidates.length > 0) {
+      namePart = candidates[0];
+    } else {
+      namePart = parts[0];
+    }
+  } else if (name.includes(': ')) {
+     namePart = name.split(': ')[1];
+  }
+  
+  // Sanitização final: se o nome extraído ainda for puramente numérico, tenta pegar o início da string original
+  if (/^\d+$/.test(namePart.trim())) {
+    const textMatch = name.match(/[a-zA-Z]{2,}/);
+    if (textMatch) namePart = textMatch[0];
+  }
+  
+  const words = namePart.trim().split(/\s+/);
+  if (words.length <= 1) return namePart.toUpperCase();
+  
+  const firstName = words[0].charAt(0).toUpperCase() + words[0].slice(1).toLowerCase();
+  const initials = words.slice(1).map(w => w.charAt(0).toUpperCase()).join('');
+  
+  return `${firstName} ${initials}`.trim();
+}
+
 function getRiskClass(level) {
   if (level === 3) return 'critical';
   if (level === 2) return 'orange';
@@ -69,9 +107,9 @@ function LoginModal({ onLogin, allUsers }) {
   return (
     <div className="login-overlay">
       <div className="login-card">
-        <div className="sidebar-logo" style={{ marginBottom: '1.5rem', alignItems: 'center' }}>
+        <div className="sidebar-logo centered-logo" style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <span className="logo-small">Supervision</span>
-          <span className="logo-large">Nautilus</span>
+          <span className="logo-large large-40">Nautilus</span>
           <span className="logo-small">Ultimate</span>
         </div>
         <h1>Área de Membros</h1>
@@ -188,43 +226,19 @@ function SettingsView({ users, onUpdateUsers }) {
                     </td>
                   </tr>
                 ))}
-                {users.length === 0 && (
-                  <tr>
-                    <td colSpan="3" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                      Nenhum usuário configurado. Os dados globais serão visíveis apenas para Naut1lus.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
-      <p style={{ marginTop: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
-        ⚠️ Alterações nas contas vinculadas são sincronizadas em tempo real.
-      </p>
     </div>
   );
 }
 
-function RobotModal({ robot, robotInfo, onClose }) {
-  const [activeTab, setActiveTab] = useState('performance');
+function RobotModal({ robot, onClose }) {
+  const [activeTab, setActiveTab] = useState('strategy');
 
   if (!robot) return null;
-
-  // Se não encontrar info na planilha, usa o que tem no robot ou fallback
-  const info = robotInfo || {
-    direcao: 'CARREGANDO...',
-    estilo: 'CARREGANDO...',
-    indicador: 'CARREGANDO...',
-    backtest_period: 'Aguardando Oracle...',
-    profit_factor: '--',
-    drawdown: '--',
-    capital: '--',
-    lucro_mes: '--',
-    roi_mes: '--',
-    roi_ano: '--'
-  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -235,101 +249,42 @@ function RobotModal({ robot, robotInfo, onClose }) {
               <h2>{robot.comment || 'Dossiê do Robô'}</h2>
               <span className="modal-magic">#{robot.magic}</span>
             </div>
-            <div className="badges-container">
-              <span className="badge">EA</span>
-              <span className="badge outline">{info.direcao}</span>
-              <span className="badge outline">{info.estilo}</span>
-              <span className="badge outline">{info.indicador}</span>
-            </div>
           </div>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
-
-        <div className="modal-hero-metrics">
-          <div className="hero-metric">
-            <span className="hero-label">ROI ESTIMADO ANO</span>
-            <span className="hero-value profit-text">+{info.roi_ano}</span>
-          </div>
-          <div className="hero-metric">
-            <span className="hero-label">LUCRO MÊS (EST.)</span>
-            <span className="hero-value profit-text">+{info.lucro_mes}</span>
-          </div>
-          <div className="hero-metric">
-            <span className="hero-label">DRAWDOWN BACKTEST</span>
-            <span className="hero-value loss-text">-${info.drawdown}</span>
-          </div>
-          <div className="hero-metric">
-            <span className="hero-label">PROFIT FACTOR</span>
-            <span className="hero-value">{info.profit_factor}</span>
-          </div>
-        </div>
-
 
         <div className="modal-tabs">
           <button
             className={`modal-tab ${activeTab === 'performance' ? 'active' : ''}`}
             onClick={() => setActiveTab('performance')}
           >
-            📈 Performance
+            📈 Estatísticas
           </button>
           <button
             className={`modal-tab ${activeTab === 'strategy' ? 'active' : ''}`}
             onClick={() => setActiveTab('strategy')}
           >
-            ⚙️ Setup
-          </button>
-          <button
-            className={`modal-tab ${activeTab === 'risk' ? 'active' : ''}`}
-            onClick={() => setActiveTab('risk')}
-          >
-            🛡️ Gestão de Risco
-          </button>
-          <button
-            className={`modal-tab ${activeTab === 'martingale' ? 'active' : ''}`}
-            onClick={() => setActiveTab('martingale')}
-          >
-            🔄 Grade / Posições
+            ⚙️ Setup Atual
           </button>
         </div>
 
         <div className="modal-body" style={{ paddingTop: '1rem' }}>
           {activeTab === 'performance' && (
-            <div className="tab-pane animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div className="tab-pane animate-fade-in">
               <div className="dossier-section">
-                <h3>Métricas de Backtest</h3>
+                <h3>Métricas de Operação</h3>
                 <div className="doc-grid">
                   <div className="doc-item">
-                    <span>Capital Recomendado</span>
-                    <strong>${info.capital}</strong>
+                    <span>Acerto Total</span>
+                    <strong>{robot.t_tot > 0 ? (robot.t_won / robot.t_tot * 100).toFixed(0) : 0}%</strong>
                   </div>
                   <div className="doc-item">
-                    <span>Profit Factor</span>
-                    <strong>{info.profit_factor}</strong>
+                    <span>Lucro Acumulado</span>
+                    <strong className="profit-text">${(robot.t_prof || 0).toFixed(2)}</strong>
                   </div>
                   <div className="doc-item">
-                    <span>Desenho (DD) Máx</span>
-                    <strong className="loss-text">${info.drawdown}</strong>
-                  </div>
-                  <div className="doc-item">
-                    <span>Lucro Médio Mês</span>
-                    <strong className="profit-text">${info.lucro_mes}</strong>
-                  </div>
-                </div>
-              </div>
-              <div className="dossier-section">
-                <h3>Visão de Longo Prazo</h3>
-                <div className="doc-grid">
-                  <div className="doc-item">
-                    <span>Retorno % Mês</span>
-                    <strong className="profit-text">{info.roi_mes}</strong>
-                  </div>
-                  <div className="doc-item">
-                    <span>Retorno % Ano</span>
-                    <strong className="profit-text">{info.roi_ano}</strong>
-                  </div>
-                  <div className="doc-item" style={{ gridColumn: 'span 2' }}>
-                    <span>Janela de Backtest</span>
-                    <strong>{info.backtest_period}</strong>
+                     <span>Flutuante Atual</span>
+                     <strong className={(robot.floating || 0) >= 0 ? 'profit-text' : 'loss-text'}>${(robot.floating || 0).toFixed(2)}</strong>
                   </div>
                 </div>
               </div>
@@ -339,74 +294,19 @@ function RobotModal({ robot, robotInfo, onClose }) {
           {activeTab === 'strategy' && (
             <div className="tab-pane animate-fade-in">
               <div className="dossier-section">
-                <h3>Indicadores e Setup</h3>
+                <h3>Posicionamento</h3>
                 <div className="doc-grid">
                   <div className="doc-item">
-                    <span>Indicador Principal</span>
-                    <strong>{info.indicador}</strong>
+                    <span>Lotes Compra</span>
+                    <strong>{robot.buy_lots?.toFixed(2) || '0.00'}</strong>
                   </div>
                   <div className="doc-item">
-                    <span>Estilo de Operação</span>
-                    <strong>{info.estilo}</strong>
+                    <span>Lotes Venda</span>
+                    <strong>{robot.sell_lots?.toFixed(2) || '0.00'}</strong>
                   </div>
                   <div className="doc-item">
-                    <span>Direção Estratégica</span>
-                    <strong>{info.direcao}</strong>
-                  </div>
-                  <div className="doc-item">
-                    <span>Filtro Adicional</span>
-                    <strong>AUTOMÁTICO</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          {activeTab === 'risk' && (
-            <div className="tab-pane animate-fade-in">
-              <div className="dossier-section">
-                <h3>Limites e Operacional</h3>
-                <div className="doc-grid">
-                  <div className="doc-item">
-                    <span>Lote Inicial / Máx</span>
-                    <strong>0.01 / 0.50</strong>
-                  </div>
-                  <div className="doc-item">
-                    <span>Stop Loss Global</span>
-                    <strong>500 pt</strong>
-                  </div>
-                  <div className="doc-item">
-                    <span>Take Profit</span>
-                    <strong>100 pt</strong>
-                  </div>
-                  <div className="doc-item">
-                    <span>Trailing Stop</span>
-                    <strong>15 / 0.5</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'martingale' && (
-            <div className="tab-pane animate-fade-in">
-              <div className="dossier-section">
-                <h3>Recuperação de Preço (Martingale)</h3>
-                <div className="doc-grid">
-                  <div className="doc-item">
-                    <span>Fator Multiplicador</span>
-                    <strong>1.25</strong>
-                  </div>
-                  <div className="doc-item">
-                    <span>Fechamento Parcial</span>
-                    <strong>2 Níveis / $1 Min</strong>
-                  </div>
-                  <div className="doc-item">
-                    <span>Distância (Step)</span>
-                    <strong>10 pt</strong>
-                  </div>
-                  <div className="doc-item" style={{ gridColumn: 'span 2' }}>
-                    <span>Custom MG (Progressão)</span>
-                    <strong style={{ wordBreak: 'break-all', fontSize: '0.85rem' }}>1,1,1,1,1,1,2,3,3,4,5,7,9,11,14,18,22,28...</strong>
+                    <span>Ordens Ativas</span>
+                    <strong>{(robot.buy_count || 0) + (robot.sell_count || 0)}</strong>
                   </div>
                 </div>
               </div>
@@ -414,7 +314,7 @@ function RobotModal({ robot, robotInfo, onClose }) {
           )}
 
           <div style={{ marginTop: '1.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-            *Nota: Dados sincronizados em tempo real com o Oracle (Google Sheets). Período Backtest: {info.backtest_period}
+            *Nota: Dados técnicos recebidos diretamente do terminal MetaTrader 4 via Supervision GRAB.
           </div>
         </div>
       </div>
@@ -463,7 +363,6 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
         </div>
       </header>
 
-      {/* Global Account Summary */}
       <div className="account-summary">
         <div className="summary-card">
           <h3>Drawdown & Exposição</h3>
@@ -479,41 +378,48 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             <span>DD Atual: {formatPercent(ddPct)}</span>
             <span>Máximo: {dmeMax.toFixed(0)}%</span>
+          </div>
+          <div style={{ marginTop: '0.8rem', display: 'flex', justifyContent: 'center' }}>
             <SemanticCircles level={data.globalRiskLevel || 0} />
           </div>
         </div>
 
-        <div className="summary-card">
+        <div className="summary-card central-card">
           <h3>Saúde Financeira</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '0.5rem' }}>
             <div>
-              <div className="summary-value equity-value" style={{ fontSize: '1.65rem', lineHeight: '1.2' }}>
+              <div className="summary-value equity-value" style={{ fontSize: '1.6rem', lineHeight: '1.2' }}>
                 {formatCurrency(data.equity || 0)}
               </div>
               <div className="summary-subtitle" style={{ marginTop: '0' }}>Saldo Líquido (Equity)</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div className="summary-value" style={{ color: 'var(--text-muted)', fontSize: '1.65rem', lineHeight: '1.2' }}>
+              <div className="summary-value" style={{ color: 'var(--text-muted)', fontSize: '1.6rem', lineHeight: '1.2' }}>
                 {formatCurrency(data.balance || 0)}
               </div>
               <div className="summary-subtitle" style={{ marginTop: '0' }}>Saldo Bruto (Balance)</div>
             </div>
           </div>
 
-          <div className="performance-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginTop: '1.5rem' }}>
+          <div className="performance-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginTop: '1.5rem' }}>
             <div className="perf-item">
               <span className="perf-label">Dia</span>
-              <span className={`perf-val ${dProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.45rem' }}>{dProf > 0 ? '+' : ''}{dProf.toFixed(1)}</span>
+              <span className={`perf-val ${dProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.2rem' }}>{dProf > 0 ? '+' : ''}{dProf.toFixed(1)}</span>
               <span className={`pct-small ${dProf >= 0 ? 'profit-text' : 'loss-text'}`}>{((dProf) / (dbal || 1) * 100).toFixed(2)}%</span>
             </div>
             <div className="perf-item">
               <span className="perf-label">Semana</span>
-              <span className={`perf-val ${wProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.45rem' }}>{wProf > 0 ? '+' : ''}{wProf.toFixed(1)}</span>
+              <span className={`perf-val ${wProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.2rem' }}>{wProf > 0 ? '+' : ''}{wProf.toFixed(1)}</span>
               <span className={`pct-small ${wProf >= 0 ? 'profit-text' : 'loss-text'}`}>{((wProf) / (dbal || 1) * 100).toFixed(2)}%</span>
             </div>
             <div className="perf-item">
+              <span className="perf-label">Mês (D1)</span>
+              <span className={`perf-val ${mProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.2rem' }}>{mProf > 0 ? '+' : ''}{mProf.toFixed(1)}</span>
+              <span className={`pct-small ${mProf >= 0 ? 'profit-text' : 'loss-text'}`}>{((mProf) / (dbal || 1) * 100).toFixed(2)}%</span>
+            </div>
+            <div className="perf-item">
               <span className="perf-label">Total</span>
-              <span className={`perf-val ${tProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.45rem' }}>{tProf > 0 ? '+' : ''}{tProf.toFixed(1)}</span>
+              <span className={`perf-val ${tProf >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.2rem' }}>{tProf > 0 ? '+' : ''}{tProf.toFixed(1)}</span>
               <span className={`pct-small ${tProf >= 0 ? 'profit-text' : 'loss-text'}`}>{((tProf) / (dbal || 1) * 100).toFixed(2)}%</span>
             </div>
           </div>
@@ -522,9 +428,12 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
         <div className="summary-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <h3>Conta Vinculada</h3>
           <div className="summary-value" style={{ fontSize: '1.25rem', color: 'var(--text-main)', marginBottom: '0.2rem' }}>
-            {data.account || 'Aguardando Sincronização...'}
+            <div>{formatAccountName(data.account) || 'Aguardando Sincronização...'}</div>
+            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>
+              #{data.account?.match(/\d{5,}/)?.[0] || ''}
+            </div>
           </div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
             Corretora: <span style={{ color: 'var(--text-main)' }}>{data.broker || '--'}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
@@ -563,12 +472,11 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
           </thead>
           <tbody>
             {robotsArray.map(r => {
-              const effD = r.d_tot > 0 ? (r.d_won / r.d_tot * 100).toFixed(0) : 0;
-              const effM = r.m_tot > 0 ? (r.m_won / r.m_tot * 100).toFixed(0) : 0;
-              const effT = r.t_tot > 0 ? (r.t_won / r.t_tot * 100).toFixed(0) : 0;
+              const effD = r.d_won ? (r.d_won / r.d_tot * 100).toFixed(0) : 0;
+              const effM = r.m_won ? (r.m_won / r.m_tot * 100).toFixed(0) : 0;
+              const effT = r.t_won ? (r.t_won / r.t_tot * 100).toFixed(0) : 0;
               const alertClass = (r.alertLevel === 'danger') ? 'danger' : (r.alertLevel === 'warning') ? 'warning' : 'normal';
 
-              // Dynamic Limits Bar Calculation
               const buyL = r.buy_lots || 0;
               const sellL = r.sell_lots || 0;
               const buyC = r.buy_count || 0;
@@ -581,9 +489,9 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
               if (maxE > 0) highestRatio = Math.max(highestRatio, (buyC / maxE) * 100, (sellC / maxE) * 100);
               const barFill = Math.min(highestRatio, 100);
 
-              let dynBackground = 'linear-gradient(90deg, rgba(16,185,129,0.3) 0%, #10b981 100%)'; // Green degrade
-              if (barFill >= 99) dynBackground = 'linear-gradient(90deg, rgba(239,68,68,0.3) 0%, #ef4444 100%)'; // Red degrade
-              else if (barFill >= 70) dynBackground = 'linear-gradient(90deg, rgba(245,158,11,0.3) 0%, #f59e0b 100%)'; // Yellow degrade
+              let dynBackground = 'linear-gradient(90deg, rgba(16,185,129,0.3) 0%, #10b981 100%)'; 
+              if (barFill >= 99) dynBackground = 'linear-gradient(90deg, rgba(239,68,68,0.3) 0%, #ef4444 100%)'; 
+              else if (barFill >= 70) dynBackground = 'linear-gradient(90deg, rgba(245,158,11,0.3) 0%, #f59e0b 100%)'; 
 
               return (
                 <tr key={r.magic} onClick={() => setSelectedRobot(r)}>
@@ -649,11 +557,6 @@ function AccountView({ data, status, setSelectedRobot, toggleSidebar }) {
             })}
           </tbody>
         </table>
-        {(robotsArray.length === 0) && (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            Nenhum robô encontrado no momento. Certifique-se de que o EA Supervision Grab está ativo.
-          </div>
-        )}
       </div>
     </div>
   );
@@ -701,37 +604,44 @@ function HomeView({ accounts, status, toggleSidebar, setCurrentView }) {
             <span>DD Atual: {totalBalance > 0 ? ((totalFloating / totalBalance) * 100).toFixed(2) : 0}%</span>
             <span>Máximo Global: --%</span>
           </div>
+          <div style={{ marginTop: '0.8rem', display: 'flex', justifyContent: 'center' }}>
+            <SemanticCircles level={accounts.reduce((max, a) => Math.max(max, a.globalRiskLevel || 0), 0)} />
+          </div>
         </div>
 
-        <div className="summary-card">
+        <div className="summary-card central-card">
           <h3>Capital Global</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '0.5rem' }}>
             <div>
-              <div className="summary-value equity-value" style={{ fontSize: '1.65rem', lineHeight: '1.2' }}>
+              <div className="summary-value equity-value" style={{ fontSize: '1.6rem', lineHeight: '1.2' }}>
                 {formatCurrency(totalEquity)}
               </div>
               <div className="summary-subtitle" style={{ marginTop: '0' }}>Saldo Líquido (Equity)</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div className="summary-value" style={{ color: 'var(--text-muted)', fontSize: '1.65rem', lineHeight: '1.2' }}>
+              <div className="summary-value" style={{ color: 'var(--text-muted)', fontSize: '1.6rem', lineHeight: '1.2' }}>
                 {formatCurrency(totalBalance)}
               </div>
               <div className="summary-subtitle" style={{ marginTop: '0' }}>Saldo Bruto (Balance)</div>
             </div>
           </div>
 
-          <div className="performance-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginTop: '1.5rem' }}>
+          <div className="performance-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginTop: '1.5rem' }}>
             <div className="perf-item">
               <span className="perf-label">Dia</span>
-              <span className={`perf-val ${totalDayProfit >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.45rem' }}>{totalDayProfit > 0 ? '+' : ''}{totalDayProfit.toFixed(1)}</span>
+              <span className={`perf-val ${totalDayProfit >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.2rem' }}>{totalDayProfit > 0 ? '+' : ''}{totalDayProfit.toFixed(1)}</span>
             </div>
             <div className="perf-item">
               <span className="perf-label">Semana</span>
-              <span className={`perf-val ${totalWeekProfit >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.45rem' }}>{totalWeekProfit > 0 ? '+' : ''}{totalWeekProfit.toFixed(1)}</span>
+              <span className={`perf-val ${totalWeekProfit >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.2rem' }}>{totalWeekProfit > 0 ? '+' : ''}{totalWeekProfit.toFixed(1)}</span>
+            </div>
+            <div className="perf-item">
+              <span className="perf-label">Mês (D1)</span>
+              <span className={`perf-val ${accounts.reduce((sum, a) => sum + (a.monthProfit || 0), 0) >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.2rem' }}>{accounts.reduce((sum, a) => sum + (a.monthProfit || 0), 0).toFixed(1)}</span>
             </div>
             <div className="perf-item">
               <span className="perf-label">Total</span>
-              <span className={`perf-val ${totalAllProfit >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.45rem' }}>{totalAllProfit > 0 ? '+' : ''}{totalAllProfit.toFixed(1)}</span>
+              <span className={`perf-val ${totalAllProfit >= 0 ? 'profit-text' : 'loss-text'}`} style={{ fontSize: '1.2rem' }}>{totalAllProfit > 0 ? '+' : ''}{totalAllProfit.toFixed(1)}</span>
             </div>
           </div>
         </div>
@@ -741,7 +651,7 @@ function HomeView({ accounts, status, toggleSidebar, setCurrentView }) {
           <div className="summary-value" style={{ fontSize: '1.25rem', color: 'var(--text-main)', marginBottom: '0.2rem' }}>
             {accounts.filter(a => a.account !== 'Offline').length} MÚLTIPLAS
           </div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
             Corretoras: <span style={{ color: 'var(--text-main)' }}>{brokersArr.join(', ') || '--'}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
@@ -775,7 +685,6 @@ function HomeView({ accounts, status, toggleSidebar, setCurrentView }) {
               <th>Dia</th>
               <th>Semana</th>
               <th>Mês</th>
-              <th>Meta Mes</th>
               <th>Total</th>
               <th>Trades Mês</th>
               <th>Status</th>
@@ -784,13 +693,12 @@ function HomeView({ accounts, status, toggleSidebar, setCurrentView }) {
           <tbody>
             {accounts.map((acc, i) => {
                const gross = acc.balance || 1;
-               const shortAcc = (acc.account || 'DESCONHECIDA').split('-')[0].trim().substring(0, 15).toUpperCase();
               const brokerStr = acc.broker || 'N/A';
               return (
                 <tr key={i} className="oakmont-row" onClick={() => setCurrentView(acc.account)}>
                   <td>
                     <div className="val-stack">
-                      <span className="ticker-name">{shortAcc}</span>
+                      <span className="ticker-name">{formatAccountName(acc.account)}</span>
                       <span className="company-name">{brokerStr}</span>
                     </div>
                   </td>
@@ -836,7 +744,6 @@ function HomeView({ accounts, status, toggleSidebar, setCurrentView }) {
                       </span>
                     </div>
                   </td>
-                  <td style={{ color: 'var(--text-muted)' }}>{acc.meta || '--'}</td>
                   <td>
                     <div className="val-stack">
                       <span className={(acc.totalProfit || 0) >= 0 ? 'profit-text' : 'loss-text'}>
@@ -862,12 +769,17 @@ function HomeView({ accounts, status, toggleSidebar, setCurrentView }) {
 }
 
 function App() {
-  const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nautilus_accounts_cache');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
   const [users, setUsers] = useState([]);
-  const [robotsInfo, setRobotsInfo] = useState({});
   const [status, setStatus] = useState('Sincronizando');
   const [selectedRobot, setSelectedRobot] = useState(null);
-  const [currentView, setCurrentView] = useState('home'); // 'home' or account string or 'settings'
+  const [currentView, setCurrentView] = useState('home'); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [currentUser, setCurrentUser] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -902,22 +814,15 @@ function App() {
         const response = await fetch('/api/users');
         if (response.ok) {
           const u = await response.json();
+          // Garante padrão Alpha1 se não existir
+          if (!u.find(x => x.username === 'Alpha1')) {
+            u.push({ username: 'Alpha1', accounts: ['1529945', '1529946', '1529947', '1539330'] });
+          }
           setUsers(u);
         }
       } catch (e) {}
     };
     fetchUsers();
-
-    const fetchRobotsInfo = async () => {
-      try {
-        const response = await fetch('/api/robots-info');
-        if (response.ok) {
-          const info = await response.json();
-          setRobotsInfo(info);
-        }
-      } catch (e) {}
-    };
-    fetchRobotsInfo();
 
     const fetchData = async () => {
       try {
@@ -926,8 +831,7 @@ function App() {
           const result = await response.json();
           if (Array.isArray(result)) {
             setAccounts(result);
-          } else if (result && result.account) {
-            setAccounts([result]);
+            localStorage.setItem('nautilus_accounts_cache', JSON.stringify(result));
           }
           setStatus('Sincronizado');
         } else {
@@ -944,14 +848,11 @@ function App() {
     return () => clearInterval(fetchTimer);
   }, []);
 
-  // Filtra as contas baseadas no usuário
   const filteredAccounts = accounts.filter(acc => {
     if (!currentUser) return false;
     if (currentUser === 'Naut1lus') return true;
     const userConfig = users.find(u => u.username === currentUser);
     if (!userConfig) return false;
-    
-    // Procura número da conta em qualquer parte da string 'account'
     const match = acc.account?.match(/\d{5,}/);
     const accNumber = match ? match[0] : '';
     return userConfig.accounts.includes(accNumber);
@@ -967,16 +868,23 @@ function App() {
 
   return (
     <div className="app-layout">
-      {/* Sidebar Navigation */}
       <aside className={`app-sidebar ${isSidebarOpen ? '' : 'closed'}`}>
-         <div className="sidebar-header">
-           <div className="sidebar-logo">
-             <span className="logo-small">Supervision</span>
-             <span className="logo-large">Nautilus</span>
-             <span className="logo-small">Ultimate</span>
-           </div>
-           <button className="sidebar-toggle-btn" onClick={handleToggleSidebar} title="Recolher/Expandir Menu">☰</button>
-         </div>
+          <div className="sidebar-header" style={{ flexDirection: 'column', gap: '0.8rem', alignItems: 'flex-start', marginBottom: '2rem' }}>
+            <div className="sidebar-logo" style={{ marginBottom: '0', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <span className="logo-small">Supervision</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%', justifyContent: 'space-between' }}>
+                <span className="logo-large large-60">Nautilus</span>
+                <button className="sidebar-toggle-btn" onClick={handleToggleSidebar} title="Recolher/Expandir Menu" style={{ position: 'relative', top: '2px' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+              <span className="logo-small">Ultimate</span>
+            </div>
+          </div>
         <nav className="sidebar-nav">
             <button
               className={`nav-item ${currentView === 'home' ? 'active' : ''}`}
@@ -994,22 +902,24 @@ function App() {
               onClick={() => setCurrentView(acc.account)}
             >
               <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-              <span className="nav-text">{acc.account}</span>
+              <div className="nav-text-group">
+                <span className="nav-text">{formatAccountName(acc.account)}</span>
+                <span className="nav-subtext">#{acc.account.match(/\d{5,}/)?.[0] || '---'}</span>
+              </div>
             </button>
           ))}
 
           {currentUser === 'Naut1lus' && (
-            <>
+            <div style={{ marginTop: 'auto' }}>
               <div className="nav-group">Sistema</div>
               <button
                 className={`nav-item ${currentView === 'settings' ? 'active' : ''}`}
                 onClick={() => setCurrentView('settings')}
               >
-                <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 \
-1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 <span className="nav-text">Configurações</span>
               </button>
-            </>
+            </div>
           )}
         </nav>
         <div style={{ marginTop: 'auto', padding: '0.8rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1018,7 +928,6 @@ function App() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="main-content">
         {currentView === 'settings' && currentUser === 'Naut1lus' ? (
           <SettingsView users={users} onUpdateUsers={handleUpdateUsers} />
@@ -1036,7 +945,6 @@ function App() {
 
       <RobotModal
         robot={selectedRobot}
-        robotInfo={selectedRobot ? robotsInfo[selectedRobot.comment?.trim()] : null}
         onClose={() => setSelectedRobot(null)}
       />
     </div>

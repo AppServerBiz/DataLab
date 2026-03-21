@@ -71,7 +71,9 @@ body {
 .app-sidebar.closed .nav-text,
 .app-sidebar.closed .nav-group,
 .app-sidebar.closed .logo-small,
-.app-sidebar.closed .logo-large {
+.app-sidebar.closed .logo-large,
+.app-sidebar.closed .nav-text-group,
+.app-sidebar.closed .nav-subtext {
   display: none;
 }
 
@@ -115,13 +117,27 @@ body {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 2px 0;
+  transition: font-size 0.3s ease;
+}
+
+.logo-large.large-40 {
+  font-size: 2rem;
+}
+
+.logo-large.large-60 {
+  font-size: 2.5rem;
+}
+
+.centered-logo {
+  text-align: center;
+  align-items: center;
 }
 
 .sidebar-toggle-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-color);
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
   border-radius: 6px;
-  color: var(--text-muted);
+  color: var(--accent-blue);
   width: 32px;
   height: 32px;
   display: flex;
@@ -133,9 +149,9 @@ body {
   flex-shrink: 0;
 }
 .sidebar-toggle-btn:hover {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--accent-blue);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(56, 189, 248, 0.2);
+  color: #fff;
+  border-color: var(--accent-blue);
 }
 
 .sidebar-logo {
@@ -154,6 +170,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  flex: 1;
 }
 
 .nav-group {
@@ -205,6 +222,18 @@ body {
   transform: scale(1.1);
 }
 
+.nav-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-subtext {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 .main-content {
   flex: 1;
   overflow-y: auto;
@@ -249,9 +278,40 @@ body {
 /* Account Metrics / Summary */
 .account-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 3rem;
+  grid-template-columns: 1fr 1.8fr 1fr;
+  gap: 1.5rem;
   margin-bottom: 3.5rem;
+  align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+  .account-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .central-card {
+    grid-column: span 2;
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .account-summary {
+    grid-template-columns: 1fr;
+  }
+  .central-card {
+    grid-column: span 1;
+  }
+  .app-sidebar {
+    position: fixed;
+    height: 100vh;
+    transform: translateX(-100%);
+  }
+  .app-sidebar.open-mobile {
+     transform: translateX(0);
+  }
+  .dashboard-container {
+    padding: 1rem;
+  }
 }
 
 .oakmont-summary {
@@ -357,7 +417,7 @@ body {
 .performance-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
+  gap: 0.75rem;
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);

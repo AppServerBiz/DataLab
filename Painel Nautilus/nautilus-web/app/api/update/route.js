@@ -10,9 +10,10 @@ export async function POST(req) {
         }
 
         const accountStr = data.account || 'unknown';
-        const parts = accountStr.split(' - ');
-        const lastPart = parts[parts.length - 1].trim();
-        const accId = lastPart.replace(/[^a-zA-Z0-9]/g, '_') || 'unknown';
+        
+        // Tenta encontrar o número da conta (5 ou mais dígitos)
+        const match = accountStr.match(/\d{5,}/);
+        const accId = match ? match[0] : 'unknown';
         
         const filename = `supervision_data_${accId}.json`;
         
