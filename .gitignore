@@ -1,42 +1,41 @@
 # Node.js
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+npm-debug.log
+yarn-error.log
 
-# Environment
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Databases
+# Database
 *.db
 *.sqlite
 *.sqlite3
 
-# OS/IDEs
-.DS_Store
-Thumbs.db
+# IDE / System
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
 
-# Build
-dist/
-build/
-.next/
-out/
+# Project specific
+logs/
+*.log
+temp/
+tmp/
 
-# Sensitive/Large Files
+# UI specific
+vite.config.ts.timestamp-*
+
 ssh_oracle.key
 ssh_oracle.pub
 datalab.tar.gz
-
-# MT5/MT4
-*.ex5
-*.ex4
-*.bak
-*.tmp
-*.crp
