@@ -7,7 +7,7 @@ let db: Database<sqlite3.Database, sqlite3.Statement> | null = null;
 export async function getDb(): Promise<Database<sqlite3.Database, sqlite3.Statement>> {
   if (db) return db;
 
-  const dbPath = path.resolve(__dirname, '..', 'nautilus.db');
+  const dbPath = process.env.DATABASE_PATH || path.resolve(__dirname, '..', 'nautilus.db');
   db = await open({ filename: dbPath, driver: sqlite3.Database });
   await db.exec('PRAGMA foreign_keys = ON;');
 

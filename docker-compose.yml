@@ -8,10 +8,11 @@ services:
     environment:
       - PORT=3001
       - GEMINI_API_KEY=AIzaSyBJLmQvQqtLQOGUk4Rmi5d7_oK1u-8f4xQ
+      - DATABASE_PATH=/app/data/nautilus.db
     ports:
       - "3001:3001"
     volumes:
-      - nautilus_db:/app
+      - nautilus_db:/app/data
     restart: always
 
   ui:
