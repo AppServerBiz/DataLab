@@ -3,7 +3,7 @@ version: '3.8'
 services:
   api:
     build:
-      context: /home/ubuntu/datalab/datalab-api
+      context: ./datalab-api
       dockerfile: Dockerfile
     environment:
       - PORT=3001
@@ -11,12 +11,12 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - /home/ubuntu/datalab/datalab-api/nautilus.db:/app/nautilus.db
+      - nautilus_db:/app
     restart: always
 
   ui:
     build:
-      context: /home/ubuntu/datalab/datalab-ui
+      context: ./datalab-ui
       dockerfile: Dockerfile
     ports:
       - "80:80"
@@ -24,10 +24,10 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.datalab_ui.rule=Host(`data.nautilusinvesting.com`)"
       - "traefik.http.routers.datalab_ui.entrypoints=http"
-      # For SSL use the following if your Coolify is configured for it
-      # - "traefik.http.routers.datalab_ui.tls=true"
-      # - "traefik.http.routers.datalab_ui.tls.certresolver=letsencrypt"
       - "traefik.http.services.datalab_ui.loadbalancer.server.port=80"
     depends_on:
       - api
     restart: always
+
+volumes:
+  nautilus_db:

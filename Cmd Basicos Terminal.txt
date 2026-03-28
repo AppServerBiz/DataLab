@@ -1,0 +1,12 @@
+acessar o servidor:
+ssh -v -i "c:\Users\corre\Desktop\Robos Nautilus 2025\IA\data_quant\ssh_oracle.key" -o StrictHostKeyChecking=no ubuntu@167.126.9.229
+
+Listar Arquivos	dir	= ls (ou ls -la para ver detalhes)
+Limpar Tela	cls	= clear
+Apagar Arquivo	del ou erase	= rm (ex: rm arquivo.txt)
+Apagar Pasta	rd	= rm -rf (CUIDADO: apaga tudo recursivo)
+Entrar em Pasta	cd	= cd
+Ver onde está	cd (só digitar)	= pwd
+Criar Pasta md ou mkdir	= mkdir
+Ver Conteúdo	type	= cat ou less
+Editar Arquivo	notepad	=   nano (ex: nano config.yml)
