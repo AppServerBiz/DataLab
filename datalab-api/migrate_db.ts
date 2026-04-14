@@ -10,7 +10,8 @@ async function migrate() {
     { name: 'avg_profit_per_month', type: 'REAL DEFAULT 0' },
     { name: 'monthly_drawdown', type: 'TEXT' },
     { name: 'raw_html', type: 'TEXT' },
-    { name: 'raw_csv', type: 'TEXT' }
+    { name: 'raw_csv', type: 'TEXT' },
+    { name: 'var_95_dd_cap', type: 'REAL DEFAULT 0' }
   ];
 
   const currentColumns = await db.all("PRAGMA table_info(robots)");

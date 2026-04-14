@@ -42,7 +42,10 @@ export interface EliteMetrics {
   // Calculated
   total_months: number;
   avg_profit_per_month: number;
+  total_lots: number;
+  lots_per_month: number;
   monthly_drawdown: { month: string, maxDD: number, maxDDPct: number }[];
+  var_95_dd_cap: number;
 }
 
 export interface ParsedBacktestData {
@@ -62,6 +65,7 @@ export interface ParsedCSVData {
   equityCurve: EquityPoint[];
   maxDrawdown: number;
   maxDrawdownPct: number;
+  var95: number; // VaR 95% on initial capital
 }
 
 /**
@@ -180,6 +184,66 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
       i++;
     }
   });
+  
+  // Parse Lots from "Ordens" or "Negociações" table (often a row in a giant table)
+  let total_lots = 0;
+  try {
+    const ordensSearch = $('b:contains("Ordens"), div:contains("Ordens"), b:contains("Orders"), div:contains("Orders"), b:contains("Negocia"), div:contains("Negocia"), b:contains("Deals"), div:contains("Deals")').filter((_, el) => {
+      const text = $(el).text().trim().toLowerCase();
+      return text === 'ordens' || text === 'orders' || text.includes('negocia') || text === 'deals';
+    }).last();
+
+    if (ordensSearch.length) {
+      const headerRow = ordensSearch.closest('tr');
+      let currentRow = headerRow.next();
+      
+      // Skip the column header row
+      if (currentRow.text().toLowerCase().includes('volume')) {
+        currentRow = currentRow.next();
+      } else if (currentRow.next().text().toLowerCase().includes('volume')) {
+          currentRow = currentRow.next().next();
+      }
+
+      while (currentRow.length) {
+        const tds = currentRow.find('td');
+        const text = currentRow.text().toLowerCase();
+        
+        // If we hit another section header, stop
+        if (tds.first().attr('colspan') && parseInt(tds.first().attr('colspan') || '0') > 5) break;
+        if (text.includes('transações') || text.includes('deals')) break;
+        if (tds.length < 4) {
+            currentRow = currentRow.next();
+            continue;
+        }
+
+        let volumeText = '';
+        tds.each((idx, td) => {
+          if (idx < 3) return; // Skip Time/Ticket/Symbol
+          const t = $(td).text().trim();
+          // MT5 Volume format is either "0.10 / 0.10" or "0.10"
+          if (t.includes('/') || (/^\d+[\.,]\d+$/.test(t))) {
+            // Check if it's the first match in the row that looks like volume
+            if (!volumeText) volumeText = t;
+          }
+        });
+
+        if (volumeText) {
+          if (volumeText.includes('/')) {
+            const parts = volumeText.split('/');
+            // Lado da saída (geralmente o segundo valor)
+            const filled = parseFloat(parts[1].trim().replace(',', '.'));
+            if (!isNaN(filled)) total_lots += filled;
+          } else {
+            const vol = parseFloat(volumeText.replace(',', '.'));
+            if (!isNaN(vol)) total_lots += vol;
+          }
+        }
+        currentRow = currentRow.next();
+      }
+    }
+  } catch (e) {
+    console.warn("Error parsing lots from Ordens table:", e);
+  }
 
   // Build params map
   const parameters: Record<string, any> = {};
@@ -202,30 +266,30 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
   }
 
   // Extract all 10 elite metrics
-  const total_net_profit = parseNum(get('Lucro L'));
-  const gross_profit = parseNum(get('Lucro Bruto'));
-  const gross_loss = parseNum(get('Perda Bruta'));
-  const profit_factor = parseNum(get('Fator de Lucro'));
-  const expected_payoff = parseNum(get('Retorno Esperado'));
-  const recovery_factor = parseNum(get('Fator de Recupera'));
-  const sharpe_ratio = parseNum(get('ndice de Sharpe'));
-  const quality = parseNum(get('Qualidade'));
+  const total_net_profit = parseNum(get('Lucro L') || get('Net Profit'));
+  const gross_profit = parseNum(get('Lucro Bruto') || get('Gross Profit'));
+  const gross_loss = parseNum(get('Perda Bruta') || get('Gross Loss'));
+  const profit_factor = parseNum(get('Fator de Lucro') || get('Profit Factor'));
+  const expected_payoff = parseNum(get('Retorno Esperado') || get('Expected Payoff'));
+  const recovery_factor = parseNum(get('Fator de Recupera') || get('Recovery Factor'));
+  const sharpe_ratio = parseNum(get('ndice de Sharpe') || get('Sharpe Ratio'));
+  const quality = parseNum(get('Qualidade') || get('History Quality'));
 
-  const max_drawdown_abs_raw = get('Rebaixamento Absoluto do Saldo');
+  const max_drawdown_abs_raw = get('Rebaixamento Absoluto do Saldo') || get('Balance Drawdown Absolute');
   const max_drawdown_abs = parseNum(max_drawdown_abs_raw);
 
   // Equity drawdown  
   const maxDDEquityRaw = get('Rebaixamento M') !== '' 
-    ? get('Rebaixamento Máximo do Capital') || get('ndice Capital L') || ''
-    : '';
+  ? get('Rebaixamento Máximo do Capital') || get('ndice Capital L') || get('Equity Drawdown Maximum') || ''
+  : '';
   
   // Parse "989.80 (5.82%)" or "989,80 (5,82%)"
-  const maxDDEquityFull = get('Rebaixamento') ? (() => {
+  const maxDDEquityFull = get('Rebaixamento') || get('Drawdown') ? (() => {
     for (const [k, v] of labelValueMap) {
-      if (k.includes('Capital L') && k.includes('ximo')) return v;
-      if (k.includes('Capital') && k.includes('ximo')) return v;
+      if ((k.includes('Capital L') || k.includes('Equity')) && (k.includes('ximo') || k.includes('Maximum'))) return v;
+      if (k.includes('Capital') && (k.includes('ximo') || k.includes('Maximum'))) return v;
     }
-    return get('Rebaixamento Máximo');
+    return get('Rebaixamento Máximo') || get('Equity Drawdown Maximum');
   })() : '';
 
   const ddEquityMatch = maxDDEquityFull.match(/([\d\s.,]+)\s*\(([\d.,]+)%\)/);
@@ -233,18 +297,18 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
   const max_dd_equity_pct = ddEquityMatch ? parseNum(ddEquityMatch[2]) : 0;
 
   // Trades
-  const total_trades_raw = get('Total de Negocia');
+  const total_trades_raw = get('Total de Negocia') || get('Total Trades');
   const total_trades = parseInt(total_trades_raw.replace(/\D/g, '')) || 0;
 
-  const short_raw = get('Posi') ? ( () => {
+  const short_raw = (get('Posi') || get('Positions')) ? ( () => {
     for (const [k, v] of labelValueMap) {
-      if (k.includes('Vendidas') || k.includes('endidas')) return v;
+      if (k.includes('Vendidas') || k.includes('endidas') || k.includes('Short')) return v;
     }
     return '';
   })() : '';
   const long_raw = (() => {
     for (const [k, v] of labelValueMap) {
-      if (k.includes('Compradas') || k.includes('ompradas')) return v;
+      if (k.includes('Compradas') || k.includes('ompradas') || k.includes('Long')) return v;
     }
     return '';
   })();
@@ -259,7 +323,7 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
 
   const profitableTrades_raw = (() => {
     for (const [k, v] of labelValueMap) {
-      if (k.includes('com Lucro') || k.includes('Lucro (')) return v;
+      if (k.includes('com Lucro') || k.includes('Lucro (') || k.includes('Profit Trades')) return v;
     }
     return '';
   })();
@@ -268,21 +332,21 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
   const losing_trades = total_trades - profitable_trades;
   const win_rate = total_trades > 0 ? (profitable_trades / total_trades) * 100 : 0;
 
-  const max_win = parseNum(get('Maior lucro'));
-  const max_loss = parseNum(get('Maior perda'));
-  const avg_win = parseNum(get('dia lucro'));
-  const avg_loss = parseNum(get('dia perda') || get('dia Perda'));
-  const avg_trade_duration = get('Tempo m');
+  const max_win = parseNum(get('Maior lucro') || get('Largest profit trade'));
+  const max_loss = parseNum(get('Maior perda') || get('Largest loss trade'));
+  const avg_win = parseNum(get('dia lucro') || get('Average profit trade'));
+  const avg_loss = parseNum(get('dia perda') || get('dia Perda') || get('Average loss trade'));
+  const avg_trade_duration = get('Tempo m') || get('Average duration');
 
   const maxConsecWinsRaw = (() => {
     for (const [k, v] of labelValueMap) {
-      if ((k.includes('ganhos') || k.includes('Ganhos')) && k.includes('ximo')) return v;
+      if ((k.includes('ganhos') || k.includes('Ganhos') || k.includes('wins')) && (k.includes('ximo') || k.includes('maximal'))) return v;
     }
     return '';
   })();
   const maxConsecLossesRaw = (() => {
     for (const [k, v] of labelValueMap) {
-      if ((k.includes('perdas') || k.includes('Perdas')) && k.includes('ximo')) return v;
+      if ((k.includes('perdas') || k.includes('Perdas') || k.includes('losses')) && (k.includes('ximo') || k.includes('maximal'))) return v;
     }
     return '';
   })();
@@ -318,6 +382,7 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
       avg_profit_per_month = total_net_profit / total_months;
     }
   }
+  const lots_per_month = total_months > 0 ? total_lots / total_months : 0;
 
   const broker = (() => {
     for (const [k, v] of labelValueMap) {
@@ -326,8 +391,8 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
     return '';
   })();
 
-  // Initial deposit: first balance in CSV; use 10000 as typical default if not present  
-  const initial_deposit = 10000;
+  // Initial deposit: exact key match for "Depósito inicial:" or "Balance:" first row
+  const initial_deposit = parseNum(get('Depósito inicial') || get('Initial Deposit')) || 10000;
 
   // Build config HTML focusing only on top settings and params
   const configHtml = buildConfigHtml($, labelValueMap, paramsList);
@@ -398,7 +463,33 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
       parameters,
       total_months,
       avg_profit_per_month,
+      total_lots,
+      lots_per_month,
       monthly_drawdown: monthlyDD,
+      var_95_dd_cap: (() => {
+        const base = csvParsed ? csvParsed.equityCurve[0]?.balance : initial_deposit;
+        const curve = csvParsed?.equityCurve;
+        if (!base || base <= 0 || !curve?.length) return 0;
+        
+        // Calculate daily profits
+        const daily: Map<string, number> = new Map();
+        let prevEquity = curve[0].equity;
+        curve.forEach(p => {
+          const day = p.timestamp.split(' ')[0];
+          const profit = p.equity - prevEquity;
+          daily.set(day, (daily.get(day) || 0) + profit);
+          prevEquity = p.equity;
+        });
+
+        const profits = Array.from(daily.values());
+        if (profits.length < 5) return 0;
+
+        // VaR on deposit
+        const returns = profits.map(p => p / base);
+        returns.sort((a, b) => a - b);
+        const idx = Math.floor(returns.length * 0.05);
+        return returns[idx] || 0;
+      })(),
     },
     configHtml,
   };
@@ -497,11 +588,31 @@ export function parseCSVEquity(csvContent: string, robotName: string): ParsedCSV
     }
   }
 
+  // Calculate VaR 95% on initial deposit
+  let var95 = 0;
+  if (equityCurve.length > 10) {
+    const daily: Map<string, number> = new Map();
+    let prevE = equityCurve[0].equity;
+    equityCurve.forEach(p => {
+      const d = p.timestamp.split(' ')[0];
+      const pr = p.equity - prevE;
+      daily.set(d, (daily.get(d) || 0) + pr);
+      prevE = p.equity;
+    });
+    const profits = Array.from(daily.values());
+    if (profits.length >= 5) {
+      const returns = profits.map(p => p / (initialBalance || 10000));
+      returns.sort((a,b) => a - b);
+      var95 = returns[Math.floor(returns.length * 0.05)] || 0;
+    }
+  }
+
   return {
     robotName,
     equityCurve,
     maxDrawdown,
     maxDrawdownPct,
+    var95
   };
 }
 

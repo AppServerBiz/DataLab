@@ -326,6 +326,10 @@ h2.card-title {
   transition: all 0.2s ease;
 }
 
+.file-drop-area * {
+  pointer-events: none;
+}
+
 .file-drop-area:hover, .file-drop-area.dragover {
   border-color: var(--accent-blue);
   background-color: rgba(56, 189, 248, 0.05);

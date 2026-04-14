@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://127.0.0.1:3001/api';
+const API_URL = '/api';
 const api = axios.create({ baseURL: API_URL, timeout: 60000 });
 
 export const uploadFiles = async (files: File[]) => {
@@ -51,7 +51,7 @@ export const clearComparativo = async () => {
 export const fetchPortfolios = async () => (await api.get('/portfolios')).data;
 export const createPortfolio = async (data: { name: string; capital: number; target_dd: number }) =>
   (await api.post('/portfolios', data)).data;
-export const updatePortfolio = async (id: string, data: { name: string; capital: number; target_dd: number }) =>
+export const updatePortfolio = async (id: string, data: { name: string; capital: number; target_dd: number, locked?: boolean }) =>
   (await api.put(`/portfolios/${id}`, data)).data;
 export const deletePortfolio = async (id: string) => (await api.delete(`/portfolios/${id}`)).data;
 
@@ -64,10 +64,11 @@ export const removeRobotFromPortfolio = async (portfolioId: string, robotId: str
   (await api.delete(`/portfolios/${portfolioId}/robots/${robotId}`)).data;
 
 export const fetchPortfolioStats = async (id: string) => (await api.get(`/portfolios/${id}/stats`)).data;
- 
- // ── IA API ────────────────────────────────────────────────
- export const fetchIAInfo = async (type: 'robot' | 'portfolio', id: string) => 
-   (await api.get(`/ia/info/${type}/${id}`)).data;
- 
- export const chatWithIA = async (messages: any[], context: string) =>
-   (await api.post('/ia/chat', { messages, context })).data;
+export const getExportPortfolioUrl = (id: string) => `${API_URL}/portfolios/${id}/export-nautilus`;
+
+// ── IA API ────────────────────────────────────────────────
+export const fetchIAInfo = async (type: 'robot' | 'portfolio', id: string) =>
+  (await api.get(`/ia/info/${type}/${id}`)).data;
+
+export const chatWithIA = async (messages: any[], context: string) =>
+  (await api.post('/ia/chat', { messages, context })).data;

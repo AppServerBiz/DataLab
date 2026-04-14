@@ -54,6 +54,8 @@ export async function getDb(): Promise<Database<sqlite3.Database, sqlite3.Statem
       parameters TEXT,
       total_months INTEGER DEFAULT 0,
       avg_profit_per_month REAL DEFAULT 0,
+      total_lots REAL DEFAULT 0,
+      lots_per_month REAL DEFAULT 0,
       -- More detailed data
       equity_curve TEXT,
       monthly_drawdown TEXT,
@@ -65,6 +67,7 @@ export async function getDb(): Promise<Database<sqlite3.Database, sqlite3.Statem
       raw_csv MEDIUMTEXT,
       approved INTEGER DEFAULT 0,
       status TEXT DEFAULT 'pending',
+      var_95_dd_cap REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -75,6 +78,7 @@ export async function getDb(): Promise<Database<sqlite3.Database, sqlite3.Statem
       capital REAL DEFAULT 30000,
       target_dd REAL DEFAULT 5000,
       manual_dme REAL,
+      locked INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -90,6 +94,33 @@ export async function getDb(): Promise<Database<sqlite3.Database, sqlite3.Statem
       UNIQUE(portfolio_id, robot_id)
     );
   `);
+
+  // Proper JS migrations outside the SQL string
+  try { await db.exec('ALTER TABLE portfolios ADD COLUMN locked INTEGER DEFAULT 0;'); } catch (e) {}
+  try { await db.exec('ALTER TABLE portfolios ADD COLUMN manual_dme REAL;'); } catch (e) {}
+  try { await db.exec('ALTER TABLE robots ADD COLUMN var_95_dd_cap REAL DEFAULT 0;'); } catch (e) {}
+  try { await db.exec('ALTER TABLE robots ADD COLUMN total_lots REAL DEFAULT 0;'); } catch (e) {}
+  try { await db.exec('ALTER TABLE robots ADD COLUMN lots_per_month REAL DEFAULT 0;'); } catch (e) {}
+
+  // Automated Lot Repair for existing data
+  (async () => {
+    try {
+      const { parseMT5BacktestHTML, parseCSVEquity } = await import('./parser');
+      const robotsToFix = await db!.all('SELECT id, name, raw_html, raw_csv, total_months FROM robots WHERE total_lots = 0 OR total_lots IS NULL');
+      if (robotsToFix.length > 0) {
+        console.log(`[Database] Repairing lots for ${robotsToFix.length} robots...`);
+        for (const r of robotsToFix) {
+          if (!r.raw_html) continue;
+          let csvParsed = r.raw_csv ? parseCSVEquity(r.raw_csv, r.name) : null;
+          const parsed = parseMT5BacktestHTML(r.raw_html, r.name, csvParsed);
+          await db!.run('UPDATE robots SET total_lots = ?, lots_per_month = ? WHERE id = ?', [parsed.metrics.total_lots, parsed.metrics.lots_per_month, r.id]);
+        }
+        console.log(`[Database] Lot repair completed.`);
+      }
+    } catch (err) {
+      console.warn('[Database] Failed to auto-repair lots:', err);
+    }
+  })();
 
   return db;
 }

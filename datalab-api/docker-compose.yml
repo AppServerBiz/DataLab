@@ -1,0 +1,20 @@
+networks:
+  public_gateway:
+    external: true
+volumes:
+  nautilus_db:
+    external: true
+    name: data_nautilus_db
+services:
+  data-api:
+    image: registry.nautilusinvesting.com/data-api:v2
+    container_name: data-api
+    restart: always
+    environment:
+      - PORT=3001
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - DATABASE_PATH=/app/data/nautilus.db
+    volumes:
+      - nautilus_db:/app/data
+    networks:
+      - public_gateway

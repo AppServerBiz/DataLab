@@ -1,0 +1,10 @@
+networks:
+  public_gateway:
+    external: true
+services:
+  data:
+    image: registry.nautilusinvesting.com/data:v2
+    container_name: data
+    restart: always
+    networks:
+      - public_gateway

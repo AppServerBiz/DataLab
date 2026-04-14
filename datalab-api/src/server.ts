@@ -3,11 +3,11 @@ import cors from 'cors';
 import multer from 'multer';
 import { parseMT5BacktestHTML, parseCSVEquity, decodeBuffer, getRobotNameFromFilename, normalizeRobotName, makeRobotId, ParsedBacktestData, ParsedCSVData } from './parser';
 import { getDb } from './database';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import 'dotenv/config';
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 
@@ -67,11 +67,11 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
           win_rate, avg_win, avg_loss, max_win, max_loss,
           max_consecutive_wins, max_consecutive_losses, avg_trade_duration, quality,
           asset, period, timeframe, date_from, date_to, broker, parameters,
-          total_months, avg_profit_per_month,
+          total_months, avg_profit_per_month, total_lots, lots_per_month,
           equity_curve, monthly_drawdown, max_dd_from_csv, max_dd_pct_from_csv,
-          config_html, raw_html, raw_csv, approved, status
+          config_html, raw_html, raw_csv, approved, status, var_95_dd_cap
         ) VALUES (
-          ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+          ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
         )
         ON CONFLICT(id) DO UPDATE SET
           total_net_profit=excluded.total_net_profit,
@@ -110,6 +110,8 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
           parameters=excluded.parameters,
           total_months=excluded.total_months,
           avg_profit_per_month=excluded.avg_profit_per_month,
+          total_lots=excluded.total_lots,
+          lots_per_month=excluded.lots_per_month,
           equity_curve=CASE WHEN excluded.equity_curve IS NOT NULL THEN excluded.equity_curve ELSE equity_curve END,
           monthly_drawdown=CASE WHEN excluded.monthly_drawdown IS NOT NULL THEN excluded.monthly_drawdown ELSE monthly_drawdown END,
           max_dd_from_csv=CASE WHEN excluded.max_dd_from_csv > 0 THEN excluded.max_dd_from_csv ELSE max_dd_from_csv END,
@@ -127,12 +129,12 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
         m.win_rate, m.avg_win, m.avg_loss, m.max_win, m.max_loss,
         m.max_consecutive_wins, m.max_consecutive_losses, m.avg_trade_duration, m.quality,
         m.asset, m.period, m.timeframe, m.date_from, m.date_to, m.broker, JSON.stringify(m.parameters),
-        m.total_months, m.avg_profit_per_month,
+        m.total_months, m.avg_profit_per_month, m.total_lots, m.lots_per_month,
         csvParsed ? JSON.stringify(csvParsed.equityCurve) : null,
         m.monthly_drawdown ? JSON.stringify(m.monthly_drawdown) : null,
         csvParsed ? csvParsed.maxDrawdown : 0,
         csvParsed ? csvParsed.maxDrawdownPct : 0,
-        parsed.configHtml, htmlText, csvText, 0, 'pending'
+        parsed.configHtml, htmlText, csvText, 0, 'pending', m.var_95_dd_cap
       ]);
 
       processed.push({ id: robotId, name: robotName, hasCSV: !!csvParsed });
@@ -175,7 +177,18 @@ app.get('/api/robot/:id/monthly-dd', async (req, res) => {
 app.get('/api/comparativo', async (req, res) => {
   try {
     const db = await getDb();
-    const rows = await db.all(`SELECT * FROM robots ORDER BY created_at DESC`);
+    // Exclude heavy columns: raw_html, raw_csv, equity_curve
+    const rows = await db.all(`
+      SELECT 
+        id, name, total_net_profit, max_dd_equity, max_dd_equity_pct, profit_factor,
+        total_trades, short_trades, short_win_pct, long_trades, long_win_pct,
+        expected_payoff, sharpe_ratio, max_drawdown_abs, initial_deposit,
+        win_rate, avg_profit_per_month, total_months, config_html, approved, status,
+        asset, period, timeframe, date_from, date_to, broker, parameters,
+        max_dd_from_csv, max_dd_pct_from_csv, created_at, var_95_dd_cap, total_lots, lots_per_month
+      FROM robots 
+      ORDER BY created_at DESC
+    `);
     res.json(rows.map(r => ({
       ...r,
       parameters: r.parameters ? JSON.parse(r.parameters) : {},
@@ -187,7 +200,18 @@ app.get('/api/comparativo', async (req, res) => {
 app.get('/api/robots', async (req, res) => {
   try {
     const db = await getDb();
-    const rows = await db.all(`SELECT * FROM robots WHERE approved = 1 ORDER BY total_net_profit DESC`);
+    const rows = await db.all(`
+      SELECT 
+        id, name, total_net_profit, max_dd_equity, max_dd_equity_pct, profit_factor,
+        total_trades, short_trades, short_win_pct, long_trades, long_win_pct,
+        expected_payoff, sharpe_ratio, max_drawdown_abs, initial_deposit,
+        win_rate, avg_profit_per_month, total_months, config_html, approved, status,
+        asset, period, timeframe, date_from, date_to, broker, parameters,
+        max_dd_from_csv, max_dd_pct_from_csv, created_at, var_95_dd_cap, total_lots, lots_per_month
+      FROM robots 
+      WHERE approved = 1 
+      ORDER BY total_net_profit DESC
+    `);
     res.json(rows.map(r => ({
       ...r,
       parameters: r.parameters ? JSON.parse(r.parameters) : {},
@@ -276,10 +300,10 @@ app.post('/api/portfolios', async (req, res) => {
 app.put('/api/portfolios/:id', async (req, res) => {
   try {
     const db = await getDb();
-    const { name, capital, target_dd, manual_dme } = req.body;
+    const { name, capital, target_dd, manual_dme, locked } = req.body;
     await db.run(
-      `UPDATE portfolios SET name = ?, capital = ?, target_dd = ?, manual_dme = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [name, capital, target_dd, manual_dme, req.params.id]
+      `UPDATE portfolios SET name = ?, capital = ?, target_dd = ?, manual_dme = ?, locked = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [name, capital, target_dd, manual_dme, locked ? 1 : 0, req.params.id]
     );
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: String(err) }); }
@@ -302,9 +326,10 @@ app.get('/api/portfolios/:id/robots', async (req, res) => {
     const db = await getDb();
     const rows = await db.all(`
       SELECT pr.id as pr_id, pr.weight, pr.robot_id,
-        r.name, r.asset, r.timeframe, r.avg_profit_per_month,
+        r.name, r.asset, r.timeframe, r.avg_profit_per_month, r.initial_deposit,
         r.max_dd_from_csv, r.max_dd_equity, r.profit_factor, r.sharpe_ratio,
-        r.total_trades, r.date_from, r.date_to, r.total_months, r.monthly_drawdown
+        r.total_trades, r.date_from, r.date_to, r.total_months, r.monthly_drawdown, r.parameters,
+        r.total_lots, r.lots_per_month, r.var_95_dd_cap
       FROM portfolio_robots pr
       JOIN robots r ON r.id = pr.robot_id
       WHERE pr.portfolio_id = ?
@@ -365,7 +390,8 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       SELECT pr.weight, pr.robot_id,
         r.name, r.asset, r.timeframe, r.avg_profit_per_month, r.initial_deposit,
         r.max_dd_from_csv, r.max_dd_equity, r.profit_factor, r.sharpe_ratio,
-        r.total_months, r.monthly_drawdown, r.equity_curve
+        r.total_months, r.monthly_drawdown, r.equity_curve, r.total_trades,
+        r.total_lots, r.lots_per_month, r.var_95_dd_cap
       FROM portfolio_robots pr
       JOIN robots r ON r.id = pr.robot_id
       WHERE pr.portfolio_id = ?
@@ -517,11 +543,37 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       }
     }
 
+    // Prepare stacked data for top 10 DD
+    const top10Stacked: any[] = top10DD.map(event => {
+      const breakdown: any = { day: event.day, total: event.value };
+      for (const r of robots) {
+        breakdown[r.name] = robotDailyDD.get(r.name)?.get(event.day) || 0;
+      }
+      return breakdown;
+    });
+
+    // Robot performance curves (daily weighted profit)
+    const robotCurves: any = {};
+    for (const r of robots) {
+      let lastState = { profit: 0, balanceProfit: 0, dd: 0 };
+      robotCurves[r.name] = sortedDays.map(day => {
+        const d = robotDailyData.get(r.name)?.get(day);
+        if (d) lastState = d;
+        return {
+          day,
+          profit: lastState.profit * (r.weight || 1),
+          balanceProfit: lastState.balanceProfit * (r.weight || 1),
+          dd: lastState.dd * (r.weight || 1)
+        };
+      }).filter((_, i) => i % Math.max(1, Math.floor(sortedDays.length / 400)) === 0);
+    }
+
     res.json({
       portfolio: pf,
-      robots: robots.map(({ equity_curve: _e, monthly_drawdown: _m, ...rest }) => ({
+      robots: robots.map(({ equity_curve: _e, ...rest }) => ({
         ...rest,
-        ll_dd_pct: rest.max_dd_from_csv > 0 ? (rest.avg_profit_per_month / rest.max_dd_from_csv) * 100 : 0
+        monthly_drawdown: rest.monthly_drawdown ? JSON.parse(rest.monthly_drawdown) : [],
+        ll_dd_pct: Number(rest.max_dd_from_csv || rest.max_dd_equity || 0) > 0 ? (rest.avg_profit_per_month / (rest.max_dd_from_csv || rest.max_dd_equity)) * 100 : 0
       })),
       totals: {
         lucroMes: totalProfitMes,
@@ -536,7 +588,8 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         somaIndividualDD
       },
       combined_curve: combinedCurve.filter((_, i) => i % Math.max(1, Math.floor(combinedCurve.length / 400)) === 0),
-      top10DD,
+      robot_curves: robotCurves,
+      top10DD: top10Stacked,
       correlation
     });
   } catch (err) {
@@ -545,12 +598,80 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
   }
 });
 
-// AI / LLM SUPPORT
-// ══════════════════════════════════════════════════════════
-const API_KEY = process.env.GEMINI_API_KEY || '';
-console.log('Gemini API Key detected:', API_KEY ? `${API_KEY.substring(0, 5)}...` : 'NONE');
-const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// GET /api/portfolios/:id/export-nautilus - Export daily CSV for Invest Nautilus
+app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
+  try {
+    const db = await getDb();
+    const pf = await db.get(`SELECT name FROM portfolios WHERE id = ?`, [req.params.id]);
+    if (!pf) return res.status(404).send('Portfolio not found');
+
+    const robots = await db.all(`
+      SELECT pr.weight, r.name, r.equity_curve, r.initial_deposit
+      FROM portfolio_robots pr
+      JOIN robots r ON r.id = pr.robot_id
+      WHERE pr.portfolio_id = ?
+    `, [req.params.id]);
+
+    const csvLines: string[] = ['robo,data,lucro,DD Max'];
+
+    for (const r of robots) {
+      const curve = JSON.parse(r.equity_curve || '[]');
+      const initial = r.initial_deposit || 10000;
+      const weight = r.weight || 1;
+      
+      // Group by day - normalization to match MT5 format YYYY.MM.DD
+      const dailyData: Map<string, { points: any[] }> = new Map();
+      curve.forEach((pt: any) => {
+        const rawDate = pt.date || pt.timestamp || pt.day || '2020.01.01.00.00';
+        const day = rawDate.split(' ')[0].replace(/-/g, '.');
+        if (!dailyData.has(day)) dailyData.set(day, { points: [] });
+        dailyData.get(day)!.points.push(pt);
+      });
+
+      const sortedDays = Array.from(dailyData.keys()).sort();
+      let prevEquity = initial;
+      let globalPeak = initial;
+
+      for (const day of sortedDays) {
+        const data = dailyData.get(day)!;
+        const lastPt = data.points[data.points.length - 1];
+        
+        // Lucro Diário = Variação da Equity no dia * Peso
+        const dailyProfit = (lastPt.equity - prevEquity) * weight;
+        
+        // DD Max Diário = O maior Drawdown (Topo Global - Equity Atual) registrado DURANTE o dia * Peso
+        let maxDayDD = 0;
+        for (const pt of data.points) {
+          if (pt.equity > globalPeak) globalPeak = pt.equity;
+          const currentDD = globalPeak - pt.equity;
+          if (currentDD > maxDayDD) maxDayDD = currentDD;
+        }
+
+        csvLines.push(`${r.name},${day},${dailyProfit.toFixed(2)},${(maxDayDD * weight).toFixed(2)}`);
+        
+        // Update prevEquity to start of next day
+        prevEquity = lastPt.equity;
+      }
+    }
+
+    const csvContent = csvLines.join('\n');
+    const filename = `export_nautilus_${pf.name.replace(/\s+/g, '_')}_${Date.now()}.csv`;
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(csvContent);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(String(err));
+  }
+});
+
+// Groq Support
+const API_KEY = process.env.GROQ_API_KEY || '';
+console.log('Groq API Key detected:', API_KEY ? `${API_KEY.substring(0, 8)}...` : 'NONE');
+const groq = new Groq({ apiKey: API_KEY });
+const model = "llama-3.3-70b-versatile";
 
 function formatDailyPerformance(equityCurve: any[]) {
   if (!equityCurve || equityCurve.length === 0) return "Nenhum dado diário disponível.";
@@ -689,34 +810,44 @@ ${dailyText}
 
 app.post('/api/ia/chat', async (req, res) => {
   try {
-    const { messages, context } = req.body; // messages: { role: 'user'|'model', parts: [{ text: string }] }[]
+    const { messages, context } = req.body; 
     
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(400).json({ error: 'GEMINI_API_KEY não configurada no .env' });
+    if (!process.env.GROQ_API_KEY) {
+      console.error('ERRO: GROQ_API_KEY não encontrada no ambiente.');
+      return res.status(400).json({ error: 'A chave Groq (GROQ_API_KEY) não foi configurada no servidor. Por favor, verifique as variáveis de ambiente.' });
     }
 
-    const chat = model.startChat({
-      history: messages.slice(0, -1), // o último é a pergunta atual
-      systemInstruction: {
-        //@ts-ignore
-        role: "system",
-        parts: [{ text: `Você é o Nautilus AI Expert, um analista de trading quantitativo. 
-        Você recebeu os seguintes dados históricos precisos (CSV format) sobre um Robô ou Portfólio de investimento.
-        Analise o desempenho, responda perguntas técnicas sobre lucros, drawdowns, melhores e piores dias.
-        Seja preciso com números e datas. Se não encontrar um dado específico, diga que não consta no histórico.
-        
-        DADOS DA ESTRATÉGIA:
-        ${context}` }]
-      }
+    // Convert frontend messages to OpenAI/Groq format
+    const groqMessages = messages.map((m: any) => ({
+      role: m.role === 'model' ? 'assistant' : 'user',
+      content: m.parts[0].text
+    }));
+
+    const systemPrompt = `Você é o Nautilus AI Expert, um analista de trading quantitativo de elite. 
+    Analise os dados históricos fornecidos (formato CSV) de robôs ou portfólios.
+    Sua missão é fornecer análises precisas, identificar padrões de lucro/perda e responder dúvidas técnicas sobre o drawdown e métricas de desempenho.
+    Seja extremamente preciso com números e datas. Use Markdown para formatar tabelas ou destaques se necessário.
+    
+    CONTEXTO DA ESTRATÉGIA:
+    ${context}`;
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...groqMessages
+      ],
+      model: model,
+      temperature: 0.1,
+      max_tokens: 2048,
     });
 
-    const currentMsg = messages[messages.length - 1].parts[0].text;
-    const result = await chat.sendMessage(currentMsg);
-    const response = await result.response;
-    res.json({ text: response.text() });
-  } catch (err) {
-    console.error('Gemini Error:', err);
-    res.status(500).json({ error: String(err) });
+    res.json({ text: completion.choices[0]?.message?.content || "" });
+  } catch (err: any) {
+    console.error('Groq API Error:', err?.message || err);
+    res.status(500).json({ 
+      error: 'Erro na comunicação com a IA', 
+      details: err?.message || String(err) 
+    });
   }
 });
 

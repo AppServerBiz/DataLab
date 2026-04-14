@@ -60,8 +60,15 @@ const IA = () => {
     try {
       const response = await chatWithIA(newMessages, context);
       setMessages([...newMessages, { role: 'model', parts: [{ text: response.text }] }]);
-    } catch (e) {
-      setMessages([...newMessages, { role: 'model', parts: [{ text: "Erro ao processar resposta da IA. Verifique se a chave do Gemini está configurada." }] }]);
+    } catch (e: any) {
+      console.error(e);
+      const errorMsg = e.response?.data?.error || "Erro ao processar resposta da IA.";
+      const details = e.response?.data?.details ? `\n\nDetalhes: ${e.response.data.details}` : "";
+      
+      setMessages([...newMessages, { 
+        role: 'model', 
+        parts: [{ text: `❌ ${errorMsg}${details}\n\nVerifique se o servidor está rodando e se a GROQ_API_KEY está configurada corretamente no ambiente de produção.` }] 
+      }]);
     } finally {
       setLoading(false);
     }
@@ -220,7 +227,7 @@ const IA = () => {
                   </button>
                 </div>
                 <div style={{ fontSize: '0.65rem', textAlign: 'center', color: 'var(--text-muted)', marginTop: '0.8rem' }}>
-                  Gemini 1.5 Flash • Nautilus DataLab Assistant
+                  Groq Llama 3.3 • Nautilus DataLab Assistant
                 </div>
               </div>
             </>
