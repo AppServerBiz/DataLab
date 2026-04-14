@@ -71,7 +71,7 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
           equity_curve, monthly_drawdown, max_dd_from_csv, max_dd_pct_from_csv,
           config_html, raw_html, raw_csv, approved, status, var_95_dd_cap
         ) VALUES (
-          ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+          ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
         )
         ON CONFLICT(id) DO UPDATE SET
           total_net_profit=excluded.total_net_profit,
@@ -119,6 +119,7 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
           config_html=excluded.config_html,
           raw_html=CASE WHEN excluded.raw_html IS NOT NULL THEN excluded.raw_html ELSE raw_html END,
           raw_csv=CASE WHEN excluded.raw_csv IS NOT NULL THEN excluded.raw_csv ELSE raw_csv END,
+          var_95_dd_cap=excluded.var_95_dd_cap,
           updated_at=CURRENT_TIMESTAMP
       `, [
         robotId, robotName,

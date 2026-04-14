@@ -11,7 +11,9 @@ async function migrate() {
     { name: 'monthly_drawdown', type: 'TEXT' },
     { name: 'raw_html', type: 'TEXT' },
     { name: 'raw_csv', type: 'TEXT' },
-    { name: 'var_95_dd_cap', type: 'REAL DEFAULT 0' }
+    { name: 'var_95_dd_cap', type: 'REAL DEFAULT 0' },
+    { name: 'total_lots', type: 'REAL DEFAULT 0' },
+    { name: 'lots_per_month', type: 'REAL DEFAULT 0' }
   ];
 
   const currentColumns = await db.all("PRAGMA table_info(robots)");
