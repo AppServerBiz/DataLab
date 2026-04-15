@@ -300,7 +300,7 @@ const PortfolioReport = () => {
             </div>
           </div>
 
-          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+          <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
             <h3 style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '15px' }}>Lucro Acumulado por Robô (Top 10)</h3>
             <div style={{ height: '300px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
               <Bar 
@@ -313,9 +313,9 @@ const PortfolioReport = () => {
             </div>
           </div>
 
-          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+          <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
             <h3 style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '15px' }}>Distribuição de Lucro Portfólio</h3>
-            <div style={{ height: '400px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ height: '350px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'center' }}>
               <Pie 
                 data={{
                   labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name),
@@ -327,10 +327,8 @@ const PortfolioReport = () => {
           </div>
         </div>
 
-        <div style={{ pageBreakAfter: 'always' }}></div>
-
         {/* Matrix de Correlação - Page 4 */}
-        <div style={{ paddingTop: '20px' }}>
+        <div style={{ paddingTop: '10px' }}>
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
             Matriz de Correlação Diária
