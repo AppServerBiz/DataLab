@@ -112,6 +112,9 @@ const PortfolioReport = () => {
           <div style={{ textAlign: 'right' }}>
             <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Performance Analysis</h1>
             <div style={{ fontSize: '13px', color: '#334155', fontWeight: '700', marginTop: '4px' }}>{portfolio.name} · Investimentos Quantitativos</div>
+            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Relatório emitido em: {new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
           </div>
         </div>
 
