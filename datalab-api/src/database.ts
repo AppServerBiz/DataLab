@@ -56,6 +56,8 @@ export async function getDb(): Promise<Database<sqlite3.Database, sqlite3.Statem
       avg_profit_per_month REAL DEFAULT 0,
       total_lots REAL DEFAULT 0,
       lots_per_month REAL DEFAULT 0,
+      max_lot_exposure REAL DEFAULT 0,
+      max_entries_per_trade INTEGER DEFAULT 0,
       -- More detailed data
       equity_curve TEXT,
       monthly_drawdown TEXT,
@@ -101,19 +103,21 @@ export async function getDb(): Promise<Database<sqlite3.Database, sqlite3.Statem
   try { await db.exec('ALTER TABLE robots ADD COLUMN var_95_dd_cap REAL DEFAULT 0;'); } catch (e) {}
   try { await db.exec('ALTER TABLE robots ADD COLUMN total_lots REAL DEFAULT 0;'); } catch (e) {}
   try { await db.exec('ALTER TABLE robots ADD COLUMN lots_per_month REAL DEFAULT 0;'); } catch (e) {}
+  try { await db.exec('ALTER TABLE robots ADD COLUMN max_lot_exposure REAL DEFAULT 0;'); } catch (e) {}
+  try { await db.exec('ALTER TABLE robots ADD COLUMN max_entries_per_trade INTEGER DEFAULT 0;'); } catch (e) {}
 
   // Automated Lot Repair for existing data
   (async () => {
     try {
       const { parseMT5BacktestHTML, parseCSVEquity } = await import('./parser');
-      const robotsToFix = await db!.all('SELECT id, name, raw_html, raw_csv, total_months FROM robots WHERE total_lots = 0 OR total_lots IS NULL');
+      const robotsToFix = await db!.all('SELECT id, name, raw_html, raw_csv, total_months FROM robots WHERE total_lots = 0 OR total_lots IS NULL OR max_lot_exposure = 0 OR max_lot_exposure IS NULL');
       if (robotsToFix.length > 0) {
         console.log(`[Database] Repairing lots for ${robotsToFix.length} robots...`);
         for (const r of robotsToFix) {
           if (!r.raw_html) continue;
           let csvParsed = r.raw_csv ? parseCSVEquity(r.raw_csv, r.name) : null;
           const parsed = parseMT5BacktestHTML(r.raw_html, r.name, csvParsed);
-          await db!.run('UPDATE robots SET total_lots = ?, lots_per_month = ? WHERE id = ?', [parsed.metrics.total_lots, parsed.metrics.lots_per_month, r.id]);
+          await db!.run('UPDATE robots SET total_lots = ?, lots_per_month = ?, max_lot_exposure = ?, max_entries_per_trade = ? WHERE id = ?', [parsed.metrics.total_lots, parsed.metrics.lots_per_month, parsed.metrics.max_lot_exposure, parsed.metrics.max_entries_per_trade, r.id]);
         }
         console.log(`[Database] Lot repair completed.`);
       }

@@ -67,11 +67,11 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
           win_rate, avg_win, avg_loss, max_win, max_loss,
           max_consecutive_wins, max_consecutive_losses, avg_trade_duration, quality,
           asset, period, timeframe, date_from, date_to, broker, parameters,
-          total_months, avg_profit_per_month, total_lots, lots_per_month,
+          total_months, avg_profit_per_month, total_lots, lots_per_month, max_lot_exposure, max_entries_per_trade,
           equity_curve, monthly_drawdown, max_dd_from_csv, max_dd_pct_from_csv,
           config_html, raw_html, raw_csv, approved, status, var_95_dd_cap
         ) VALUES (
-          ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+          ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
         )
         ON CONFLICT(id) DO UPDATE SET
           total_net_profit=excluded.total_net_profit,
@@ -112,6 +112,8 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
           avg_profit_per_month=excluded.avg_profit_per_month,
           total_lots=excluded.total_lots,
           lots_per_month=excluded.lots_per_month,
+          max_lot_exposure=excluded.max_lot_exposure,
+          max_entries_per_trade=excluded.max_entries_per_trade,
           equity_curve=CASE WHEN excluded.equity_curve IS NOT NULL THEN excluded.equity_curve ELSE equity_curve END,
           monthly_drawdown=CASE WHEN excluded.monthly_drawdown IS NOT NULL THEN excluded.monthly_drawdown ELSE monthly_drawdown END,
           max_dd_from_csv=CASE WHEN excluded.max_dd_from_csv > 0 THEN excluded.max_dd_from_csv ELSE max_dd_from_csv END,
@@ -130,7 +132,7 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
         m.win_rate, m.avg_win, m.avg_loss, m.max_win, m.max_loss,
         m.max_consecutive_wins, m.max_consecutive_losses, m.avg_trade_duration, m.quality,
         m.asset, m.period, m.timeframe, m.date_from, m.date_to, m.broker, JSON.stringify(m.parameters),
-        m.total_months, m.avg_profit_per_month, m.total_lots, m.lots_per_month,
+        m.total_months, m.avg_profit_per_month, m.total_lots, m.lots_per_month, m.max_lot_exposure, m.max_entries_per_trade,
         csvParsed ? JSON.stringify(csvParsed.equityCurve) : null,
         m.monthly_drawdown ? JSON.stringify(m.monthly_drawdown) : null,
         csvParsed ? csvParsed.maxDrawdown : 0,
@@ -186,7 +188,8 @@ app.get('/api/comparativo', async (req, res) => {
         expected_payoff, sharpe_ratio, max_drawdown_abs, initial_deposit,
         win_rate, avg_profit_per_month, total_months, config_html, approved, status,
         asset, period, timeframe, date_from, date_to, broker, parameters,
-        max_dd_from_csv, max_dd_pct_from_csv, created_at, var_95_dd_cap, total_lots, lots_per_month
+        max_dd_from_csv, max_dd_pct_from_csv, created_at, var_95_dd_cap, total_lots, lots_per_month,
+        max_lot_exposure, max_entries_per_trade
       FROM robots 
       ORDER BY created_at DESC
     `);
@@ -208,7 +211,8 @@ app.get('/api/robots', async (req, res) => {
         expected_payoff, sharpe_ratio, max_drawdown_abs, initial_deposit,
         win_rate, avg_profit_per_month, total_months, config_html, approved, status,
         asset, period, timeframe, date_from, date_to, broker, parameters,
-        max_dd_from_csv, max_dd_pct_from_csv, created_at, var_95_dd_cap, total_lots, lots_per_month
+        max_dd_from_csv, max_dd_pct_from_csv, created_at, var_95_dd_cap, total_lots, lots_per_month,
+        max_lot_exposure, max_entries_per_trade
       FROM robots 
       WHERE approved = 1 
       ORDER BY total_net_profit DESC
@@ -330,7 +334,8 @@ app.get('/api/portfolios/:id/robots', async (req, res) => {
         r.name, r.asset, r.timeframe, r.avg_profit_per_month, r.initial_deposit,
         r.max_dd_from_csv, r.max_dd_equity, r.profit_factor, r.sharpe_ratio,
         r.total_trades, r.date_from, r.date_to, r.total_months, r.monthly_drawdown, r.parameters,
-        r.total_lots, r.lots_per_month, r.var_95_dd_cap
+        r.total_lots, r.lots_per_month, r.var_95_dd_cap,
+        r.max_lot_exposure, r.max_entries_per_trade
       FROM portfolio_robots pr
       JOIN robots r ON r.id = pr.robot_id
       WHERE pr.portfolio_id = ?
@@ -392,7 +397,8 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         r.name, r.asset, r.timeframe, r.avg_profit_per_month, r.initial_deposit,
         r.max_dd_from_csv, r.max_dd_equity, r.profit_factor, r.sharpe_ratio,
         r.total_months, r.monthly_drawdown, r.equity_curve, r.total_trades,
-        r.total_lots, r.lots_per_month, r.var_95_dd_cap
+        r.total_lots, r.lots_per_month, r.var_95_dd_cap,
+        r.max_lot_exposure, r.max_entries_per_trade
       FROM portfolio_robots pr
       JOIN robots r ON r.id = pr.robot_id
       WHERE pr.portfolio_id = ?

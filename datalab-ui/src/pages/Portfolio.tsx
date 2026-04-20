@@ -417,6 +417,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   { label: 'TOTAL TRADES', value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
                   { label: 'SOMA LOTES', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
                   { label: 'LOTES MÊS', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
+                  { label: 'MAX LOTE EXPOSTO', value: fmt(Math.max(...robots.map((r: any) => Number(r.max_lot_exposure || 0) * Number(r.weight || 1)), 0), 2), icon: <Activity size={16} />, color: '#A855F7', bg: 'rgba(168,85,247,0.08)', note: 'Maior exposição em lote' },
+                  { label: 'MAX ENTRADAS', value: String(Math.max(...robots.map((r: any) => Number(r.max_entries_per_trade || 0)), 0)), icon: <Activity size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', note: 'Máx. preço médio / trade' },
                 ].map(s => (
                   <div key={s.label} className="metric-card" style={{ background: s.bg, border: `1px solid ${s.color}22`, borderRadius: '10px', padding: '1rem' }}>
                     <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: s.color, marginBottom: '0.5rem', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>

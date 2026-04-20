@@ -147,6 +147,8 @@ const PortfolioReport = () => {
             { label: 'Total Trades', value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), color: '#0f172a' },
             { label: 'Soma Lotes', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0), 0), 2), color: '#0f172a' },
             { label: 'Lotes Mês', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0), 0), 2), color: '#0f172a' },
+            { label: 'Max Lote Exposto', value: fmt(Math.max(...robots.map((r: any) => Number(r.max_lot_exposure || 0) * Number(r.weight || 1)), 0), 2), color: '#7c3aed' },
+            { label: 'Max Entradas/Trade', value: String(Math.max(...robots.map((r: any) => Number(r.max_entries_per_trade || 0)), 0)), color: '#d97706' },
           ].map(m => (
             <div key={m.label} style={{ background: '#fff', padding: '15px' }}>
               <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '5px' }}>{m.label}</div>

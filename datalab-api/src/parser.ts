@@ -44,6 +44,8 @@ export interface EliteMetrics {
   avg_profit_per_month: number;
   total_lots: number;
   lots_per_month: number;
+  max_lot_exposure: number;
+  max_entries_per_trade: number;
   monthly_drawdown: { month: string, maxDD: number, maxDDPct: number }[];
   var_95_dd_cap: number;
 }
@@ -186,7 +188,10 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
   });
   
   // Parse Lots from "Ordens" or "Negociações" table (often a row in a giant table)
+  // Also track lot exposure per trade for risk management
   let total_lots = 0;
+  let max_lot_exposure = 0;  // Max simultaneous lot exposure in a single position
+  let max_entries_per_trade = 0;  // Max number of entries (preço médio) in a single trade
   try {
     const ordensSearch = $('b:contains("Ordens"), div:contains("Ordens"), b:contains("Orders"), div:contains("Orders"), b:contains("Negocia"), div:contains("Negocia"), b:contains("Deals"), div:contains("Deals")').filter((_, el) => {
       const text = $(el).text().trim().toLowerCase();
@@ -204,6 +209,10 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
           currentRow = currentRow.next().next();
       }
 
+      // Track open positions per symbol to calculate lot exposure
+      // Key: symbol, Value: { lots: accumulated lot size, entries: number of entries }
+      const openPositions: Map<string, { lots: number, entries: number, direction: string }> = new Map();
+
       while (currentRow.length) {
         const tds = currentRow.find('td');
         const text = currentRow.text().toLowerCase();
@@ -216,29 +225,98 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
             continue;
         }
 
+        // Extract deal details: Type (buy/sell/in/out), Volume, Symbol
         let volumeText = '';
-        tds.each((idx, td) => {
-          if (idx < 3) return; // Skip Time/Ticket/Symbol
+        let dealType = '';
+        let dealSymbol = '';
+        const tdArr = tds.toArray();
+        
+        tdArr.forEach((td, idx) => {
           const t = $(td).text().trim();
-          // MT5 Volume format is either "0.10 / 0.10" or "0.10"
+          // Typically: Time | Ticket | Symbol | Type | Direction | Volume | Price | S/L | T/P | Time | Commission | Swap | Profit | Balance
+          // or:       Time | Ticket | Symbol | Type | Volume | Price | Order | Commission | Fee | Swap | Profit | Balance | Comment
+          if (idx === 2 || idx === 3) {
+            // Symbol is usually position 2 or 3
+            if (t.match(/^[A-Z]/i) && !t.match(/^(buy|sell|in|out|balance|credit)/i)) {
+              if (!dealSymbol) dealSymbol = t;
+            }
+          }
+          // Detect deal type (buy/sell, in/out)
+          const tLow = t.toLowerCase();
+          if (tLow === 'buy' || tLow === 'sell' || tLow === 'compra' || tLow === 'venda') {
+            dealType = tLow.startsWith('b') || tLow.startsWith('c') ? 'buy' : 'sell';
+          }
+          // Volume
           if (t.includes('/') || (/^\d+[\.,]\d+$/.test(t))) {
-            // Check if it's the first match in the row that looks like volume
             if (!volumeText) volumeText = t;
           }
         });
 
+        // Also check the full row text for "in" vs "out" direction
+        const rowContent = currentRow.text().toLowerCase();
+        const isEntry = rowContent.includes(' in') || rowContent.includes('entrada') || rowContent.includes('entry');
+        const isExit = rowContent.includes(' out') || rowContent.includes('saída') || rowContent.includes('exit') || rowContent.includes('sa\u00edda');
+
         if (volumeText) {
+          let dealVolume = 0;
           if (volumeText.includes('/')) {
             const parts = volumeText.split('/');
-            // Lado da saída (geralmente o segundo valor)
-            const filled = parseFloat(parts[1].trim().replace(',', '.'));
-            if (!isNaN(filled)) total_lots += filled;
+            dealVolume = parseFloat(parts[1].trim().replace(',', '.'));
           } else {
-            const vol = parseFloat(volumeText.replace(',', '.'));
-            if (!isNaN(vol)) total_lots += vol;
+            dealVolume = parseFloat(volumeText.replace(',', '.'));
+          }
+          if (!isNaN(dealVolume) && dealVolume > 0) {
+            total_lots += dealVolume;
+
+            // Track lot exposure per position
+            const posKey = dealSymbol || 'UNKNOWN';
+            
+            if (isExit) {
+              // Closing or partial close: reduce position
+              const pos = openPositions.get(posKey);
+              if (pos) {
+                pos.lots = Math.max(0, pos.lots - dealVolume);
+                if (pos.lots <= 0.001) { // Essentially closed (floating point tolerance)
+                  // Record stats before clearing
+                  if (pos.entries > max_entries_per_trade) max_entries_per_trade = pos.entries;
+                  openPositions.delete(posKey);
+                }
+              }
+            } else {
+              // Entry or addition to position
+              const pos = openPositions.get(posKey) || { lots: 0, entries: 0, direction: dealType };
+              
+              // Check if it's the same direction (adding to position = preço médio)
+              if (pos.direction === dealType || pos.lots === 0) {
+                pos.lots += dealVolume;
+                pos.entries += 1;
+                pos.direction = dealType;
+              } else {
+                // Direction reversed — close old and open new
+                if (pos.entries > max_entries_per_trade) max_entries_per_trade = pos.entries;
+                pos.lots = dealVolume;
+                pos.entries = 1;
+                pos.direction = dealType;
+              }
+              
+              openPositions.set(posKey, pos);
+              
+              // Track max exposure
+              if (pos.lots > max_lot_exposure) {
+                max_lot_exposure = pos.lots;
+              }
+              if (pos.entries > max_entries_per_trade) {
+                max_entries_per_trade = pos.entries;
+              }
+            }
           }
         }
         currentRow = currentRow.next();
+      }
+
+      // Final check for any remaining open positions
+      for (const [, pos] of openPositions) {
+        if (pos.entries > max_entries_per_trade) max_entries_per_trade = pos.entries;
       }
     }
   } catch (e) {
@@ -465,6 +543,8 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
       avg_profit_per_month,
       total_lots,
       lots_per_month,
+      max_lot_exposure,
+      max_entries_per_trade,
       monthly_drawdown: monthlyDD,
       var_95_dd_cap: (() => {
         const base = csvParsed ? csvParsed.equityCurve[0]?.balance : initial_deposit;

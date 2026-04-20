@@ -465,6 +465,8 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
             <th style={thStyle} onClick={() => requestSort('total_trades')}>TRADES{getSortIcon('total_trades')}</th>
             <th style={thStyle} onClick={() => requestSort('total_lots')}>LOTES{getSortIcon('total_lots')}</th>
             <th style={thStyle} onClick={() => requestSort('lots_per_month')}>LOTES MÊS{getSortIcon('lots_per_month')}</th>
+            <th style={thStyle} onClick={() => requestSort('max_lot_exposure')}>MAX LOTE{getSortIcon('max_lot_exposure')}</th>
+            <th style={thStyle} onClick={() => requestSort('max_entries_per_trade')}>ENTRADAS{getSortIcon('max_entries_per_trade')}</th>
             <th style={thStyle} onClick={() => requestSort('ll_dd')}>LL/DD{getSortIcon('ll_dd')}</th>
             <th style={thStyle} onClick={() => requestSort('avg_profit_per_month')}>LL MÊS{getSortIcon('avg_profit_per_month')}</th>
             <th style={thStyle} onClick={() => requestSort('var_95_dd_cap')}>VaR DME{getSortIcon('var_95_dd_cap')}</th>
@@ -497,6 +499,8 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
               <td style={{ fontWeight: '700' }}>{r.total_trades}</td>
               <td style={{ fontWeight: '700', color: 'var(--accent-blue)' }}>{fmt(r.total_lots, 2)}</td>
               <td style={{ fontWeight: '700' }}>{fmt(r.lots_per_month, 2)}</td>
+              <td style={{ fontWeight: '800', color: '#A855F7' }}>{fmt(r.max_lot_exposure, 2)}</td>
+              <td style={{ fontWeight: '700', color: '#F59E0B' }}>{r.max_entries_per_trade || '—'}</td>
               <td style={{ fontWeight: '800', color: 'var(--accent-blue)' }}>{fmt((r.avg_profit_per_month / (r.max_dd_from_csv || r.max_dd_equity || 1)) * 100)}%</td>
               <td style={{ fontWeight: '700', color: r.avg_profit_per_month >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{fmtCurrency(r.avg_profit_per_month)}</td>
               <td style={{ fontWeight: '800', color: '#F59E0B' }}>{fmt(r.var_95_dd_cap * 100)}%</td>
