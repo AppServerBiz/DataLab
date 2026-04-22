@@ -451,7 +451,7 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
     return sortConfig.direction === 'desc' ? ' ↓' : ' ↑';
   };
 
-  const thStyle = { padding: '0.6rem 0.4rem', fontSize: '0.70rem', cursor: 'pointer', whiteSpace: 'nowrap' } as any;
+  const thStyle = { padding: '0.6rem 0.2rem', fontSize: '0.70rem', cursor: 'pointer', whiteSpace: 'nowrap' } as any;
 
   return (
     <div className="table-container" style={{ overflowX: 'auto' }}>
@@ -464,9 +464,9 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
             <th style={thStyle} onClick={() => requestSort('profit_factor')}>FATOR{getSortIcon('profit_factor')}</th>
             <th style={thStyle} onClick={() => requestSort('total_trades')}>TRADES{getSortIcon('total_trades')}</th>
             <th style={thStyle} onClick={() => requestSort('total_lots')}>LOTES{getSortIcon('total_lots')}</th>
-            <th style={thStyle} onClick={() => requestSort('lots_per_month')}>LOT. MÊS{getSortIcon('lots_per_month')}</th>
-            <th style={thStyle} onClick={() => requestSort('max_lot_exposure')}>MAX LOT{getSortIcon('max_lot_exposure')}</th>
-            <th style={thStyle} onClick={() => requestSort('max_entries_per_trade')}>ENTR.{getSortIcon('max_entries_per_trade')}</th>
+            <th style={thStyle} onClick={() => requestSort('lots_per_month')}>L.MES{getSortIcon('lots_per_month')}</th>
+            <th style={thStyle} onClick={() => requestSort('max_lot_exposure')}>MAX L.{getSortIcon('max_lot_exposure')}</th>
+            <th style={thStyle} onClick={() => requestSort('max_entries_per_trade')}>ENT.{getSortIcon('max_entries_per_trade')}</th>
             <th style={thStyle} onClick={() => requestSort('ll_dd')}>LL/DD{getSortIcon('ll_dd')}</th>
             <th style={thStyle} onClick={() => requestSort('avg_profit_per_month')}>LL MÊS{getSortIcon('avg_profit_per_month')}</th>
             <th style={thStyle} onClick={() => requestSort('var_95_dd_cap')}>VaR DME{getSortIcon('var_95_dd_cap')}</th>
@@ -476,13 +476,13 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
             <th style={thStyle} onClick={() => requestSort('sharpe_ratio')}>SHARPE{getSortIcon('sharpe_ratio')}</th>
             <th style={thStyle} onClick={() => requestSort('initial_deposit')}>DEP.{getSortIcon('initial_deposit')}</th>
             <th style={thStyle} onClick={() => requestSort('date_from')}>PER.{getSortIcon('date_from')}</th>
-            <th style={{ padding: '0.6rem 0.4rem', fontSize: '0.70rem' }}>AÇÕES</th>
+            <th style={{ padding: '0.6rem 0.2rem', fontSize: '0.70rem' }}>AÇÕES</th>
           </tr>
         </thead>
         <tbody>
           {sortedRobots.map((r: any) => (
             <tr className="oakmont-row" key={r.id}>
-              <td style={{ cursor: 'pointer', padding: '0.6rem 0.4rem' }} onClick={() => onInfo(r)}>
+              <td style={{ cursor: 'pointer', padding: '0.6rem 0.2rem' }} onClick={() => onInfo(r)}>
                 <div className="val-stack">
                   <span className="ticker-name" style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', fontWeight: '700' }}>
                     {r.name && r.name.length > 30 ? r.name.slice(0, 27) + '...' : r.name}
@@ -490,33 +490,33 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
                   <span className="company-name" style={{ fontSize: '0.65rem' }}>{r.asset} · {r.timeframe}</span>
                 </div>
               </td>
-              <td style={{ fontWeight: '800', color: r.total_net_profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{fmtCurrency(r.total_net_profit)}</td>
-              <td>
+              <td style={{ fontWeight: '800', color: r.total_net_profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', padding: '0.6rem 0.2rem' }}>{fmtCurrency(r.total_net_profit)}</td>
+              <td style={{ padding: '0.6rem 0.2rem' }}>
                 <span style={{ color: 'var(--accent-red)', fontWeight: '700' }}>{r.max_dd_from_csv > 0 ? `$${fmt(r.max_dd_from_csv)}` : `$${fmt(r.max_dd_equity)}`}</span>
                 {r.max_dd_from_csv > 0 && <span style={{ display: 'block', fontSize: '0.6rem', color: '#F59E0B' }}>Pelo CSV</span>}
               </td>
-              <td style={{ fontWeight: '800' }}>{fmt(r.profit_factor)}</td>
-              <td style={{ fontWeight: '700' }}>{r.total_trades}</td>
-              <td style={{ fontWeight: '700', color: 'var(--accent-blue)' }}>{fmt(r.total_lots, 0)}</td>
-              <td style={{ fontWeight: '700' }}>{fmt(r.lots_per_month, 0)}</td>
-              <td style={{ fontWeight: '800', color: '#A855F7' }}>{fmt(r.max_lot_exposure, 2)}</td>
-              <td style={{ fontWeight: '700', color: '#F59E0B' }}>{r.max_entries_per_trade || '—'}</td>
-              <td style={{ fontWeight: '800', color: 'var(--accent-blue)' }}>{fmt((r.avg_profit_per_month / (r.max_dd_from_csv || r.max_dd_equity || 1)) * 100)}%</td>
-              <td style={{ fontWeight: '700', color: r.avg_profit_per_month >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{fmtCurrency(r.avg_profit_per_month)}</td>
-              <td style={{ fontWeight: '800', color: '#F59E0B' }}>{fmt(r.var_95_dd_cap * 100)}%</td>
-              <td style={{ color: 'var(--accent-green)' }}>
+              <td style={{ fontWeight: '800', padding: '0.6rem 0.2rem' }}>{fmt(r.profit_factor)}</td>
+              <td style={{ fontWeight: '700', padding: '0.6rem 0.2rem' }}>{r.total_trades}</td>
+              <td style={{ fontWeight: '700', color: 'var(--accent-blue)', padding: '0.6rem 0.2rem' }}>{fmt(r.total_lots, 0)}</td>
+              <td style={{ fontWeight: '700', padding: '0.6rem 0.2rem' }}>{fmt(r.lots_per_month, 0)}</td>
+              <td style={{ fontWeight: '800', color: '#A855F7', padding: '0.6rem 0.2rem' }}>{fmt(r.max_lot_exposure, 2)}</td>
+              <td style={{ fontWeight: '700', color: '#F59E0B', padding: '0.6rem 0.2rem' }}>{r.max_entries_per_trade || '—'}</td>
+              <td style={{ fontWeight: '800', color: 'var(--accent-blue)', padding: '0.6rem 0.2rem' }}>{fmt((r.avg_profit_per_month / (r.max_dd_from_csv || r.max_dd_equity || 1)) * 100)}%</td>
+              <td style={{ fontWeight: '700', color: r.avg_profit_per_month >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', padding: '0.6rem 0.2rem' }}>{fmtCurrency(r.avg_profit_per_month)}</td>
+              <td style={{ fontWeight: '800', color: '#F59E0B', padding: '0.6rem 0.2rem' }}>{fmt(r.var_95_dd_cap * 100)}%</td>
+              <td style={{ color: 'var(--accent-green)', padding: '0.6rem 0.2rem' }}>
                 {r.long_trades} 
                 <div style={{fontSize:'0.6rem', opacity: 0.8}}>{fmt(r.long_win_pct)}%</div>
               </td>
-              <td style={{ color: 'var(--accent-red)' }}>
+              <td style={{ color: 'var(--accent-red)', padding: '0.6rem 0.2rem' }}>
                 {r.short_trades}
                 <div style={{fontSize:'0.6rem', opacity: 0.8}}>{fmt(r.short_win_pct)}%</div>
               </td>
-              <td>{fmtCurrency(r.expected_payoff)}</td>
-              <td style={{ fontWeight: '800' }}>{fmt(r.sharpe_ratio)}</td>
-              <td style={{ color: 'var(--text-muted)', fontSize: '0.62rem' }}>${fmt(r.initial_deposit ?? 10000, 0)}</td>
-              <td style={{ fontSize: '0.61rem', lineHeight: '1.2' }}>{r.date_from}<br/><span style={{color:'var(--text-muted)'}}>{r.date_to}</span></td>
-              <td>
+              <td style={{ padding: '0.6rem 0.2rem' }}>{fmtCurrency(r.expected_payoff)}</td>
+              <td style={{ fontWeight: '800', padding: '0.6rem 0.2rem' }}>{fmt(r.sharpe_ratio)}</td>
+              <td style={{ color: 'var(--text-muted)', fontSize: '0.62rem', padding: '0.6rem 0.2rem' }}>${fmt(r.initial_deposit ?? 10000, 0)}</td>
+              <td style={{ fontSize: '0.61rem', lineHeight: '1.2', padding: '0.6rem 0.2rem' }}>{r.date_from}<br/><span style={{color:'var(--text-muted)'}}>{r.date_to}</span></td>
+              <td style={{ padding: '0.6rem 0.2rem' }}>
                 <div style={{ display: 'flex', gap: '0.3rem' }}>
                   <button title="Drawdown" className="btn" style={{ padding: '0.3rem 0.4rem', background: 'rgba(239,68,68,0.1)', color: 'var(--accent-red)' }} onClick={() => onDD(r)}><TrendingDown size={13} /></button>
                   <button title="Configurações" className="btn" style={{ padding: '0.3rem 0.4rem', background: 'rgba(56,189,248,0.1)', color: 'var(--accent-blue)' }} onClick={(e) => { e.stopPropagation(); onInfo(r); }}><Info size={13} /></button>
