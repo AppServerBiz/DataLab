@@ -458,24 +458,132 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
       <table className="oakmont-table" style={{ fontSize: '0.75rem' }}>
         <thead>
           <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-            <th style={{ ...thStyle, minWidth: '20ch' }} onClick={() => requestSort('name')}>ROBO{getSortIcon('name')}</th>
-            <th style={thStyle} onClick={() => requestSort('total_net_profit')}>LUCRO LIQ{getSortIcon('total_net_profit')}</th>
-            <th style={thStyle} onClick={() => requestSort('max_dd')}>MAX DD{getSortIcon('max_dd')}</th>
-            <th style={thStyle} onClick={() => requestSort('profit_factor')}>FATOR{getSortIcon('profit_factor')}</th>
-            <th style={thStyle} onClick={() => requestSort('total_trades')}>TRADES{getSortIcon('total_trades')}</th>
-            <th style={thStyle} onClick={() => requestSort('total_lots')}>LOTES{getSortIcon('total_lots')}</th>
-            <th style={thStyle} onClick={() => requestSort('lots_per_month')}>L.MES{getSortIcon('lots_per_month')}</th>
-            <th style={thStyle} onClick={() => requestSort('max_lot_exposure')}>MAX L.{getSortIcon('max_lot_exposure')}</th>
-            <th style={thStyle} onClick={() => requestSort('max_entries_per_trade')}>ENT.{getSortIcon('max_entries_per_trade')}</th>
-            <th style={thStyle} onClick={() => requestSort('ll_dd')}>LL/DD{getSortIcon('ll_dd')}</th>
-            <th style={thStyle} onClick={() => requestSort('avg_profit_per_month')}>LL MÊS{getSortIcon('avg_profit_per_month')}</th>
-            <th style={thStyle} onClick={() => requestSort('var_95_dd_cap')}>VaR DME{getSortIcon('var_95_dd_cap')}</th>
-            <th style={thStyle} onClick={() => requestSort('long_trades')}>COMPRAS{getSortIcon('long_trades')}</th>
-            <th style={thStyle} onClick={() => requestSort('short_trades')}>VENDAS{getSortIcon('short_trades')}</th>
-            <th style={thStyle} onClick={() => requestSort('expected_payoff')}>PAYOFF{getSortIcon('expected_payoff')}</th>
-            <th style={thStyle} onClick={() => requestSort('sharpe_ratio')}>SHARPE{getSortIcon('sharpe_ratio')}</th>
-            <th style={thStyle} onClick={() => requestSort('initial_deposit')}>DEP.{getSortIcon('initial_deposit')}</th>
-            <th style={thStyle} onClick={() => requestSort('date_from')}>PER.{getSortIcon('date_from')}</th>
+            <th 
+              style={{ ...thStyle, minWidth: '20ch' }} 
+              onClick={() => requestSort('name')}
+              data-tooltip="Identificação da estratégia. Exibe o nome do robô, o ativo operado e o tempo gráfico (timeframe)."
+            >
+              ROBO{getSortIcon('name')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('total_net_profit')}
+              data-tooltip="Lucro Líquido Total. Resultado financeiro final após descontar todos os prejuízos no período do backtest."
+            >
+              LUCRO LIQ{getSortIcon('total_net_profit')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('max_dd')}
+              data-tooltip="Drawdown Máximo. A maior queda de saldo (pico ao vale) ocorrida no período. Representa o risco histórico máximo."
+            >
+              MAX DD{getSortIcon('max_dd')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('profit_factor')}
+              data-tooltip="Profit Factor (Fator de Lucro). Razão entre o lucro bruto e o prejuízo bruto. Cálculo: Lucro Bruto / Prejuízo Bruto. Valores acima de 1.0 indicam lucratividade."
+            >
+              FATOR{getSortIcon('profit_factor')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('total_trades')}
+              data-tooltip="Número total de operações executadas durante o período do backtest."
+            >
+              TRADES{getSortIcon('total_trades')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('total_lots')}
+              data-tooltip="Volume Total em Lotes. Soma de todos os lotes operados em todas as entradas e saídas."
+            >
+              LOTES{getSortIcon('total_lots')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('lots_per_month')}
+              data-tooltip="Lotes por Mês. Médio de volume operado mensalmente. Cálculo: Volume Total / Meses de duração do backtest."
+            >
+              L.MES{getSortIcon('lots_per_month')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('max_lot_exposure')}
+              data-tooltip="Exposição Máxima de Lote. O maior volume (em lotes) aberto simultaneamente em um único ciclo de operação."
+            >
+              MAX L.{getSortIcon('max_lot_exposure')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('max_entries_per_trade')}
+              data-tooltip="Máximo de Entradas. O maior número de execuções (parciais ou preço médio) realizadas dentro de uma única jornada de trade."
+            >
+              ENT.{getSortIcon('max_entries_per_trade')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('ll_dd')}
+              data-tooltip="Razão Risco/Retorno (Eficiência). Cálculo: (Lucro Médio Mensal / Drawdown Máximo) * 100. Indica a porcentagem do risco máximo recuperada mensalmente."
+            >
+              LL/DD{getSortIcon('ll_dd')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('avg_profit_per_month')}
+              data-tooltip="Lucro Líquido Médio Mensal. Cálculo: Lucro Líquido Total / Número de meses no período analisado."
+            >
+              LL MÊS{getSortIcon('avg_profit_per_month')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('var_95_dd_cap')}
+              data-tooltip="Value at Risk (DME - Drawdown Máximo Esperado). Estatística que define, com 95% de confiança, o risco provável com base na volatilidade histórica."
+            >
+              VaR DME{getSortIcon('var_95_dd_cap')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('long_trades')}
+              data-tooltip="Estatísticas de Compras (Long). Quantidade total e porcentagem de acertos das operações compradas."
+            >
+              COMPRAS{getSortIcon('long_trades')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('short_trades')}
+              data-tooltip="Estatísticas de Vendas (Short). Quantidade total e porcentagem de acertos das operações vendidas."
+            >
+              VENDAS{getSortIcon('short_trades')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('expected_payoff')}
+              data-tooltip="Expected Payoff. Expectativa matemática média de ganho por trade. Cálculo: Lucro Líquido / Total de Trades."
+            >
+              PAYOFF{getSortIcon('expected_payoff')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('sharpe_ratio')}
+              data-tooltip="Índice Sharpe. Avalia o retorno da estratégia em relação à sua volatilidade. Valores maiores indicam maior estabilidade e eficiência."
+            >
+              SHARPE{getSortIcon('sharpe_ratio')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('initial_deposit')}
+              data-tooltip="Depósito Inicial. Capital base utilizado no MetaTrader para a realização do backtest."
+            >
+              DEP.{getSortIcon('initial_deposit')}
+            </th>
+            <th 
+              style={thStyle} 
+              onClick={() => requestSort('date_from')}
+              data-tooltip="Janela Temporal. Data de início e término dos dados históricos processados no relatório MT5."
+            >
+              PER.{getSortIcon('date_from')}
+            </th>
             <th style={{ padding: '0.6rem 0.2rem', fontSize: '0.70rem' }}>AÇÕES</th>
           </tr>
         </thead>

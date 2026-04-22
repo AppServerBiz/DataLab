@@ -351,3 +351,84 @@ h2.card-title {
 .mt-4 { margin-top: 1rem; }
 .mb-4 { margin-bottom: 1rem; }
 .flex-gap { display: flex; gap: 1rem; }
+
+/* Custom Tooltip Premium */
+[data-tooltip] {
+  position: relative;
+  cursor: help;
+}
+
+[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.8rem 1rem;
+  background: #1e293b;
+  color: #f8fafc;
+  font-size: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  white-space: normal;
+  width: 280px;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  text-align: left;
+  line-height: 1.5;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+[data-tooltip]::after {
+  content: '';
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: #1e293b transparent transparent transparent;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+}
+
+[data-tooltip]:hover::before, [data-tooltip]:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+[data-tooltip]:hover::before {
+  bottom: 150%;
+}
+
+[data-tooltip]:hover::after {
+  bottom: 135%;
+}
+
+/* Ajustes para tooltips nas bordas */
+th:first-child[data-tooltip]::before {
+  left: 0;
+  transform: translateX(0);
+}
+th:first-child[data-tooltip]::after {
+  left: 20px;
+  transform: translateX(0);
+}
+th:last-child[data-tooltip]::before {
+  left: auto;
+  right: 0;
+  transform: translateX(0);
+}
+th:last-child[data-tooltip]::after {
+  left: auto;
+  right: 20px;
+  transform: translateX(0);
+}
