@@ -361,7 +361,7 @@ h2.card-title {
 [data-tooltip]::before {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: 140%;
+  top: 140%;
   left: 50%;
   transform: translateX(-50%);
   padding: 0.8rem 1rem;
@@ -372,7 +372,7 @@ h2.card-title {
   border: 1px solid rgba(255,255,255,0.1);
   white-space: normal;
   width: 280px;
-  z-index: 1000;
+  z-index: 1001;
   opacity: 0;
   visibility: hidden;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -388,16 +388,16 @@ h2.card-title {
 [data-tooltip]::after {
   content: '';
   position: absolute;
-  bottom: 120%;
+  top: 120%;
   left: 50%;
   transform: translateX(-50%);
   border-width: 6px;
   border-style: solid;
-  border-color: #1e293b transparent transparent transparent;
+  border-color: transparent transparent #1e293b transparent;
   opacity: 0;
   visibility: hidden;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1000;
+  z-index: 1001;
 }
 
 [data-tooltip]:hover::before, [data-tooltip]:hover::after {
@@ -406,11 +406,11 @@ h2.card-title {
 }
 
 [data-tooltip]:hover::before {
-  bottom: 150%;
+  top: 150%;
 }
 
 [data-tooltip]:hover::after {
-  bottom: 135%;
+  top: 135%;
 }
 
 /* Ajustes para tooltips nas bordas */
