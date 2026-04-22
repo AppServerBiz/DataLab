@@ -458,15 +458,15 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
       <table className="oakmont-table" style={{ fontSize: '0.75rem' }}>
         <thead>
           <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-            <th style={thStyle} onClick={() => requestSort('name')}>ROBO{getSortIcon('name')}</th>
+            <th style={{ ...thStyle, minWidth: '20ch' }} onClick={() => requestSort('name')}>ROBO{getSortIcon('name')}</th>
             <th style={thStyle} onClick={() => requestSort('total_net_profit')}>LUCRO LIQ{getSortIcon('total_net_profit')}</th>
             <th style={thStyle} onClick={() => requestSort('max_dd')}>MAX DD{getSortIcon('max_dd')}</th>
-            <th style={thStyle} onClick={() => requestSort('profit_factor')}>F. LUCRO{getSortIcon('profit_factor')}</th>
+            <th style={thStyle} onClick={() => requestSort('profit_factor')}>FATOR{getSortIcon('profit_factor')}</th>
             <th style={thStyle} onClick={() => requestSort('total_trades')}>TRADES{getSortIcon('total_trades')}</th>
             <th style={thStyle} onClick={() => requestSort('total_lots')}>LOTES{getSortIcon('total_lots')}</th>
-            <th style={thStyle} onClick={() => requestSort('lots_per_month')}>LOTES MÊS{getSortIcon('lots_per_month')}</th>
-            <th style={thStyle} onClick={() => requestSort('max_lot_exposure')}>MAX LOTE{getSortIcon('max_lot_exposure')}</th>
-            <th style={thStyle} onClick={() => requestSort('max_entries_per_trade')}>ENTRADAS{getSortIcon('max_entries_per_trade')}</th>
+            <th style={thStyle} onClick={() => requestSort('lots_per_month')}>LOT. MÊS{getSortIcon('lots_per_month')}</th>
+            <th style={thStyle} onClick={() => requestSort('max_lot_exposure')}>MAX LOT{getSortIcon('max_lot_exposure')}</th>
+            <th style={thStyle} onClick={() => requestSort('max_entries_per_trade')}>ENTR.{getSortIcon('max_entries_per_trade')}</th>
             <th style={thStyle} onClick={() => requestSort('ll_dd')}>LL/DD{getSortIcon('ll_dd')}</th>
             <th style={thStyle} onClick={() => requestSort('avg_profit_per_month')}>LL MÊS{getSortIcon('avg_profit_per_month')}</th>
             <th style={thStyle} onClick={() => requestSort('var_95_dd_cap')}>VaR DME{getSortIcon('var_95_dd_cap')}</th>
@@ -474,8 +474,8 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
             <th style={thStyle} onClick={() => requestSort('short_trades')}>VENDAS{getSortIcon('short_trades')}</th>
             <th style={thStyle} onClick={() => requestSort('expected_payoff')}>PAYOFF{getSortIcon('expected_payoff')}</th>
             <th style={thStyle} onClick={() => requestSort('sharpe_ratio')}>SHARPE{getSortIcon('sharpe_ratio')}</th>
-            <th style={thStyle} onClick={() => requestSort('initial_deposit')}>DEPÓSITO{getSortIcon('initial_deposit')}</th>
-            <th style={thStyle} onClick={() => requestSort('date_from')}>PERÍODO{getSortIcon('date_from')}</th>
+            <th style={thStyle} onClick={() => requestSort('initial_deposit')}>DEP.{getSortIcon('initial_deposit')}</th>
+            <th style={thStyle} onClick={() => requestSort('date_from')}>PER.{getSortIcon('date_from')}</th>
             <th style={{ padding: '0.6rem 0.4rem', fontSize: '0.70rem' }}>AÇÕES</th>
           </tr>
         </thead>
@@ -497,8 +497,8 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
               </td>
               <td style={{ fontWeight: '800' }}>{fmt(r.profit_factor)}</td>
               <td style={{ fontWeight: '700' }}>{r.total_trades}</td>
-              <td style={{ fontWeight: '700', color: 'var(--accent-blue)' }}>{fmt(r.total_lots, 2)}</td>
-              <td style={{ fontWeight: '700' }}>{fmt(r.lots_per_month, 2)}</td>
+              <td style={{ fontWeight: '700', color: 'var(--accent-blue)' }}>{fmt(r.total_lots, 0)}</td>
+              <td style={{ fontWeight: '700' }}>{fmt(r.lots_per_month, 0)}</td>
               <td style={{ fontWeight: '800', color: '#A855F7' }}>{fmt(r.max_lot_exposure, 2)}</td>
               <td style={{ fontWeight: '700', color: '#F59E0B' }}>{r.max_entries_per_trade || '—'}</td>
               <td style={{ fontWeight: '800', color: 'var(--accent-blue)' }}>{fmt((r.avg_profit_per_month / (r.max_dd_from_csv || r.max_dd_equity || 1)) * 100)}%</td>
@@ -515,7 +515,7 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
               <td>{fmtCurrency(r.expected_payoff)}</td>
               <td style={{ fontWeight: '800' }}>{fmt(r.sharpe_ratio)}</td>
               <td style={{ color: 'var(--text-muted)', fontSize: '0.62rem' }}>${fmt(r.initial_deposit ?? 10000, 0)}</td>
-              <td style={{ fontSize: '0.68rem', lineHeight: '1.2' }}>{r.date_from}<br/><span style={{color:'var(--text-muted)'}}>{r.date_to}</span></td>
+              <td style={{ fontSize: '0.61rem', lineHeight: '1.2' }}>{r.date_from}<br/><span style={{color:'var(--text-muted)'}}>{r.date_to}</span></td>
               <td>
                 <div style={{ display: 'flex', gap: '0.3rem' }}>
                   <button title="Drawdown" className="btn" style={{ padding: '0.3rem 0.4rem', background: 'rgba(239,68,68,0.1)', color: 'var(--accent-red)' }} onClick={() => onDD(r)}><TrendingDown size={13} /></button>
