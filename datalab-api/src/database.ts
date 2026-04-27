@@ -110,14 +110,50 @@ export async function getDb(): Promise<Database<sqlite3.Database, sqlite3.Statem
   (async () => {
     try {
       const { parseMT5BacktestHTML, parseCSVEquity } = await import('./parser');
-      const robotsToFix = await db!.all('SELECT id, name, raw_html, raw_csv, total_months FROM robots WHERE total_lots = 0 OR total_lots IS NULL OR max_lot_exposure = 0 OR max_lot_exposure IS NULL');
+      const robotsToFix = await db!.all('SELECT id, name, raw_html, raw_csv, total_months, initial_deposit, equity_curve FROM robots');
       if (robotsToFix.length > 0) {
-        console.log(`[Database] Repairing lots for ${robotsToFix.length} robots...`);
+        console.log(`[Database] Checking metrics and initial deposits for ${robotsToFix.length} robots...`);
         for (const r of robotsToFix) {
-          if (!r.raw_html) continue;
-          let csvParsed = r.raw_csv ? parseCSVEquity(r.raw_csv, r.name) : null;
-          const parsed = parseMT5BacktestHTML(r.raw_html, r.name, csvParsed);
-          await db!.run('UPDATE robots SET total_lots = ?, lots_per_month = ?, max_lot_exposure = ?, max_entries_per_trade = ? WHERE id = ?', [parsed.metrics.total_lots, parsed.metrics.lots_per_month, parsed.metrics.max_lot_exposure, parsed.metrics.max_entries_per_trade, r.id]);
+          let updated = false;
+          let newTotalLots = r.total_lots;
+          let newLotsPerMonth = r.lots_per_month;
+          let newMaxLotExposure = r.max_lot_exposure;
+          let newMaxEntries = r.max_entries_per_trade;
+          let newInitialDeposit = r.initial_deposit;
+
+          // 1. Repair Lots if needed
+          if (!r.total_lots || r.total_lots === 0 || !r.max_lot_exposure || r.max_lot_exposure === 0) {
+            if (r.raw_html) {
+              let csvParsed = r.raw_csv ? parseCSVEquity(r.raw_csv, r.name) : null;
+              const parsed = parseMT5BacktestHTML(r.raw_html, r.name, csvParsed);
+              newTotalLots = parsed.metrics.total_lots;
+              newLotsPerMonth = parsed.metrics.lots_per_month;
+              newMaxLotExposure = parsed.metrics.max_lot_exposure;
+              newMaxEntries = parsed.metrics.max_entries_per_trade;
+              updated = true;
+            }
+          }
+
+          // 2. Repair Initial Deposit if needed
+          if (r.equity_curve) {
+            try {
+              const curve = JSON.parse(r.equity_curve);
+              if (curve.length > 0) {
+                const firstEquity = curve[0].equity;
+                const firstBalance = curve[0].balance;
+                const actualStart = firstBalance || firstEquity;
+                if (actualStart > 0 && Math.abs(r.initial_deposit - actualStart) > 1) {
+                  newInitialDeposit = actualStart;
+                  updated = true;
+                }
+              }
+            } catch (e) {}
+          }
+
+          if (updated) {
+            await db!.run('UPDATE robots SET total_lots = ?, lots_per_month = ?, max_lot_exposure = ?, max_entries_per_trade = ?, initial_deposit = ? WHERE id = ?', 
+              [newTotalLots, newLotsPerMonth, newMaxLotExposure, newMaxEntries, newInitialDeposit, r.id]);
+          }
         }
         console.log(`[Database] Lot repair completed.`);
       }

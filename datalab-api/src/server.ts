@@ -410,16 +410,18 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
 
     for (const r of robots) {
       const curve = JSON.parse(r.equity_curve || '[]');
-      const initial = r.initial_deposit || 10000;
-      let robotPeak = initial;
+      if (curve.length === 0) continue;
+
+      const effectiveInitial = curve[0].equity;
+      let robotPeak = effectiveInitial;
       const r_daily_group: Map<string, { profit: number, dd: number, balanceProfit: number }> = new Map();
 
       curve.forEach((pt: any) => {
         const day = pt.date ? pt.date.split(' ')[0] : (pt.timestamp ? pt.timestamp.split(' ')[0] : '2020-01-01');
         if (pt.equity > robotPeak) robotPeak = pt.equity;
         const curDD = (robotPeak - pt.equity);
-        const profit = pt.equity - initial;
-        const balanceProfit = (pt.balance !== undefined ? (pt.balance - initial) : (robotPeak - initial));
+        const profit = pt.equity - effectiveInitial;
+        const balanceProfit = (pt.balance !== undefined ? (pt.balance - effectiveInitial) : (robotPeak - effectiveInitial));
 
         allGlobalDays.add(day);
         
@@ -768,19 +770,19 @@ ${dailyText}
       const robotDailyData: Map<string, Map<string, { profit: number, dd: number }>> = new Map();
 
       for (const r of robots) {
-        const curve = JSON.parse(r.equity_curve || '[]');
-        const initial = r.initial_deposit || 10000;
-        let peak = initial;
+        if (curve.length === 0) continue;
+        const effectiveInitial = curve[0].equity;
+        let peak = effectiveInitial;
         const r_daily: Map<string, { profit: number, dd: number }> = new Map();
         curve.forEach((pt: any) => {
           const day = (pt.date || pt.timestamp).split(' ')[0].replace(/\./g, '-');
           if (pt.equity > peak) peak = pt.equity;
           const dd = peak - pt.equity;
           allGlobalDays.add(day);
-          if (!r_daily.has(day)) r_daily.set(day, { profit: pt.equity - initial, dd });
+          if (!r_daily.has(day)) r_daily.set(day, { profit: pt.equity - effectiveInitial, dd });
           else {
             const g = r_daily.get(day)!;
-            g.profit = pt.equity - initial;
+            g.profit = pt.equity - effectiveInitial;
             if (dd > g.dd) g.dd = dd;
           }
         });

@@ -470,7 +470,8 @@ export function parseMT5BacktestHTML(html: string, robotName: string, csvParsed?
   })();
 
   // Initial deposit: exact key match for "Depósito inicial:" or "Balance:" first row
-  const initial_deposit = parseNum(get('Depósito inicial') || get('Initial Deposit')) || 10000;
+  const htmlInitial = parseNum(get('Depósito inicial') || get('Initial Deposit'));
+  const initial_deposit = htmlInitial || (csvParsed?.equityCurve?.length ? csvParsed.equityCurve[0].balance : 10000);
 
   // Build config HTML focusing only on top settings and params
   const configHtml = buildConfigHtml($, labelValueMap, paramsList);
