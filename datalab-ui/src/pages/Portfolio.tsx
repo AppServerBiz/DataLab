@@ -395,7 +395,6 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   { label: 'ROI MÊS', value: fmtPct(totals.roiMes || 0), icon: <BarChart2 size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.08)' },
                   { label: 'DD MAX PORTF.', value: fmtCurrency(totals.ddMaxPortfolio || 0), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: 'Sum (Day DD)' },
                   { label: 'DD MAX %', value: fmtPct(totals.ddMaxPct || 0), icon: <TrendingDown size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)' },
-
                   { label: 'DD MAX SOMA $', value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), icon: <DollarSign size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)' },
                   { label: 'DD MAX SOMA %', value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: 'Soma Individual' },
                   {
@@ -412,13 +411,10 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                     icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.08)'
                   },
                   { label: 'VAR 95%', value: `${fmtCurrency((totals.var95 || 0) / 100 * portfolio.capital)} - ${fmtPct(totals.var95 || 0)}`, icon: <DollarSign size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', note: '95% Prob. DD' },
-
                   { label: 'LL/DD FATOR', value: fmt(totals.llDdPct || 0) + '%', icon: <Activity size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.05)' },
                   { label: 'TOTAL TRADES', value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
                   { label: 'SOMA LOTES', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
                   { label: 'LOTES MÊS', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
-                  { label: 'MAX LOTE EXPOSTO', value: fmt(Math.max(...robots.map((r: any) => Number(r.max_lot_exposure || 0) * Number(r.weight || 1)), 0), 2), icon: <Activity size={16} />, color: '#A855F7', bg: 'rgba(168,85,247,0.08)', note: 'Maior exposição em lote' },
-                  { label: 'MAX ENTRADAS', value: String(Math.max(...robots.map((r: any) => Number(r.max_entries_per_trade || 0)), 0)), icon: <Activity size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', note: 'Máx. preço médio / trade' },
                 ].map(s => (
                   <div key={s.label} className="metric-card" style={{ background: s.bg, border: `1px solid ${s.color}22`, borderRadius: '10px', padding: '1rem' }}>
                     <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: s.color, marginBottom: '0.5rem', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
@@ -740,14 +736,14 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem', marginBottom: '0.4rem' }}>
                     <div style={{ flex: 1.2, fontSize: '0.6rem', color: 'var(--text-muted)' }}>MÉTRICA</div>
                     <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--accent-blue)', textAlign: 'right' }}>ÚLT. 12M</div>
-                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>REST. POND.</div>
-                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>REST. SOMA</div>
+                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>RESTANTE PONDERADO</div>
+                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>RESTANTE SOMA</div>
                   </div>
                   {[
                     { label: 'Lucro Total', recent: totals?.recent?.profit, past: totals?.past?.weightedProfit, pastTotal: totals?.past?.profit, isCurrency: true },
-                    { label: 'Max Drawdown', recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, isCurrency: true, isRisk: true },
-                    { label: 'VaR 95%', recent: totals?.recent?.var95, past: totals?.past?.var95, isPct: true, isRisk: true },
-                    { label: 'Eficiência (L/DD)', recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
+                    { label: 'Max Drawdown', recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, pastTotal: totals?.past?.maxDD, isCurrency: true, isRisk: true },
+                    { label: 'VaR 95%', recent: totals?.recent?.var95, past: totals?.past?.var95, pastTotal: totals?.past?.var95, isPct: true, isRisk: true },
+                    { label: 'Eficiência (L/DD)', recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.weightedProfit / (totals?.past?.maxDD || 1)) * 100, pastTotal: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
                   ].map(m => (
                     <div key={m.label} style={{ display: 'flex', alignItems: 'center' }}>
                       <div style={{ flex: 1.2, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{m.label}</div>
@@ -758,7 +754,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         {m.isCurrency ? fmtCurrency(m.past || 0) : m.isPct ? fmtPct(m.past || 0) : fmt(m.past || 0)}
                       </div>
                       <div style={{ flex: 1, textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: 'rgba(255,255,255,0.3)' }}>
-                        {m.pastTotal !== undefined ? fmtCurrency(m.pastTotal) : '—'}
+                        {m.pastTotal !== undefined ? (m.isPct ? fmtPct(m.pastTotal) : fmtCurrency(m.pastTotal)) : '—'}
                       </div>
                     </div>
                   ))}

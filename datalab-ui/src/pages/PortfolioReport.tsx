@@ -375,9 +375,9 @@ const PortfolioReport = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '5px' }}>
                     <span style={{ fontSize: '9px', fontWeight: '600', flex: 1.2 }}>Métrica</span>
-                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Últ. 12M</span>
-                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Rest. Pond.</span>
-                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Rest. Soma</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Últimos 12 Meses</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Restante Ponderado</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Restante Soma</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>Lucro Total</span>
@@ -389,19 +389,19 @@ const PortfolioReport = () => {
                     <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>Max Drawdown</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', color: '#fb7185', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.maxDD || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>—</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>VaR 95%</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', color: '#fbbf24', flex: 1, textAlign: 'right' }}>{fmtPct(totals?.recent?.var95 || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtPct(totals?.past?.var95 || 0)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>—</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmtPct(totals?.past?.var95 || 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>ROI Médio/Mês</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', flex: 1, textAlign: 'right' }}>{fmtPct((totals?.recent?.profit || 0) / (portfolio.capital || 1) / (totals?.recent?.months || 1) * 100)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtPct((totals?.past?.profit || 0) / (portfolio.capital || 1) / (totals?.past?.months || 1) * 100)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>—</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmtPct((totals?.past?.profit || 0) / (portfolio.capital || 1) / (totals?.past?.months || 1) * 100)}</span>
                   </div>
                 </div>
               </div>
