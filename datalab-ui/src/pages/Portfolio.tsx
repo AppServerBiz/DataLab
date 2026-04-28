@@ -721,7 +721,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                           <td style={{ padding: '0.5rem', fontWeight: '700', color: '#fff' }}>{name.length > 20 ? name.slice(0, 18) + '..' : name}</td>
                           <td style={{ padding: '0.5rem', textAlign: 'right', color: r.profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: '700' }}>{fmtCurrency(r.profit)}</td>
                           <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--accent-red)' }}>{fmtCurrency(r.maxDD)}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right', color: '#F59E0B' }}>{fmtPct(r.var95)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: '#F59E0B' }}>{fmtCurrency(r.var95)}</td>
                           <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--text-muted)' }}>{fmt(r.lots, 1)}</td>
                         </tr>
                       ))}
@@ -743,7 +743,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                     { label: 'Lucro Total', recent: totals?.recent?.profit, past: totals?.past?.weightedProfit, pastTotal: totals?.past?.profit, isCurrency: true },
                     { label: 'Número de Trades', recent: totals?.recent?.trades, past: totals?.past?.weightedTrades, pastTotal: totals?.past?.trades, isDecimal: true },
                     { label: 'Max Drawdown (Período)', recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, pastTotal: totals?.past?.maxDD, isCurrency: true, isRisk: true },
-                    { label: 'VaR 95% (Risco Prob.)', recent: totals?.recent?.var95, past: totals?.past?.var95, pastTotal: totals?.past?.var95, isPct: true, isRisk: true },
+                    { label: 'VaR 95% (Risco Prob.)', recent: totals?.recent?.var95, past: totals?.past?.var95, pastTotal: totals?.past?.var95, isCurrency: true, isRisk: true },
                     { label: 'Eficiência (L/DD)', recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.weightedProfit / (totals?.past?.maxDD || 1)) * 100, pastTotal: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
                   ].map(m => (
                     <div key={m.label} style={{ display: 'flex', alignItems: 'center' }}>

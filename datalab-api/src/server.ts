@@ -474,34 +474,57 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
     const combinedCurve: any[] = [];
     const robotDailyDD: Map<string, Map<string, number>> = new Map(); // For correlation (real DD)
     
+    // Track last known state per robot for carry-forward (same as robot_curves)
+    const lastKnown = new Map<string, { profit: number, balanceProfit: number, dd: number }>();
+    for (const r of robots) {
+      lastKnown.set(r.name, { profit: 0, balanceProfit: 0, dd: 0 });
+    }
+
     let globalPeak = pf.capital;
     for (const [dayIdx, day] of sortedDays.entries()) {
       let totalProfit = 0;
       let totalBalanceProfit = 0;
+      let totalSumDD = 0; // Sum of individual robot DDs (for the DD chart)
 
       for (const r of robots) {
         const weight = r.weight || 1;
         const avg = robotAverages.get(r.name);
         const dayData = robotDailyData.get(r.name)?.get(day);
         
-        let profit = 0;
-        let balanceProfit = 0;
+        let profit: number;
+        let balanceProfit: number;
 
         if (dayData) {
           profit = dayData.profit;
           balanceProfit = dayData.balanceProfit;
+          lastKnown.set(r.name, { profit, balanceProfit, dd: dayData.dd });
+          totalSumDD += dayData.dd * weight;
           // Track real DD for correlation only
           if (!robotDailyDD.has(r.name)) robotDailyDD.set(r.name, new Map());
           robotDailyDD.get(r.name)!.set(day, dayData.dd * weight);
         } else if (avg) {
-          // Gap Filling
+          // Gap Filling for robots outside their backtest range
           if (dayIdx > avg.lastIdx) {
             profit = avg.lastProfit + (avg.avgProfit * (dayIdx - avg.lastIdx));
             balanceProfit = profit; 
+            lastKnown.set(r.name, { profit, balanceProfit, dd: 0 });
           } else if (dayIdx < avg.firstIdx) {
             profit = avg.firstProfit - (avg.avgProfit * (avg.firstIdx - dayIdx));
             balanceProfit = profit;
+            lastKnown.set(r.name, { profit, balanceProfit, dd: 0 });
+          } else {
+            // Within range but no data for this day → carry forward
+            const lk = lastKnown.get(r.name)!;
+            profit = lk.profit;
+            balanceProfit = lk.balanceProfit;
+            totalSumDD += lk.dd * weight;
           }
+        } else {
+          // No avg data either → carry forward
+          const lk = lastKnown.get(r.name)!;
+          profit = lk.profit;
+          balanceProfit = lk.balanceProfit;
+          totalSumDD += lk.dd * weight;
         }
         
         totalProfit += profit * weight;
@@ -516,11 +539,13 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         day, 
         profit: totalProfit, 
         balanceProfit: totalBalanceProfit,
-        dd: combinedDD // This is the TRUE portfolio DD at this point
+        dd: totalSumDD,       // Sum of individual robot DDs (for Chart 2)
+        ddPortfolio: combinedDD  // Consolidated portfolio DD (for stats card)
       });
     }
 
-    const ddMaxPortfolio = combinedCurve.reduce((max, pt) => Math.max(max, pt.dd), 0);
+    const ddMaxPortfolio = combinedCurve.reduce((max, pt) => Math.max(max, pt.ddPortfolio), 0);
+    const ddMaxSumIndividual = combinedCurve.reduce((max, pt) => Math.max(max, pt.dd), 0);
 
     // Top 10 Drawdown Events
     const ddEvents: { day: string, value: number, pct: number }[] = [];
@@ -580,22 +605,38 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
     const windowRecent = combinedCurve.filter(c => c.day >= date12mStr);
     const windowPast = combinedCurve.filter(c => c.day < date12mStr);
 
-    const calculateWindowStats = (window: any[]) => {
+    const calculateWindowStats = (window: any[], windowStartDate: string, windowEndDate: string) => {
       if (window.length === 0) return null;
       const startProfit = window[0].profit;
       const endProfit = window[window.length - 1].profit;
       const profit = endProfit - startProfit;
       
+      // Max DD: sum of individual robot max DDs (weighted) within this window
       let maxDD = 0;
-      let peak = pf.capital + startProfit;
-      window.forEach(pt => {
-        const equity = pf.capital + pt.profit;
-        if (equity > peak) peak = equity;
-        const dd = peak - equity;
-        if (dd > maxDD) maxDD = dd;
-      });
+      for (const r of robots) {
+        const r_daily = robotDailyData.get(r.name);
+        if (!r_daily) continue;
+        const w = r.weight || 1;
+        
+        // Get robot data points within window
+        const r_pts = sortedDays
+          .filter(d => d >= windowStartDate && d <= windowEndDate && r_daily.has(d))
+          .map(d => r_daily.get(d)!);
+        
+        if (r_pts.length === 0) continue;
+        
+        // Calculate this robot's max DD in this window
+        let rPeak = r_pts[0].profit;
+        let rMaxDD = 0;
+        r_pts.forEach(pt => {
+          if (pt.profit > rPeak) rPeak = pt.profit;
+          const dd = rPeak - pt.profit;
+          if (dd > rMaxDD) rMaxDD = dd;
+        });
+        maxDD += rMaxDD * w;
+      }
 
-      // VaR 95% for this window: 5th percentile of daily returns
+      // VaR 95% for this window: 5th percentile of daily returns (in $ value)
       let windowVar95 = 0;
       if (window.length > 5) {
         const dailyProfits = [];
@@ -605,8 +646,7 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         dailyProfits.sort((a, b) => a - b);
         const idx = Math.floor(dailyProfits.length * 0.05);
         const worstReturn = dailyProfits[idx] || 0;
-        // VaR is risk of loss. If worst return is positive, VaR is 0.
-        windowVar95 = (pf.capital > 0 && worstReturn < 0) ? (Math.abs(worstReturn) / pf.capital) * 100 : 0;
+        windowVar95 = worstReturn < 0 ? Math.abs(worstReturn) : 0;
       }
 
       // Trades: sum avg trades for active robots in this window
@@ -623,13 +663,14 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         maxDD,
         var95: windowVar95,
         days: window.length,
-        months: window.length / 21.5, // Refined business day factor
+        months: window.length / 21.5,
         trades: totalTrades
       };
     };
 
-    const recentStats = calculateWindowStats(windowRecent);
-    const pastStats = calculateWindowStats(windowPast);
+    const recentStats = calculateWindowStats(windowRecent, date12mStr, lastDateStr);
+    const pastEndDate = sortedDays.filter(d => d < date12mStr).pop() || date12mStr;
+    const pastStats = calculateWindowStats(windowPast, sortedDays[0], pastEndDate);
     
     // Weighted past profit for 12-month normalized comparison
     if (pastStats) {
@@ -676,15 +717,15 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         rVar95 = Math.abs(daily[Math.floor(daily.length * 0.05)] || 0);
       }
 
-      // Lots: Approximate based on average and window length
+      // Lots: Approximate based on average and window length, scaled by weight
       const monthsInWindow = r_window.length / 21;
-      const lots = r.lots_per_month * monthsInWindow;
+      const lots = r.lots_per_month * r.weight * monthsInWindow;
 
       robotRecentStats[r.name] = {
         profit,
         maxDD,
-        ddContribution: maxDD, // In window
-        var95: pf.capital > 0 ? (rVar95 / pf.capital) * 100 : 0,
+        ddContribution: maxDD,
+        var95: rVar95,  // VaR in $ value
         lots
       };
     }
