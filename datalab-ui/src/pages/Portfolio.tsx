@@ -741,6 +741,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   </div>
                   {[
                     { label: 'Lucro Total', recent: totals?.recent?.profit, past: totals?.past?.weightedProfit, pastTotal: totals?.past?.profit, isCurrency: true },
+                    { label: 'Número de Trades', recent: totals?.recent?.trades, past: totals?.past?.weightedTrades, pastTotal: totals?.past?.trades, isDecimal: true },
                     { label: 'Max Drawdown', recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, pastTotal: totals?.past?.maxDD, isCurrency: true, isRisk: true },
                     { label: 'VaR 95%', recent: totals?.recent?.var95, past: totals?.past?.var95, pastTotal: totals?.past?.var95, isPct: true, isRisk: true },
                     { label: 'Eficiência (L/DD)', recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.weightedProfit / (totals?.past?.maxDD || 1)) * 100, pastTotal: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
@@ -748,18 +749,20 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                     <div key={m.label} style={{ display: 'flex', alignItems: 'center' }}>
                       <div style={{ flex: 1.2, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{m.label}</div>
                       <div style={{ flex: 1, textAlign: 'right', fontSize: '0.8rem', fontWeight: '800', color: m.isRisk ? 'var(--accent-red)' : 'var(--accent-green)' }}>
-                        {m.isCurrency ? fmtCurrency(m.recent || 0) : m.isPct ? fmtPct(m.recent || 0) : fmt(m.recent || 0)}
+                        {(m as any).isDecimal ? fmt(m.recent || 0, 0) : m.isCurrency ? fmtCurrency(m.recent || 0) : m.isPct ? fmtPct(m.recent || 0) : fmt(m.recent || 0)}
                       </div>
                       <div style={{ flex: 1, textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>
-                        {m.isCurrency ? fmtCurrency(m.past || 0) : m.isPct ? fmtPct(m.past || 0) : fmt(m.past || 0)}
+                        {(m as any).isDecimal ? fmt(m.past || 0, 0) : m.isCurrency ? fmtCurrency(m.past || 0) : m.isPct ? fmtPct(m.past || 0) : fmt(m.past || 0)}
                       </div>
                       <div style={{ flex: 1, textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: 'rgba(255,255,255,0.3)' }}>
-                        {m.pastTotal !== undefined ? (m.isPct ? fmtPct(m.pastTotal) : fmtCurrency(m.pastTotal)) : '—'}
+                        {m.pastTotal !== undefined ? ((m as any).isDecimal ? fmt(m.pastTotal, 0) : m.isPct ? fmtPct(m.pastTotal) : fmtCurrency(m.pastTotal)) : '—'}
                       </div>
                     </div>
                   ))}
                   <div style={{ marginTop: '0.5rem', padding: '0.8rem', background: 'rgba(56,189,248,0.05)', borderRadius: '6px', fontSize: '0.65rem', color: 'var(--accent-blue)', border: '1px solid rgba(56,189,248,0.1)' }}>
                     🎯 <strong>Análise:</strong> O "Restante Ponderado" normaliza o passado para uma janela de 12 meses, permitindo uma comparação justa de performance entre as épocas.
+                    <br/>
+                    ⚠️ <em>Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média para preencher lacunas.</em>
                   </div>
                 </div>
               </div>

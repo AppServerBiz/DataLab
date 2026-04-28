@@ -439,32 +439,72 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
     }
 
     // 2. Build sorted timeline and aggregate with "carry forward"
-    const sortedDays = Array.from(allGlobalDays).sort();
-    const robotCurrentState: Map<string, { profit: number, dd: number, balanceProfit: number }> = new Map();
+    // Pre-calculate average daily profit for each robot to fill gaps
+    const robotAverages = new Map<string, { avgProfit: number, avgTrades: number, firstDay: string, lastDay: string, firstProfit: number, lastProfit: number }>();
+    for (const r of robots) {
+      const daily = robotDailyData.get(r.name);
+      if (!daily || daily.size === 0) continue;
+      const days = Array.from(daily.keys()).sort();
+      const first = days[0];
+      const last = days[days.length - 1];
+      const firstData = daily.get(first)!;
+      const lastData = daily.get(last)!;
+      const totalP = lastData.profit - firstData.profit;
+      const numDays = days.length;
+      robotAverages.set(r.name, {
+        avgProfit: totalP / (numDays || 1),
+        avgTrades: (r.total_trades || 0) / (numDays || 1),
+        firstDay: first,
+        lastDay: last,
+        firstProfit: firstData.profit,
+        lastProfit: lastData.profit
+      });
+    }
+
     const combinedCurve: any[] = [];
     const robotDailyDD: Map<string, Map<string, number>> = new Map(); // For correlation
-
-    for (const day of sortedDays) {
+    
+    for (const [dayIdx, day] of sortedDays.entries()) {
       let totalProfit = 0;
       let totalDD = 0;
       let totalBalanceProfit = 0;
 
       for (const r of robots) {
         const weight = r.weight || 1;
+        const avg = robotAverages.get(r.name);
         const dayData = robotDailyData.get(r.name)?.get(day);
         
+        let profit = 0;
+        let balanceProfit = 0;
+        let dd = 0;
+
         if (dayData) {
-          robotCurrentState.set(r.name, dayData);
+          profit = dayData.profit;
+          balanceProfit = dayData.balanceProfit;
+          dd = dayData.dd;
+        } else if (avg) {
+          // Gap Filling: Extrapolate using business day indices
+          const firstIdx = sortedDays.indexOf(avg.firstDay);
+          const lastIdx = sortedDays.indexOf(avg.lastDay);
+          
+          if (dayIdx > lastIdx) {
+            profit = avg.lastProfit + (avg.avgProfit * (dayIdx - lastIdx));
+            balanceProfit = profit;
+          } else if (dayIdx < firstIdx) {
+            profit = avg.firstProfit - (avg.avgProfit * (firstIdx - dayIdx));
+            balanceProfit = profit;
+          }
         }
         
-        const state = robotCurrentState.get(r.name) || { profit: 0, dd: 0, balanceProfit: 0 };
-        totalProfit += state.profit * weight;
-        totalDD += state.dd * weight;
-        totalBalanceProfit += state.balanceProfit * weight;
+        totalProfit += profit * weight;
+        totalDD += dd * weight;
+        totalBalanceProfit += balanceProfit * weight;
 
-        // Also track weighted DD per robot per day for correlation
-        if (!robotDailyDD.has(r.name)) robotDailyDD.set(r.name, new Map());
-        robotDailyDD.get(r.name)!.set(day, state.dd * weight);
+        // Track for correlation (only real data)
+        if (dayData) {
+          if (!robotDailyDD.has(r.name)) robotDailyDD.set(r.name, new Map());
+          robotDailyDD.get(r.name)!.set(day, dd * weight);
+        }
       }
 
       combinedCurve.push({ day, profit: totalProfit, dd: totalDD, balanceProfit: totalBalanceProfit });
@@ -558,12 +598,22 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         windowVar95 = pf.capital > 0 ? (varValue / pf.capital) * 100 : 0;
       }
 
+      // Trades: sum avg trades for active robots in this window
+      let totalTrades = 0;
+      for (const r of robots) {
+        const avg = robotAverages.get(r.name);
+        if (avg) {
+          totalTrades += avg.avgTrades * window.length;
+        }
+      }
+
       return {
         profit,
         maxDD,
         var95: windowVar95,
         days: window.length,
-        months: window.length / 22 // Approximate
+        months: window.length / 21.5, // Refined business day factor
+        trades: totalTrades
       };
     };
 
@@ -573,6 +623,7 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
     // Weighted past profit for 12-month normalized comparison
     if (pastStats) {
       (pastStats as any).weightedProfit = (pastStats.profit / (pastStats.months || 1)) * 12;
+      (pastStats as any).weightedTrades = (pastStats.trades / (pastStats.months || 1)) * 12;
     }
 
     // Per-Robot Recent Stats (Last 12m)

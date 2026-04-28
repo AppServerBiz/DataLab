@@ -386,6 +386,12 @@ const PortfolioReport = () => {
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.profit || 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>Número de Trades</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', flex: 1, textAlign: 'right' }}>{fmt(totals?.recent?.trades || 0, 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmt(totals?.past?.weightedTrades || 0, 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmt(totals?.past?.trades || 0, 0)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>Max Drawdown</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', color: '#fb7185', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.maxDD || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
@@ -406,11 +412,12 @@ const PortfolioReport = () => {
                 </div>
               </div>
               
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', background: '#fff' }}>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', background: '#fff', marginTop: '10px' }}>
                 <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', color: '#64748b', marginBottom: '8px' }}>Nota de Tomada de Decisão</div>
                 <div style={{ fontSize: '10px', lineHeight: '1.4', color: '#334155' }}>
                   A performance dos últimos 12 meses reflete melhor a dinâmica atual do mercado. 
-                  Considere robôs com Lucro/DD {'>'} 2 no período recente para maior estabilidade.
+                  Considere robôs com Lucro/DD {'>'} 2 no período recente para maior estabilidade.<br/>
+                  ⚠️ <em>Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média para preencher lacunas.</em>
                 </div>
               </div>
             </div>
