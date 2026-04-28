@@ -539,13 +539,13 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         day, 
         profit: totalProfit, 
         balanceProfit: totalBalanceProfit,
-        dd: totalSumDD,       // Sum of individual robot DDs (for Chart 2)
-        ddPortfolio: combinedDD  // Consolidated portfolio DD (for stats card)
+        dd: combinedDD,       // Consolidated portfolio DD (for Chart 2 & stats card)
+        sumDD: totalSumDD     // Sum of individual robot DDs (for secondary use)
       });
     }
 
-    const ddMaxPortfolio = combinedCurve.reduce((max, pt) => Math.max(max, pt.ddPortfolio), 0);
-    const ddMaxSumIndividual = combinedCurve.reduce((max, pt) => Math.max(max, pt.dd), 0);
+    const ddMaxPortfolio = combinedCurve.reduce((max, pt) => Math.max(max, pt.dd), 0);
+    const ddMaxSumIndividual = combinedCurve.reduce((max, pt) => Math.max(max, pt.sumDD), 0);
 
     // Top 10 Drawdown Events
     const ddEvents: { day: string, value: number, pct: number }[] = [];

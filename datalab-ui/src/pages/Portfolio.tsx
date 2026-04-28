@@ -393,7 +393,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 {[
                   { label: 'LUCRO MÊS', value: fmtCurrency(totals.lucroMes || 0), icon: <TrendingUp size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.08)' },
                   { label: 'ROI MÊS', value: fmtPct(totals.roiMes || 0), icon: <BarChart2 size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.08)' },
-                  { label: 'DD MAX PORTF.', value: fmtCurrency(totals.ddMaxPortfolio || 0), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: 'Sum (Day DD)' },
+                  { label: 'DD MAX PORTF.', value: fmtCurrency(totals.ddMaxPortfolio || 0), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: 'Consolidado' },
                   { label: 'DD MAX %', value: fmtPct(totals.ddMaxPct || 0), icon: <TrendingDown size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)' },
                   { label: 'DD MAX SOMA $', value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), icon: <DollarSign size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)' },
                   { label: 'DD MAX SOMA %', value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: 'Soma Individual' },
