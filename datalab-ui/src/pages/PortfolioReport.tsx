@@ -329,8 +329,91 @@ const PortfolioReport = () => {
           </div>
         </div>
 
+        {/* Quadrante de Tomada de Decisão (Últimos 12 Meses) */}
+        <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <div style={{ width: '4px', height: '14px', background: '#0b57d0' }}></div>
+              Performance Recente (Últimos 12 Meses)
+            </h3>
+            <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>
+              WINDOW: {totals?.recent?.days || 0} dias · {fmt(totals?.recent?.months || 0, 1)} meses
+            </div>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+            {/* Robot Specific Recent Data */}
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '800' }}>ROBÔ</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>LUCRO (12M)</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>DD (12M)</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>VAR 95%</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>LOTES</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(totals?.robotRecent || {}).map(([name, r]: any) => (
+                    <tr key={name} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '8px', fontWeight: '700' }}>{name.length > 20 ? name.slice(0, 18) + '..' : name}</td>
+                      <td style={{ padding: '8px', textAlign: 'right', color: r.profit >= 0 ? '#10b981' : '#ef4444', fontWeight: '700' }}>{fmtCurrency(r.profit)}</td>
+                      <td style={{ padding: '8px', textAlign: 'right', color: '#ef4444' }}>{fmtCurrency(r.maxDD)}</td>
+                      <td style={{ padding: '8px', textAlign: 'right', color: '#f59e0b' }}>{fmtPct(r.var95)}</td>
+                      <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600' }}>{fmt(r.lots, 1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Comparison Table */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div style={{ background: '#0f172a', borderRadius: '8px', padding: '15px', color: '#fff' }}>
+                <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', opacity: 0.7, marginBottom: '10px' }}>Comparativo de Período</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '5px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '600' }}>Métrica</span>
+                    <span style={{ fontSize: '10px', fontWeight: '600' }}>Últ. 12M</span>
+                    <span style={{ fontSize: '10px', fontWeight: '600' }}>Restante</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '10px', opacity: 0.8 }}>Lucro Total</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: (totals?.recent?.profit || 0) >= 0 ? '#4ade80' : '#fb7185' }}>{fmtCurrency(totals?.recent?.profit || 0)}</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800', opacity: 0.6 }}>{fmtCurrency(totals?.past?.profit || 0)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '10px', opacity: 0.8 }}>Max Drawdown</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#fb7185' }}>{fmtCurrency(totals?.recent?.maxDD || 0)}</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800', opacity: 0.6 }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '10px', opacity: 0.8 }}>VaR 95%</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#fbbf24' }}>{fmtPct(totals?.recent?.var95 || 0)}</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800', opacity: 0.6 }}>{fmtPct(totals?.past?.var95 || 0)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '10px', opacity: 0.8 }}>Lucro Médio/Mês</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800' }}>{fmtCurrency((totals?.recent?.profit || 0) / (totals?.recent?.months || 1))}</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800', opacity: 0.6 }}>{fmtCurrency((totals?.past?.profit || 0) / (totals?.past?.months || 1))}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', background: '#fff' }}>
+                <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', color: '#64748b', marginBottom: '8px' }}>Nota de Tomada de Decisão</div>
+                <div style={{ fontSize: '10px', lineHeight: '1.4', color: '#334155' }}>
+                  A performance dos últimos 12 meses reflete melhor a dinâmica atual do mercado. 
+                  Considere robôs com Lucro/DD {'>'} 2 no período recente para maior estabilidade.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Matrix de Correlação - Page 4 */}
-        <div style={{ paddingTop: '10px' }}>
+        <div style={{ paddingTop: '10px', pageBreakInside: 'avoid' }}>
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
             Matriz de Correlação Diária

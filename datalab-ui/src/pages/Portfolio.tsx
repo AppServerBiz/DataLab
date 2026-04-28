@@ -699,6 +699,73 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               </div>
             )}
 
+            {/* TTM Decision Quadrants (Last 12 Months) */}
+            <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.2rem' }}>
+              <div className="card" style={{ padding: '1.2rem', border: '1px solid rgba(56,189,248,0.2)', background: 'linear-gradient(135deg, rgba(56,189,248,0.05) 0%, rgba(0,0,0,0) 100%)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--accent-blue)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tomada de Decisão (Últimos 12 Meses)</h3>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                    RECENT WINDOW: {totals?.recent?.days || 0}d
+                  </div>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                    <thead>
+                      <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>ESTRATÉGIA</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>LUCRO</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>MAX DD</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>VAR 95%</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>LOTES</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(totals?.robotRecent || {}).map(([name, r]: any) => (
+                        <tr key={name} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                          <td style={{ padding: '0.5rem', fontWeight: '700', color: '#fff' }}>{name.length > 20 ? name.slice(0, 18) + '..' : name}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: r.profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: '700' }}>{fmtCurrency(r.profit)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--accent-red)' }}>{fmtCurrency(r.maxDD)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: '#F59E0B' }}>{fmtPct(r.var95)}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--text-muted)' }}>{fmt(r.lots, 1)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '1.2rem', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }}>
+                <h3 style={{ margin: '0 0 1.2rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Comparativo: Recente vs Histórico</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  {[
+                    { label: 'Lucro Total', recent: totals?.recent?.profit, past: totals?.past?.profit, isCurrency: true },
+                    { label: 'Max Drawdown', recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, isCurrency: true, isRisk: true },
+                    { label: 'VaR 95%', recent: totals?.recent?.var95, past: totals?.past?.var95, isPct: true, isRisk: true },
+                    { label: 'Eficiência (Lucro/DD)', recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
+                  ].map(m => (
+                    <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ flex: 1, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{m.label}</div>
+                      <div style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--accent-blue)', opacity: 0.7, marginBottom: '2px' }}>ÚLT. 12M</div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: '800', color: m.isRisk ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                          {m.isCurrency ? fmtCurrency(m.recent || 0) : m.isPct ? fmtPct(m.recent || 0) : fmt(m.recent || 0)}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', opacity: 0.7, marginBottom: '2px' }}>RESTANTE</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>
+                          {m.isCurrency ? fmtCurrency(m.past || 0) : m.isPct ? fmtPct(m.past || 0) : fmt(m.past || 0)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: '0.5rem', padding: '0.8rem', background: 'rgba(56,189,248,0.05)', borderRadius: '6px', fontSize: '0.65rem', color: 'var(--accent-blue)', border: '1px solid rgba(56,189,248,0.1)' }}>
+                    🎯 <strong>Insight:</strong> O portfólio está {(totals?.recent?.profit / (totals?.recent?.months || 1)) > (totals?.past?.profit / (totals?.past?.months || 1)) ? 'SUPERANDO' : 'ABAIXO'} da média histórica em termos de lucro mensal.
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Correlation Matrix */}
             {corr && Object.keys(corr).length >= 2 && (
               <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>

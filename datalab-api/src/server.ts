@@ -520,6 +520,108 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
     const llDdPct = ddMaxPortfolio > 0 ? (totalProfitMes / ddMaxPortfolio) * 100 : 0;
     const avgSharpe = robots.reduce((s, r) => s + (r.sharpe_ratio || 0), 0) / (robots.length || 1);
 
+    // 3. Trailing 12-Month (TTM) Analytics
+    const lastDateStr = sortedDays[sortedDays.length - 1];
+    const lastDate = new Date(lastDateStr);
+    const date12m = new Date(lastDate);
+    date12m.setFullYear(lastDate.getFullYear() - 1);
+    const date12mStr = date12m.toISOString().split('T')[0];
+
+    const windowRecent = combinedCurve.filter(c => c.day >= date12mStr);
+    const windowPast = combinedCurve.filter(c => c.day < date12mStr);
+
+    const calculateWindowStats = (window: any[]) => {
+      if (window.length === 0) return null;
+      const startProfit = window[0].profit;
+      const endProfit = window[window.length - 1].profit;
+      const profit = endProfit - startProfit;
+      
+      let maxDD = 0;
+      let peak = pf.capital + startProfit;
+      window.forEach(pt => {
+        const equity = pf.capital + pt.profit;
+        if (equity > peak) peak = equity;
+        const dd = peak - equity;
+        if (dd > maxDD) maxDD = dd;
+      });
+
+      // VaR 95% for this window
+      let windowVar95 = 0;
+      if (window.length > 5) {
+        const dailyProfits = [];
+        for (let i = 1; i < window.length; i++) {
+          dailyProfits.push(window[i].profit - window[i-1].profit);
+        }
+        dailyProfits.sort((a, b) => a - b);
+        const idx = Math.floor(dailyProfits.length * 0.05);
+        const varValue = Math.abs(dailyProfits[idx] || 0);
+        windowVar95 = pf.capital > 0 ? (varValue / pf.capital) * 100 : 0;
+      }
+
+      return {
+        profit,
+        maxDD,
+        var95: windowVar95,
+        days: window.length,
+        months: window.length / 22 // Approximate
+      };
+    };
+
+    const recentStats = calculateWindowStats(windowRecent);
+    const pastStats = calculateWindowStats(windowPast);
+
+    // Per-Robot Recent Stats (Last 12m)
+    const robotRecentStats: any = {};
+    for (const r of robots) {
+      const r_daily = robotDailyData.get(r.name);
+      if (!r_daily) continue;
+      
+      const r_window = sortedDays
+        .filter(d => d >= date12mStr && r_daily.has(d))
+        .map(d => r_daily.get(d)!);
+      
+      if (r_window.length === 0) {
+        robotRecentStats[r.name] = { profit: 0, maxDD: 0, var95: 0, lots: 0, ddContribution: 0 };
+        continue;
+      }
+
+      const startP = r_window[0].profit;
+      const endP = r_window[r_window.length - 1].profit;
+      const profit = (endP - startP) * r.weight;
+
+      let maxDD = 0;
+      let peak = r.initial_deposit + (startP * r.weight);
+      r_window.forEach(pt => {
+        const eq = r.initial_deposit + (pt.profit * r.weight);
+        if (eq > peak) peak = eq;
+        const dd = peak - eq;
+        if (dd > maxDD) maxDD = dd;
+      });
+
+      // VaR 95% (Robot level)
+      let rVar95 = 0;
+      if (r_window.length > 5) {
+        const daily = [];
+        for (let i = 1; i < r_window.length; i++) {
+          daily.push((r_window[i].profit - r_window[i-1].profit) * r.weight);
+        }
+        daily.sort((a,b) => a-b);
+        rVar95 = Math.abs(daily[Math.floor(daily.length * 0.05)] || 0);
+      }
+
+      // Lots: Approximate based on average and window length
+      const monthsInWindow = r_window.length / 21;
+      const lots = r.lots_per_month * monthsInWindow;
+
+      robotRecentStats[r.name] = {
+        profit,
+        maxDD,
+        ddContribution: maxDD, // In window
+        var95: pf.capital > 0 ? (rVar95 / pf.capital) * 100 : 0,
+        lots
+      };
+    }
+
     // Pearson Correlation
     const calculatePearson = (serA: number[], serB: number[]) => {
       const n = serA.length;
@@ -594,7 +696,10 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         var95, 
         sharpe: avgSharpe,
         llDdPct,
-        somaIndividualDD
+        somaIndividualDD,
+        recent: recentStats,
+        past: pastStats,
+        robotRecent: robotRecentStats
       },
       combined_curve: combinedCurve.filter((_, i) => i % Math.max(1, Math.floor(combinedCurve.length / 400)) === 0),
       robot_curves: robotCurves,
