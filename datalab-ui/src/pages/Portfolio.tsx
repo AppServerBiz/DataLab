@@ -737,30 +737,33 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               <div className="card" style={{ padding: '1.2rem', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }}>
                 <h3 style={{ margin: '0 0 1.2rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Comparativo: Recente vs Histórico</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem', marginBottom: '0.4rem' }}>
+                    <div style={{ flex: 1.2, fontSize: '0.6rem', color: 'var(--text-muted)' }}>MÉTRICA</div>
+                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--accent-blue)', textAlign: 'right' }}>ÚLT. 12M</div>
+                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>REST. POND.</div>
+                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>REST. SOMA</div>
+                  </div>
                   {[
-                    { label: 'Lucro Total', recent: totals?.recent?.profit, past: totals?.past?.profit, isCurrency: true },
+                    { label: 'Lucro Total', recent: totals?.recent?.profit, past: totals?.past?.weightedProfit, pastTotal: totals?.past?.profit, isCurrency: true },
                     { label: 'Max Drawdown', recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, isCurrency: true, isRisk: true },
                     { label: 'VaR 95%', recent: totals?.recent?.var95, past: totals?.past?.var95, isPct: true, isRisk: true },
-                    { label: 'Eficiência (Lucro/DD)', recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
+                    { label: 'Eficiência (L/DD)', recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
                   ].map(m => (
-                    <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ flex: 1, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{m.label}</div>
-                      <div style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--accent-blue)', opacity: 0.7, marginBottom: '2px' }}>ÚLT. 12M</div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: '800', color: m.isRisk ? 'var(--accent-red)' : 'var(--accent-green)' }}>
-                          {m.isCurrency ? fmtCurrency(m.recent || 0) : m.isPct ? fmtPct(m.recent || 0) : fmt(m.recent || 0)}
-                        </div>
+                    <div key={m.label} style={{ display: 'flex', alignItems: 'center' }}>
+                      <div style={{ flex: 1.2, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{m.label}</div>
+                      <div style={{ flex: 1, textAlign: 'right', fontSize: '0.8rem', fontWeight: '800', color: m.isRisk ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                        {m.isCurrency ? fmtCurrency(m.recent || 0) : m.isPct ? fmtPct(m.recent || 0) : fmt(m.recent || 0)}
                       </div>
-                      <div style={{ flex: 1, textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', opacity: 0.7, marginBottom: '2px' }}>RESTANTE</div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>
-                          {m.isCurrency ? fmtCurrency(m.past || 0) : m.isPct ? fmtPct(m.past || 0) : fmt(m.past || 0)}
-                        </div>
+                      <div style={{ flex: 1, textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>
+                        {m.isCurrency ? fmtCurrency(m.past || 0) : m.isPct ? fmtPct(m.past || 0) : fmt(m.past || 0)}
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: 'rgba(255,255,255,0.3)' }}>
+                        {m.pastTotal !== undefined ? fmtCurrency(m.pastTotal) : '—'}
                       </div>
                     </div>
                   ))}
                   <div style={{ marginTop: '0.5rem', padding: '0.8rem', background: 'rgba(56,189,248,0.05)', borderRadius: '6px', fontSize: '0.65rem', color: 'var(--accent-blue)', border: '1px solid rgba(56,189,248,0.1)' }}>
-                    🎯 <strong>Insight:</strong> O portfólio está {(totals?.recent?.profit / (totals?.recent?.months || 1)) > (totals?.past?.profit / (totals?.past?.months || 1)) ? 'SUPERANDO' : 'ABAIXO'} da média histórica em termos de lucro mensal.
+                    🎯 <strong>Análise:</strong> O "Restante Ponderado" normaliza o passado para uma janela de 12 meses, permitindo uma comparação justa de performance entre as épocas.
                   </div>
                 </div>
               </div>

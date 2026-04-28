@@ -374,29 +374,34 @@ const PortfolioReport = () => {
                 <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', opacity: 0.7, marginBottom: '10px' }}>Comparativo de Período</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '5px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '600' }}>Métrica</span>
-                    <span style={{ fontSize: '10px', fontWeight: '600' }}>Últ. 12M</span>
-                    <span style={{ fontSize: '10px', fontWeight: '600' }}>Restante</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1.2 }}>Métrica</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Últ. 12M</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Rest. Pond.</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Rest. Soma</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', opacity: 0.8 }}>Lucro Total</span>
-                    <span style={{ fontSize: '11px', fontWeight: '800', color: (totals?.recent?.profit || 0) >= 0 ? '#4ade80' : '#fb7185' }}>{fmtCurrency(totals?.recent?.profit || 0)}</span>
-                    <span style={{ fontSize: '11px', fontWeight: '800', opacity: 0.6 }}>{fmtCurrency(totals?.past?.profit || 0)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>Lucro Total</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: (totals?.recent?.profit || 0) >= 0 ? '#4ade80' : '#fb7185', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.profit || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.weightedProfit || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.profit || 0)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', opacity: 0.8 }}>Max Drawdown</span>
-                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#fb7185' }}>{fmtCurrency(totals?.recent?.maxDD || 0)}</span>
-                    <span style={{ fontSize: '11px', fontWeight: '800', opacity: 0.6 }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>Max Drawdown</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#fb7185', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.maxDD || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>—</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', opacity: 0.8 }}>VaR 95%</span>
-                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#fbbf24' }}>{fmtPct(totals?.recent?.var95 || 0)}</span>
-                    <span style={{ fontSize: '11px', fontWeight: '800', opacity: 0.6 }}>{fmtPct(totals?.past?.var95 || 0)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>VaR 95%</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#fbbf24', flex: 1, textAlign: 'right' }}>{fmtPct(totals?.recent?.var95 || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtPct(totals?.past?.var95 || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>—</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', opacity: 0.8 }}>Lucro Médio/Mês</span>
-                    <span style={{ fontSize: '11px', fontWeight: '800' }}>{fmtCurrency((totals?.recent?.profit || 0) / (totals?.recent?.months || 1))}</span>
-                    <span style={{ fontSize: '11px', fontWeight: '800', opacity: 0.6 }}>{fmtCurrency((totals?.past?.profit || 0) / (totals?.past?.months || 1))}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>ROI Médio/Mês</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', flex: 1, textAlign: 'right' }}>{fmtPct((totals?.recent?.profit || 0) / (portfolio.capital || 1) / (totals?.recent?.months || 1) * 100)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtPct((totals?.past?.profit || 0) / (portfolio.capital || 1) / (totals?.past?.months || 1) * 100)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>—</span>
                   </div>
                 </div>
               </div>

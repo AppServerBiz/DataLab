@@ -569,6 +569,11 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
 
     const recentStats = calculateWindowStats(windowRecent);
     const pastStats = calculateWindowStats(windowPast);
+    
+    // Weighted past profit for 12-month normalized comparison
+    if (pastStats) {
+      (pastStats as any).weightedProfit = (pastStats.profit / (pastStats.months || 1)) * 12;
+    }
 
     // Per-Robot Recent Stats (Last 12m)
     const robotRecentStats: any = {};
