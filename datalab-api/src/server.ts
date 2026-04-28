@@ -489,46 +489,26 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       for (const r of robots) {
         const weight = r.weight || 1;
         const avg = robotAverages.get(r.name);
-        const dayData = robotDailyData.get(r.name)?.get(day);
-        
-        let profit: number;
-        let balanceProfit: number;
+        const lk = lastKnown.get(r.name)!;
+        let profit = lk.profit;
+        let balanceProfit = lk.balanceProfit;
+        let dd = lk.dd;
 
+        const dayData = robotDailyData.get(r.name)?.get(day);
         if (dayData) {
           profit = dayData.profit;
           balanceProfit = dayData.balanceProfit;
-          lastKnown.set(r.name, { profit, balanceProfit, dd: dayData.dd });
-          totalSumDD += dayData.dd * weight;
+          dd = dayData.dd;
+          lastKnown.set(r.name, { profit, balanceProfit, dd });
+          
           // Track real DD for correlation only
           if (!robotDailyDD.has(r.name)) robotDailyDD.set(r.name, new Map());
-          robotDailyDD.get(r.name)!.set(day, dayData.dd * weight);
-        } else if (avg) {
-          // Gap Filling for robots outside their backtest range
-          if (dayIdx > avg.lastIdx) {
-            profit = avg.lastProfit + (avg.avgProfit * (dayIdx - avg.lastIdx));
-            balanceProfit = profit; 
-            lastKnown.set(r.name, { profit, balanceProfit, dd: 0 });
-          } else if (dayIdx < avg.firstIdx) {
-            profit = avg.firstProfit - (avg.avgProfit * (avg.firstIdx - dayIdx));
-            balanceProfit = profit;
-            lastKnown.set(r.name, { profit, balanceProfit, dd: 0 });
-          } else {
-            // Within range but no data for this day → carry forward
-            const lk = lastKnown.get(r.name)!;
-            profit = lk.profit;
-            balanceProfit = lk.balanceProfit;
-            totalSumDD += lk.dd * weight;
-          }
-        } else {
-          // No avg data either → carry forward
-          const lk = lastKnown.get(r.name)!;
-          profit = lk.profit;
-          balanceProfit = lk.balanceProfit;
-          totalSumDD += lk.dd * weight;
+          robotDailyDD.get(r.name)!.set(day, dd * weight);
         }
         
         totalProfit += profit * weight;
         totalBalanceProfit += balanceProfit * weight;
+        totalSumDD += dd * weight;
       }
 
       const currentEquity = pf.capital + totalProfit;
