@@ -415,13 +415,18 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       const effectiveInitial = curve[0].equity;
       let robotPeak = effectiveInitial;
       const r_daily_group: Map<string, { profit: number, dd: number, balanceProfit: number }> = new Map();
-
+      let lastBalanceProfit = 0;
       curve.forEach((pt: any) => {
         const day = pt.date ? pt.date.split(' ')[0] : (pt.timestamp ? pt.timestamp.split(' ')[0] : '2020-01-01');
         if (pt.equity > robotPeak) robotPeak = pt.equity;
         const curDD = (robotPeak - pt.equity);
         const profit = pt.equity - effectiveInitial;
-        const balanceProfit = (pt.balance !== undefined ? (pt.balance - effectiveInitial) : (robotPeak - effectiveInitial));
+        
+        // Use real balance if available, otherwise stay at last known balance (step-function)
+        if (pt.balance !== undefined) {
+          lastBalanceProfit = pt.balance - effectiveInitial;
+        }
+        const balanceProfit = lastBalanceProfit;
 
         allGlobalDays.add(day);
         
@@ -467,11 +472,11 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
     }
 
     const combinedCurve: any[] = [];
-    const robotDailyDD: Map<string, Map<string, number>> = new Map(); // For correlation
+    const robotDailyDD: Map<string, Map<string, number>> = new Map(); // For correlation (real DD)
     
+    let globalPeak = pf.capital;
     for (const [dayIdx, day] of sortedDays.entries()) {
       let totalProfit = 0;
-      let totalDD = 0;
       let totalBalanceProfit = 0;
 
       for (const r of robots) {
@@ -481,17 +486,17 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         
         let profit = 0;
         let balanceProfit = 0;
-        let dd = 0;
 
         if (dayData) {
           profit = dayData.profit;
           balanceProfit = dayData.balanceProfit;
-          dd = dayData.dd;
+          // Track real DD for correlation only
+          if (!robotDailyDD.has(r.name)) robotDailyDD.set(r.name, new Map());
+          robotDailyDD.get(r.name)!.set(day, dayData.dd * weight);
         } else if (avg) {
-          // Gap Filling: Extrapolate using pre-calculated indices
+          // Gap Filling
           if (dayIdx > avg.lastIdx) {
             profit = avg.lastProfit + (avg.avgProfit * (dayIdx - avg.lastIdx));
-            // For balance, we keep it same as profit for simulation but step-like is hard without trade data
             balanceProfit = profit; 
           } else if (dayIdx < avg.firstIdx) {
             profit = avg.firstProfit - (avg.avgProfit * (avg.firstIdx - dayIdx));
@@ -500,17 +505,19 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         }
         
         totalProfit += profit * weight;
-        totalDD += dd * weight;
         totalBalanceProfit += balanceProfit * weight;
-
-        // Track for correlation (only real data)
-        if (dayData) {
-          if (!robotDailyDD.has(r.name)) robotDailyDD.set(r.name, new Map());
-          robotDailyDD.get(r.name)!.set(day, dd * weight);
-        }
       }
 
-      combinedCurve.push({ day, profit: totalProfit, dd: totalDD, balanceProfit: totalBalanceProfit });
+      const currentEquity = pf.capital + totalProfit;
+      if (currentEquity > globalPeak) globalPeak = currentEquity;
+      const combinedDD = globalPeak - currentEquity;
+
+      combinedCurve.push({ 
+        day, 
+        profit: totalProfit, 
+        balanceProfit: totalBalanceProfit,
+        dd: combinedDD // This is the TRUE portfolio DD at this point
+      });
     }
 
     const ddMaxPortfolio = combinedCurve.reduce((max, pt) => Math.max(max, pt.dd), 0);
