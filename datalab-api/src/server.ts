@@ -491,7 +491,8 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
           // Gap Filling: Extrapolate using pre-calculated indices
           if (dayIdx > avg.lastIdx) {
             profit = avg.lastProfit + (avg.avgProfit * (dayIdx - avg.lastIdx));
-            balanceProfit = profit;
+            // For balance, we keep it same as profit for simulation but step-like is hard without trade data
+            balanceProfit = profit; 
           } else if (dayIdx < avg.firstIdx) {
             profit = avg.firstProfit - (avg.avgProfit * (avg.firstIdx - dayIdx));
             balanceProfit = profit;
@@ -587,7 +588,7 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         if (dd > maxDD) maxDD = dd;
       });
 
-      // VaR 95% for this window
+      // VaR 95% for this window: 5th percentile of daily returns
       let windowVar95 = 0;
       if (window.length > 5) {
         const dailyProfits = [];
@@ -596,8 +597,9 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         }
         dailyProfits.sort((a, b) => a - b);
         const idx = Math.floor(dailyProfits.length * 0.05);
-        const varValue = Math.abs(dailyProfits[idx] || 0);
-        windowVar95 = pf.capital > 0 ? (varValue / pf.capital) * 100 : 0;
+        const worstReturn = dailyProfits[idx] || 0;
+        // VaR is risk of loss. If worst return is positive, VaR is 0.
+        windowVar95 = (pf.capital > 0 && worstReturn < 0) ? (Math.abs(worstReturn) / pf.capital) * 100 : 0;
       }
 
       // Trades: sum avg trades for active robots in this window

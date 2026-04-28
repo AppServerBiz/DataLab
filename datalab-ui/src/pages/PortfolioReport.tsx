@@ -416,8 +416,9 @@ const PortfolioReport = () => {
                 <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', color: '#64748b', marginBottom: '8px' }}>Nota de Tomada de Decisão</div>
                 <div style={{ fontSize: '10px', lineHeight: '1.4', color: '#334155' }}>
                   A performance dos últimos 12 meses reflete melhor a dinâmica atual do mercado. 
-                  Considere robôs com Lucro/DD {'>'} 2 no período recente para maior estabilidade.<br/>
-                  ⚠️ <em>Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média para preencher lacunas.</em>
+                  Considere robôs com Lucro/DD {'>'} 2 no período recente para maior estabilidade.
+                  <br/><br/>
+                  ⚠️ <strong>Nota:</strong> Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média para preencher lacunas.
                 </div>
               </div>
             </div>

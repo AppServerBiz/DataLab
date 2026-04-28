@@ -527,12 +527,12 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
             {stats?.combined_curve && (
               <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr', gap: '1.2rem' }}>
                 <div className="card chart-row" style={{ padding: '1.2rem', height: '320px' }}>
-                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Curva de Capital (Saldo Fechado) ($)</h3>
+                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Curva de Saldo Fechado (Consolidado) ($)</h3>
                   <div style={{ height: '240px' }}>
                     <Line 
                       data={{ 
                         labels: (stats?.combined_curve || []).map((c: any) => c.day), 
-                         datasets: [{ label: 'Saldo Fechado', data: (stats?.combined_curve || []).map((c: any) => portfolio.capital + (c.balanceProfit || c.profit || 0)), borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,0.05)', fill: true, pointRadius: 0, borderWidth: 2 }] 
+                         datasets: [{ label: 'Saldo Fechado', data: (stats?.combined_curve || []).map((c: any) => portfolio.capital + (c.balanceProfit || 0)), borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,0.05)', fill: true, pointRadius: 0, borderWidth: 2 }] 
                        }} 
                        options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxTicksLimit: 12, color: '#64748B', font: { size: 9 } }, grid: { display: false } }, y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748B', font: { size: 9 }, callback: (v: any) => fmtCurrency(v as number) } } } }}
                     />
@@ -742,8 +742,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   {[
                     { label: 'Lucro Total', recent: totals?.recent?.profit, past: totals?.past?.weightedProfit, pastTotal: totals?.past?.profit, isCurrency: true },
                     { label: 'Número de Trades', recent: totals?.recent?.trades, past: totals?.past?.weightedTrades, pastTotal: totals?.past?.trades, isDecimal: true },
-                    { label: 'Max Drawdown', recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, pastTotal: totals?.past?.maxDD, isCurrency: true, isRisk: true },
-                    { label: 'VaR 95%', recent: totals?.recent?.var95, past: totals?.past?.var95, pastTotal: totals?.past?.var95, isPct: true, isRisk: true },
+                    { label: 'Max Drawdown (Período)', recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, pastTotal: totals?.past?.maxDD, isCurrency: true, isRisk: true },
+                    { label: 'VaR 95% (Risco Prob.)', recent: totals?.recent?.var95, past: totals?.past?.var95, pastTotal: totals?.past?.var95, isPct: true, isRisk: true },
                     { label: 'Eficiência (L/DD)', recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.weightedProfit / (totals?.past?.maxDD || 1)) * 100, pastTotal: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
                   ].map(m => (
                     <div key={m.label} style={{ display: 'flex', alignItems: 'center' }}>
@@ -761,8 +761,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   ))}
                   <div style={{ marginTop: '0.5rem', padding: '0.8rem', background: 'rgba(56,189,248,0.05)', borderRadius: '6px', fontSize: '0.65rem', color: 'var(--accent-blue)', border: '1px solid rgba(56,189,248,0.1)' }}>
                     🎯 <strong>Análise:</strong> O "Restante Ponderado" normaliza o passado para uma janela de 12 meses, permitindo uma comparação justa de performance entre as épocas.
-                    <br/>
-                    ⚠️ <em>Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média para preencher lacunas.</em>
+                    <br/><br/>
+                    ⚠️ <strong>Nota:</strong> Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média para preencher lacunas.
                   </div>
                 </div>
               </div>
