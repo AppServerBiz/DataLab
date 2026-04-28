@@ -439,8 +439,10 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
     }
 
     // 2. Build sorted timeline and aggregate with "carry forward"
+    const sortedDays = Array.from(allGlobalDays).sort();
+
     // Pre-calculate average daily profit for each robot to fill gaps
-    const robotAverages = new Map<string, { avgProfit: number, avgTrades: number, firstDay: string, lastDay: string, firstProfit: number, lastProfit: number }>();
+    const robotAverages = new Map<string, { avgProfit: number, avgTrades: number, firstDay: string, lastDay: string, firstProfit: number, lastProfit: number, firstIdx: number, lastIdx: number }>();
     for (const r of robots) {
       const daily = robotDailyData.get(r.name);
       if (!daily || daily.size === 0) continue;
@@ -451,13 +453,16 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       const lastData = daily.get(last)!;
       const totalP = lastData.profit - firstData.profit;
       const numDays = days.length;
+      
       robotAverages.set(r.name, {
         avgProfit: totalP / (numDays || 1),
         avgTrades: (r.total_trades || 0) / (numDays || 1),
         firstDay: first,
         lastDay: last,
         firstProfit: firstData.profit,
-        lastProfit: lastData.profit
+        lastProfit: lastData.profit,
+        firstIdx: sortedDays.indexOf(first),
+        lastIdx: sortedDays.indexOf(last)
       });
     }
 
@@ -483,15 +488,12 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
           balanceProfit = dayData.balanceProfit;
           dd = dayData.dd;
         } else if (avg) {
-          // Gap Filling: Extrapolate using business day indices
-          const firstIdx = sortedDays.indexOf(avg.firstDay);
-          const lastIdx = sortedDays.indexOf(avg.lastDay);
-          
-          if (dayIdx > lastIdx) {
-            profit = avg.lastProfit + (avg.avgProfit * (dayIdx - lastIdx));
+          // Gap Filling: Extrapolate using pre-calculated indices
+          if (dayIdx > avg.lastIdx) {
+            profit = avg.lastProfit + (avg.avgProfit * (dayIdx - avg.lastIdx));
             balanceProfit = profit;
-          } else if (dayIdx < firstIdx) {
-            profit = avg.firstProfit - (avg.avgProfit * (firstIdx - dayIdx));
+          } else if (dayIdx < avg.firstIdx) {
+            profit = avg.firstProfit - (avg.avgProfit * (avg.firstIdx - dayIdx));
             balanceProfit = profit;
           }
         }
