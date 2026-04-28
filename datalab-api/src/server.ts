@@ -636,17 +636,14 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         maxDD += rMaxDD * w;
       }
 
-      // VaR 95% for this window: 5th percentile of daily returns (in $ value)
+      // VaR 95% for this window: 95th percentile of the Drawdown series (DME style)
       let windowVar95 = 0;
       if (window.length > 5) {
-        const dailyProfits = [];
-        for (let i = 1; i < window.length; i++) {
-          dailyProfits.push(window[i].profit - window[i-1].profit);
-        }
-        dailyProfits.sort((a, b) => a - b);
-        const idx = Math.floor(dailyProfits.length * 0.05);
-        const worstReturn = dailyProfits[idx] || 0;
-        windowVar95 = worstReturn < 0 ? Math.abs(worstReturn) : 0;
+        // Use c.dd (which is totalSumDD) to provide a more conservative sum-based VaR
+        const dds = window.map(c => c.dd || 0);
+        dds.sort((a, b) => a - b);
+        const idx = Math.floor(dds.length * 0.95);
+        windowVar95 = dds[idx] || 0;
       }
 
       // Trades: sum avg trades for active robots in this window
@@ -706,15 +703,19 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         if (dd > maxDD) maxDD = dd;
       });
 
-      // VaR 95% (Robot level)
+      // VaR 95% (Robot level): 95th percentile of robot drawdown series
       let rVar95 = 0;
       if (r_window.length > 5) {
-        const daily = [];
-        for (let i = 1; i < r_window.length; i++) {
-          daily.push((r_window[i].profit - r_window[i-1].profit) * r.weight);
-        }
-        daily.sort((a,b) => a-b);
-        rVar95 = Math.abs(daily[Math.floor(daily.length * 0.05)] || 0);
+        const dds: number[] = [];
+        let rPeak = r.initial_deposit + (r_window[0].profit * r.weight);
+        r_window.forEach(pt => {
+          const eq = r.initial_deposit + (pt.profit * r.weight);
+          if (eq > rPeak) rPeak = eq;
+          dds.push(rPeak - eq);
+        });
+        dds.sort((a, b) => a - b);
+        const idx = Math.floor(dds.length * 0.95);
+        rVar95 = dds[idx] || 0;
       }
 
       // Lots: Approximate based on average and window length, scaled by weight
