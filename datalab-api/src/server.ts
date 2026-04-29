@@ -535,6 +535,12 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
     let maxDayDate = '';
 
     for (const pt of combinedCurve) {
+      // Find local peaks of the combined intraday DD series
+      if (pt.dd > maxDayDD) {
+        maxDayDD = pt.dd;
+        maxDayDate = pt.day;
+      }
+      
       if (pt.profit >= currentPeakProfit) {
         if (inDrawdown && maxDayDD > 0) {
           const peakEquity = pf.capital + currentPeakProfit;
@@ -549,10 +555,6 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         currentPeakProfit = pt.profit;
       } else {
         inDrawdown = true;
-        if (pt.dd > maxDayDD) {
-          maxDayDD = pt.dd;
-          maxDayDate = pt.day;
-        }
       }
     }
     const top10DD = ddEvents.sort((a,b) => b.value - a.value).slice(0, 10);
@@ -591,7 +593,7 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       const endProfit = window[window.length - 1].profit;
       const profit = endProfit - startProfit;
       
-      // Max DD: sum of individual robot max DDs (weighted) within this window
+      // Max DD: sum of individual robot max intraday DDs (weighted) within this window
       let maxDD = 0;
       for (const r of robots) {
         const r_daily = robotDailyData.get(r.name);
@@ -605,13 +607,10 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         
         if (r_pts.length === 0) continue;
         
-        // Calculate this robot's max DD in this window
-        let rPeak = r_pts[0].profit;
+        // Use the maximum intraday DD recorded for this robot within the window
         let rMaxDD = 0;
         r_pts.forEach(pt => {
-          if (pt.profit > rPeak) rPeak = pt.profit;
-          const dd = rPeak - pt.profit;
-          if (dd > rMaxDD) rMaxDD = dd;
+          if (pt.dd > rMaxDD) rMaxDD = pt.dd;
         });
         maxDD += rMaxDD * w;
       }
@@ -675,25 +674,15 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       const profit = (endP - startP) * r.weight;
 
       let maxDD = 0;
-      let peak = r.initial_deposit + (startP * r.weight);
       r_window.forEach(pt => {
-        const eq = r.initial_deposit + (pt.profit * r.weight);
-        if (eq > peak) peak = eq;
-        const dd = peak - eq;
+        const dd = pt.dd * r.weight;
         if (dd > maxDD) maxDD = dd;
       });
 
       // VaR 95% (Robot level): 95th percentile of robot drawdown series
       let rVar95 = 0;
       if (r_window.length > 5) {
-        const dds: number[] = [];
-        let rPeak = r.initial_deposit + (r_window[0].profit * r.weight);
-        r_window.forEach(pt => {
-          const eq = r.initial_deposit + (pt.profit * r.weight);
-          if (eq > rPeak) rPeak = eq;
-          dds.push(rPeak - eq);
-        });
-        dds.sort((a, b) => a - b);
+        const dds = r_window.map(pt => pt.dd * r.weight).sort((a,b) => a - b);
         const idx = Math.floor(dds.length * 0.95);
         rVar95 = dds[idx] || 0;
       }
