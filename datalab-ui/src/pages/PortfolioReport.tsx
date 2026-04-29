@@ -147,8 +147,6 @@ const PortfolioReport = () => {
             { label: 'Total Trades', value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), color: '#0f172a' },
             { label: 'Soma Lotes', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0), 0), 2), color: '#0f172a' },
             { label: 'Lotes Mês', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0), 0), 2), color: '#0f172a' },
-            { label: 'Max Lote Exposto', value: fmt(Math.max(...robots.map((r: any) => Number(r.max_lot_exposure || 0) * Number(r.weight || 1)), 0), 2), color: '#7c3aed' },
-            { label: 'Max Entradas/Trade', value: String(Math.max(...robots.map((r: any) => Number(r.max_entries_per_trade || 0)), 0)), color: '#d97706' },
           ].map(m => (
             <div key={m.label} style={{ background: '#fff', padding: '15px' }}>
               <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '5px' }}>{m.label}</div>
@@ -231,7 +229,44 @@ const PortfolioReport = () => {
 
         <div style={{ pageBreakAfter: 'always' }}></div>
 
-        {/* Charts - Page 2 */}
+        {/* Charts - Page 2: Profit Analysis */}
+        <div style={{ paddingTop: '20px' }}>
+          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
+              Lucro Acumulado por Robô (Top 10)
+            </h3>
+            <div style={{ height: '300px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
+              <Bar 
+                data={{
+                  labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name.slice(0,12)),
+                  datasets: [{ label: 'Lucro ($)', data: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.avg_profit_per_month * r.weight), backgroundColor: ROBOT_COLORS, borderWidth: 1 }]
+                }}
+                options={getPrintChartOptions({ plugins: { legend: { display: false } } })}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
+              Distribuição de Lucro Portfólio
+            </h3>
+            <div style={{ height: '350px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'center' }}>
+              <Pie 
+                data={{
+                  labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name),
+                  datasets: [{ data: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => Math.max(0, r.avg_profit_per_month * r.weight)), backgroundColor: ROBOT_COLORS.map(c => c + 'DD'), borderWidth: 1 }]
+                }}
+                options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#000', font: { size: 10 }, boxWidth: 10 } } } }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div style={{ pageBreakAfter: 'always' }}></div>
+
+        {/* Charts - Page 3: Risk Analysis */}
         <div style={{ paddingTop: '20px' }}>
           <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
             <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -271,12 +306,7 @@ const PortfolioReport = () => {
               />
             </div>
           </div>
-        </div>
 
-        <div style={{ pageBreakAfter: 'always' }}></div>
-
-        {/* Charts - Page 3 */}
-        <div style={{ paddingTop: '20px' }}>
           <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
             <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
@@ -301,47 +331,25 @@ const PortfolioReport = () => {
               />
             </div>
           </div>
-
-          <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
-            <h3 style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '15px' }}>Lucro Acumulado por Robô (Top 10)</h3>
-            <div style={{ height: '300px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
-              <Bar 
-                data={{
-                  labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name.slice(0,12)),
-                  datasets: [{ label: 'Lucro ($)', data: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.avg_profit_per_month * r.weight), backgroundColor: ROBOT_COLORS, borderWidth: 1 }]
-                }}
-                options={getPrintChartOptions({ plugins: { legend: { display: false } } })}
-              />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
-            <h3 style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '15px' }}>Distribuição de Lucro Portfólio</h3>
-            <div style={{ height: '350px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'center' }}>
-              <Pie 
-                data={{
-                  labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name),
-                  datasets: [{ data: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => Math.max(0, r.avg_profit_per_month * r.weight)), backgroundColor: ROBOT_COLORS.map(c => c + 'DD'), borderWidth: 1 }]
-                }}
-                options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#000', font: { size: 10 }, boxWidth: 10 } } } }}
-              />
-            </div>
-          </div>
         </div>
 
-        {/* Quadrante de Tomada de Decisão (Últimos 12 Meses) */}
-        <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-              <div style={{ width: '4px', height: '14px', background: '#0b57d0' }}></div>
-              Performance Recente (Últimos 12 Meses)
-            </h3>
-            <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>
-              WINDOW: {totals?.recent?.days || 0} dias · {fmt(totals?.recent?.months || 0, 1)} meses
+        <div style={{ pageBreakAfter: 'always' }}></div>
+
+        {/* Decision & Correlation - Page 4 */}
+        <div style={{ paddingTop: '20px' }}>
+          {/* Quadrante de Tomada de Decisão (Últimos 12 Meses) */}
+          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <div style={{ width: '4px', height: '14px', background: '#0b57d0' }}></div>
+                Performance Recente (Últimos 12 Meses)
+              </h3>
+              <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>
+                WINDOW: {totals?.recent?.days || 0} dias · {fmt(totals?.recent?.months || 0, 1)} meses
+              </div>
             </div>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             {/* Robot Specific Recent Data */}
             <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
@@ -370,44 +378,44 @@ const PortfolioReport = () => {
 
             {/* Comparison Table */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ background: '#0f172a', borderRadius: '8px', padding: '15px', color: '#fff' }}>
-                <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', opacity: 0.7, marginBottom: '10px' }}>Comparativo de Período</div>
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '15px', color: '#000' }}>
+                <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', opacity: 0.6, marginBottom: '10px', color: '#64748b' }}>Comparativo de Período</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '5px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.08)', paddingBottom: '5px' }}>
                     <span style={{ fontSize: '9px', fontWeight: '600', flex: 1.2 }}>Métrica</span>
                     <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Últimos 12 Meses</span>
                     <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Restante Ponderado</span>
                     <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Restante Soma</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>Lucro Total</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: (totals?.recent?.profit || 0) >= 0 ? '#4ade80' : '#fb7185', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.profit || 0)}</span>
+                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>Lucro Total</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: (totals?.recent?.profit || 0) >= 0 ? '#10b981' : '#ef4444', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.profit || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.weightedProfit || 0)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.profit || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.profit || 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>Número de Trades</span>
+                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>Número de Trades</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', flex: 1, textAlign: 'right' }}>{fmt(totals?.recent?.trades || 0, 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmt(totals?.past?.weightedTrades || 0, 0)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmt(totals?.past?.trades || 0, 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmt(totals?.past?.trades || 0, 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>Max Drawdown</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#fb7185', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.maxDD || 0)}</span>
+                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>Max Drawdown</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#ef4444', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.maxDD || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>VaR 95%</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#fbbf24', flex: 1, textAlign: 'right' }}>{fmtPct(totals?.recent?.var95 || 0)}</span>
+                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>VaR 95%</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#f59e0b', flex: 1, textAlign: 'right' }}>{fmtPct(totals?.recent?.var95 || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtPct(totals?.past?.var95 || 0)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmtPct(totals?.past?.var95 || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtPct(totals?.past?.var95 || 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', opacity: 0.8, flex: 1.2 }}>ROI Médio/Mês</span>
+                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>ROI Médio/Mês</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', flex: 1, textAlign: 'right' }}>{fmtPct((totals?.recent?.profit || 0) / (portfolio.capital || 1) / (totals?.recent?.months || 1) * 100)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtPct((totals?.past?.profit || 0) / (portfolio.capital || 1) / (totals?.past?.months || 1) * 100)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.6, flex: 1, textAlign: 'right' }}>{fmtPct((totals?.past?.profit || 0) / (portfolio.capital || 1) / (totals?.past?.months || 1) * 100)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtPct((totals?.past?.profit || 0) / (portfolio.capital || 1) / (totals?.past?.months || 1) * 100)}</span>
                   </div>
                 </div>
               </div>
