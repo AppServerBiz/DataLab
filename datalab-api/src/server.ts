@@ -519,8 +519,8 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         day, 
         profit: totalProfit, 
         balanceProfit: totalBalanceProfit,
-        dd: combinedDD,       // Consolidated portfolio DD (for Chart 2 & stats card)
-        sumDD: totalSumDD     // Sum of individual robot DDs (for secondary use)
+        dd: totalSumDD,       // Captures combined intraday drawdowns (User's DD Max Portf.)
+        sumDD: combinedDD     // End-of-day equity drop (Secondary)
       });
     }
 
