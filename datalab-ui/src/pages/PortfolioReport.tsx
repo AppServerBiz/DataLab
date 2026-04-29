@@ -476,6 +476,7 @@ const PortfolioReport = () => {
              DATA_LAB Nautilus Invest · Relatório de Gestão Consolidada · © {new Date().getFullYear()} All Rights Reserved
           </div>
         </div>
+        </div>
       </div>
 
       <style>{`
