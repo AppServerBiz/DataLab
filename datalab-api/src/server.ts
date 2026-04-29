@@ -593,27 +593,8 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       const endProfit = window[window.length - 1].profit;
       const profit = endProfit - startProfit;
       
-      // Max DD: sum of individual robot max intraday DDs (weighted) within this window
-      let maxDD = 0;
-      for (const r of robots) {
-        const r_daily = robotDailyData.get(r.name);
-        if (!r_daily) continue;
-        const w = r.weight || 1;
-        
-        // Get robot data points within window
-        const r_pts = sortedDays
-          .filter(d => d >= windowStartDate && d <= windowEndDate && r_daily.has(d))
-          .map(d => r_daily.get(d)!);
-        
-        if (r_pts.length === 0) continue;
-        
-        // Use the maximum intraday DD recorded for this robot within the window
-        let rMaxDD = 0;
-        r_pts.forEach(pt => {
-          if (pt.dd > rMaxDD) rMaxDD = pt.dd;
-        });
-        maxDD += rMaxDD * w;
-      }
+      // Max DD: The maximum combined intraday drawdown observed in this window (Portfolio level)
+      const maxDD = window.reduce((max, pt) => Math.max(max, pt.dd || 0), 0);
 
       // VaR 95% for this window: 95th percentile of the Drawdown series (DME style)
       let windowVar95 = 0;
