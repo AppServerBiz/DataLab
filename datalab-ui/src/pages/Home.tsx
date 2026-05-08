@@ -136,15 +136,6 @@ const Home = () => {
           </div>
           <p className="text-muted">Aguardando validação</p>
         </div>
-
-        <div className="card">
-          <div className="flex-between">
-            <h2 className="card-title">Lucro Médio Estimado</h2>
-            <TrendingUp size={20} className="text-green" />
-          </div>
-          <div className="value-highlight text-profit">${fmt(totalMonthlyProfit)}</div>
-          <p className="text-muted">Total/mês (Repositório)</p>
-        </div>
       </div>
 
       {/* Action Center */}
