@@ -8,6 +8,7 @@ import Portfolio from './pages/Portfolio';
 import Transmitir from './pages/Transmitir';
 import IA from './pages/IA';
 import PortfolioReport from './pages/PortfolioReport';
+import Login from './pages/Login';
 import './index.css';
 
 export const AppContext = createContext<any>(null);
@@ -25,8 +26,17 @@ function App() {
 }
 
 function AppContent() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const saved = localStorage.getItem('investhub_user');
+    return saved?.trim().toUpperCase() === 'MOJOROVA';
+  });
+
   const location = useLocation();
   const isReport = location.pathname === '/portfolio-report';
+
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className={isReport ? "report-layout" : "app-container"}>

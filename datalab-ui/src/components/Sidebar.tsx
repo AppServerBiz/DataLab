@@ -18,6 +18,11 @@ export const Sidebar = () => {
 
   const isPortfolioActive = location.pathname.startsWith('/portfolio');
 
+  const handleLogout = () => {
+    localStorage.removeItem('investhub_user');
+    window.location.reload();
+  };
+
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
@@ -116,16 +121,48 @@ export const Sidebar = () => {
           )}
         </div>
  
-         <NavLink to="/transmitir" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-           <Network size={20} />
-           {!collapsed && <span>Transmitir</span>}
-         </NavLink>
+        <NavLink to="/transmitir" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+          <Network size={20} />
+          {!collapsed && <span>Transmitir</span>}
+        </NavLink>
 
-         <NavLink to="/ia" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-           <Sparkles size={20} />
-           {!collapsed && <span>Nautilus AI</span>}
-         </NavLink>
-       </nav>
+        <NavLink to="/ia" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+          <Sparkles size={20} />
+          {!collapsed && <span>Nautilus AI</span>}
+        </NavLink>
+      </nav>
+
+      {/* Bottom Group: User Profile + Logout */}
+      <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.5rem', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
+        {!collapsed ? (
+          <div className="sidebar-user-footer" style={{ padding: '0.5rem 0' }}>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Logado como</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong style={{ color: 'var(--accent-blue)', fontSize: '0.85rem' }}>MOJOROVA</strong>
+              <button
+                onClick={handleLogout}
+                style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontWeight: 700, fontSize: '0.65rem', padding: '4px 10px', borderRadius: '4px', textTransform: 'uppercase', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+              >
+                Sair
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
+            <button
+              onClick={handleLogout}
+              title="Sair (Logado como MOJOROVA)"
+              style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontWeight: 700, fontSize: '0.65rem', padding: '8px 10px', borderRadius: '4px', textTransform: 'uppercase', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+            >
+              Sair
+            </button>
+          </div>
+        )}
+      </div>
     </aside>
   );
 };
