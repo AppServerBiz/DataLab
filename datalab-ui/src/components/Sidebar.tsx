@@ -7,6 +7,7 @@ export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [portfolioOpen, setPortfolioOpen] = useState(true);
   const [portfolios, setPortfolios] = useState<any[]>([]);
+  const [userIp, setUserIp] = useState('Detectando...');
   const location = useLocation();
 
   useEffect(() => {
@@ -15,6 +16,19 @@ export const Sidebar = () => {
     window.addEventListener('portfolioUpdated', load);
     return () => window.removeEventListener('portfolioUpdated', load);
   }, [location]); // refresh list when navigation happens or update event
+
+  useEffect(() => {
+    fetch('https://ip-api.com/json/')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.status === 'success') {
+          setUserIp(data.query);
+        } else {
+          setUserIp('127.0.0.1');
+        }
+      })
+      .catch(() => setUserIp('127.0.0.1'));
+  }, []);
 
   const isPortfolioActive = location.pathname.startsWith('/portfolio');
 
@@ -138,7 +152,10 @@ export const Sidebar = () => {
           <div className="sidebar-user-footer" style={{ padding: '0.5rem 0' }}>
             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Logado como</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong style={{ color: 'var(--accent-blue)', fontSize: '0.85rem' }}>MOJOROVA</strong>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <strong style={{ color: 'var(--accent-blue)', fontSize: '0.85rem' }}>Admin</strong>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-main)' }}>{userIp}</span>
+              </div>
               <button
                 onClick={handleLogout}
                 style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontWeight: 700, fontSize: '0.65rem', padding: '4px 10px', borderRadius: '4px', textTransform: 'uppercase', transition: 'all 0.2s' }}
@@ -153,7 +170,7 @@ export const Sidebar = () => {
           <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
             <button
               onClick={handleLogout}
-              title="Sair (Logado como MOJOROVA)"
+              title={`Sair (Logado como Admin [${userIp}])`}
               style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontWeight: 700, fontSize: '0.65rem', padding: '8px 10px', borderRadius: '4px', textTransform: 'uppercase', transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
