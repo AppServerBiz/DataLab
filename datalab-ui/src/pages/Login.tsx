@@ -162,7 +162,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <input
               type={showUsername ? "text" : "password"}
               className="login-input"
-              placeholder="Nome de usuário criptografado"
+              placeholder="***************"
               value={username}
               onChange={e => { setUsername(e.target.value); setError(''); }}
               autoFocus
