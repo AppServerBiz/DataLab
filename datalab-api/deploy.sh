@@ -21,6 +21,7 @@ PORTAINER_TOKEN="${PORTAINER_TOKEN}"
 
 # --- CONFIGURAÇÕES DO GERAIS ---
 SSH_KEY="ssh_oracle.key"
+TARGET_IP="${TARGET_IP:-167.126.20.5}"
 CF_RECORD="$APP_NAME.$DOMAIN"
 CF_TARGET="cloud.$DOMAIN"
 REGISTRY_URL="registry.$DOMAIN"
@@ -38,12 +39,12 @@ docker login $REGISTRY_URL -u admin -p ${REGISTRY_PASS}
 docker push $REGISTRY_URL/$APP_NAME:v2
 
 # 4. Criar diretório remoto (se não existir)
-ssh -i $SSH_KEY ubuntu@157.151.27.244 "sudo mkdir -p /opt/micro-saas/apps/$APP_NAME && sudo chown ubuntu:ubuntu /opt/micro-saas/apps/$APP_NAME"
+ssh -i $SSH_KEY ubuntu@$TARGET_IP "sudo mkdir -p /opt/micro-saas/apps/$APP_NAME && sudo chown ubuntu:ubuntu /opt/micro-saas/apps/$APP_NAME"
 
-scp -i $SSH_KEY docker-compose.yml ubuntu@157.151.27.244:/opt/micro-saas/apps/$APP_NAME/docker-compose.yml
+scp -i $SSH_KEY docker-compose.yml ubuntu@$TARGET_IP:/opt/micro-saas/apps/$APP_NAME/docker-compose.yml
 
 # 5. Login no registry dentro do servidor remoto
-ssh -i $SSH_KEY ubuntu@157.151.27.244 "echo ${REGISTRY_PASS} | sudo docker login $REGISTRY_URL -u admin --password-stdin"
+ssh -i $SSH_KEY ubuntu@$TARGET_IP "echo ${REGISTRY_PASS} | sudo docker login $REGISTRY_URL -u admin --password-stdin"
 
 # 6. Deploy via Portainer API
 echo "→ Gerenciando Stack '$APP_NAME' via Portainer API em $PORTAINER_URL..."
@@ -81,8 +82,8 @@ fi
 STACK_LIST=$(curl -s -X GET "$PORTAINER_URL/api/stacks" -H "X-API-Key: $PORTAINER_TOKEN")
 STACK_ID=$(echo "$STACK_LIST" | python3 -c "import sys,json; next((print(s['Id']) for s in json.load(sys.stdin) if s.get('Name') == '$APP_NAME'), None)" 2>/dev/null)
 
-# Ler conteúdo do docker-compose.yml para enviar no payload
-COMPOSE_CONTENT=$(cat docker-compose.yml | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))")
+# Ler conteúdo do docker-compose.yml para enviar no payload (expandindo variáveis de ambiente)
+COMPOSE_CONTENT=$(cat docker-compose.yml | python3 -c "import sys,os,json; print(json.dumps(os.path.expandvars(sys.stdin.read())))")
 
 if [ -n "$STACK_ID" ] && [ "$STACK_ID" != "None" ]; then
   echo "→ Stack '$APP_NAME' encontrada (ID: $STACK_ID). Atualizando no Environment $ENDPOINT_ID..."
@@ -117,13 +118,13 @@ else
 fi
 
 # 6. Criar entrada no Caddyfile para o novo app (se não existir)
-ssh -i $SSH_KEY ubuntu@157.151.27.244 "grep -q '$CF_RECORD' /opt/micro-saas/caddy/Caddyfile || printf '\n$CF_RECORD {\n    reverse_proxy $APP_NAME:3001\n}\n' | sudo tee -a /opt/micro-saas/caddy/Caddyfile"
+ssh -i $SSH_KEY ubuntu@$TARGET_IP "grep -q '$CF_RECORD' /opt/micro-saas/caddy/Caddyfile || printf '\n$CF_RECORD {\n    reverse_proxy $APP_NAME:3001\n}\n' | sudo tee -a /opt/micro-saas/caddy/Caddyfile"
 
 # 7. Recarregar Caddy
-ssh -i $SSH_KEY ubuntu@157.151.27.244 "sudo docker exec -w /etc/caddy caddy_proxy caddy reload"
+ssh -i $SSH_KEY ubuntu@$TARGET_IP "sudo docker exec -w /etc/caddy caddy_proxy caddy reload"
 
 # 8. Verificar se o app está rodando
-ssh -i $SSH_KEY ubuntu@157.151.27.244 "sudo docker ps | grep $APP_NAME"
+ssh -i $SSH_KEY ubuntu@$TARGET_IP "sudo docker ps | grep $APP_NAME"
 
 # 9. Criar entrada DNS CNAME no Cloudflare (se não existir)
 echo "→ Verificando se o registro $CF_RECORD já existe..."

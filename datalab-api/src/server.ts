@@ -852,8 +852,7 @@ function formatDailyPerformance(equityCurve: any[]) {
   const daily: Map<string, { final: number, dd: number, profit: number }> = new Map();
   let peak = 0;
 
-  equityCurve.forEach((pt, i) => {
-    // Normalizar data (YYYY.MM.DD HH:MM -> YYYY-MM-DD)
+  equityCurve.forEach((pt) => {
     const rawDate = pt.timestamp || pt.date || pt.day || '2000-01-01';
     const day = rawDate.split(' ')[0].replace(/\./g, '-');
     
@@ -869,23 +868,59 @@ function formatDailyPerformance(equityCurve: any[]) {
     }
   });
 
-  const lines = ["Date,Equity,DailyProfit,AccumProfit,MaxDD"];
-  let prevFinal = 0;
-  let firstTotalFinal = 0;
-  let isFirst = true;
+  const dailyArray = Array.from(daily.entries());
+  if (dailyArray.length === 0) return "Nenhum dado diário disponível.";
 
-  for (const [day, stats] of daily) {
-    if (isFirst) {
-      prevFinal = stats.final;
-      firstTotalFinal = stats.final;
-      isFirst = false;
+  const firstFinal = dailyArray[0][1].final;
+
+  // 1. COMPACT MONTHLY SUMMARY (Entire History)
+  const monthlyMap: Map<string, { final: number, initial: number, maxDD: number }> = new Map();
+  dailyArray.forEach(([day, stats]) => {
+    const monthKey = day.substring(0, 7); // YYYY-MM
+    if (!monthlyMap.has(monthKey)) {
+      monthlyMap.set(monthKey, { final: stats.final, initial: stats.final, maxDD: stats.dd });
+    } else {
+      const m = monthlyMap.get(monthKey)!;
+      m.final = stats.final;
+      if (stats.dd > m.maxDD) m.maxDD = stats.dd;
     }
-    const dayProfit = stats.final - prevFinal;
-    const accumProfit = stats.final - firstTotalFinal;
-    lines.push(`${day},${stats.final.toFixed(2)},${dayProfit.toFixed(2)},${accumProfit.toFixed(2)},${stats.dd.toFixed(2)}`);
-    prevFinal = stats.final;
+  });
+
+  const monthlyLines = ["Ano-Mês,PatrimônioFinal,LucroNoMês,MaxDDNoMês"];
+  let prevMonthFinal = firstFinal;
+  for (const [month, stats] of monthlyMap) {
+    const profit = stats.final - prevMonthFinal;
+    monthlyLines.push(`${month},${stats.final.toFixed(2)},${profit.toFixed(2)},${stats.maxDD.toFixed(2)}`);
+    prevMonthFinal = stats.final;
   }
-  return lines.join('\n');
+
+  // 2. RECENT DAILY DETAIL (Last 45 trading days)
+  const recentDaysCount = 45;
+  const recentDays = dailyArray.slice(-recentDaysCount);
+  const dailyLines = ["Data,Patrimônio,LucroDiário,LucroAcumulado,MaxDDDiário"];
+  
+  let prevFinal = firstFinal;
+  if (dailyArray.length > recentDaysCount) {
+    const dayBeforeIdx = dailyArray.length - recentDaysCount - 1;
+    prevFinal = dailyArray[dayBeforeIdx][1].final;
+  }
+
+  recentDays.forEach(([day, stats]) => {
+    const dayProfit = stats.final - prevFinal;
+    const accumProfit = stats.final - firstFinal;
+    dailyLines.push(`${day},${stats.final.toFixed(2)},${dayProfit.toFixed(2)},${accumProfit.toFixed(2)},${stats.dd.toFixed(2)}`);
+    prevFinal = stats.final;
+  });
+
+  return `
+--- INÍCIO DO HISTÓRICO MENSAL COMPLETO (Evolução de longo prazo) ---
+${monthlyLines.join('\n')}
+--- FIM DO HISTÓRICO MENSAL COMPLETO ---
+
+--- INÍCIO DO HISTÓRICO DIÁRIO RECENTE (Últimos ${recentDays.length} dias de negociação para análise detalhada) ---
+${dailyLines.join('\n')}
+--- FIM DO HISTÓRICO DIÁRIO RECENTE ---
+  `;
 }
 
 app.get('/api/ia/info/:type/:id', async (req, res) => {
@@ -934,6 +969,7 @@ ${dailyText}
       const robotDailyData: Map<string, Map<string, { profit: number, dd: number }>> = new Map();
 
       for (const r of robots) {
+        const curve = JSON.parse(r.equity_curve || '[]');
         if (curve.length === 0) continue;
         const effectiveInitial = curve[0].equity;
         let peak = effectiveInitial;

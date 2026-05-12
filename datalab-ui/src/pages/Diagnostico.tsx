@@ -235,6 +235,19 @@ const Diagnostico = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
 
+  const [comparisonIds, setComparisonIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('nautilus_diagnostico_comparison');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+
+  const saveComparison = (ids: string[]) => {
+    setComparisonIds(ids);
+    localStorage.setItem('nautilus_diagnostico_comparison', JSON.stringify(ids));
+  };
+
+
   // Upload states
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any>(null);
@@ -386,6 +399,26 @@ const Diagnostico = () => {
               <RobotTable robots={pending} onApprove={handleApprove} onDelete={handleDelete} onDD={setDdRobot} onInfo={setInfoRobot} actionLoading={actionLoading} />
             </section>
           )}
+
+          <RobotComparisonModule
+            comparisonIds={comparisonIds}
+            robots={robots}
+            onRemoveRobot={(id) => {
+              saveComparison(comparisonIds.filter(cid => cid !== id));
+            }}
+            onClear={() => {
+              saveComparison([]);
+            }}
+            onDropRobot={(id) => {
+              if (comparisonIds.includes(id)) return;
+              if (comparisonIds.length >= 10) {
+                alert('Limite máximo de 10 robôs no comparativo atingido!');
+                return;
+              }
+              saveComparison([...comparisonIds, id]);
+            }}
+          />
+
 
           {approved.length > 0 && (
             <section>
@@ -589,7 +622,15 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
         </thead>
         <tbody>
           {sortedRobots.map((r: any) => (
-            <tr className="oakmont-row" key={r.id}>
+            <tr 
+              className="oakmont-row" 
+              key={r.id}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('compareRobotId', r.id);
+              }}
+              style={{ cursor: 'grab' }}
+            >
               <td style={{ cursor: 'pointer', padding: '0.6rem 0.2rem' }} onClick={() => onInfo(r)}>
                 <div className="val-stack">
                   <span className="ticker-name" style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', fontWeight: '700' }}>
@@ -640,4 +681,440 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
   );
 };
 
+
+// ────────────────────────────── Robot Comparison Module ──────────────────────────────
+export const RobotComparisonModule = ({ 
+  comparisonIds, 
+  robots, 
+  onRemoveRobot, 
+  onClear, 
+  onDropRobot 
+}: { 
+  comparisonIds: string[]; 
+  robots: any[]; 
+  onRemoveRobot: (id: string) => void; 
+  onClear: () => void;
+  onDropRobot: (id: string) => void;
+}) => {
+  const [dragOver, setDragOver] = useState(false);
+
+  // Map IDs to actual robot objects
+  const compRobots = comparisonIds
+    .map(id => robots.find(r => r.id === id))
+    .filter(Boolean) as any[];
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const id = e.dataTransfer.getData('compareRobotId');
+    if (id) {
+      onDropRobot(id);
+    }
+  };
+
+  if (compRobots.length === 0) {
+    return (
+      <section style={{ marginBottom: '2.5rem' }}>
+        <h2 style={{ color: 'var(--accent-blue)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '0.8rem' }}>
+          Comparativo de Robôs
+        </h2>
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          style={{
+            padding: '2.5rem',
+            border: dragOver ? '2px dashed var(--accent-blue)' : '2px dashed rgba(255,255,255,0.08)',
+            borderRadius: '12px',
+            textAlign: 'center',
+            background: dragOver ? 'rgba(56,189,248,0.05)' : 'rgba(255,255,255,0.01)',
+            transition: 'all 0.2s',
+            cursor: 'default'
+          }}
+        >
+          <div style={{ color: dragOver ? 'var(--accent-blue)' : 'var(--text-muted)', fontSize: '0.85rem' }}>
+            💡 <strong>Módulo de Comparação Drag & Drop</strong>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem' }}>
+              Arraste até 10 robôs das tabelas de diagnóstico acima ou abaixo e solte aqui para comparar todos os dados históricos, calcular deltas automáticos (2 robôs) ou destacar vencedores por coluna (3+ robôs)!
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Define metrics with metadata
+  const METRICS = [
+    { label: 'Lucro Líquido', key: 'total_net_profit', isCurrency: true, lowerIsBetter: false },
+    { label: 'Max DD', key: 'max_dd', isCurrency: true, lowerIsBetter: true },
+    { label: 'Profit Factor', key: 'profit_factor', isCurrency: false, lowerIsBetter: false },
+    { label: 'Total Trades', key: 'total_trades', isCurrency: false, lowerIsBetter: false, decimals: 0 },
+    { label: 'Lotes Totais', key: 'total_lots', isCurrency: false, lowerIsBetter: false, decimals: 0 },
+    { label: 'Lotes/Mês', key: 'lots_per_month', isCurrency: false, lowerIsBetter: false, decimals: 0 },
+    { label: 'Max Lote Exp.', key: 'max_lot_exposure', isCurrency: false, lowerIsBetter: true },
+    { label: 'Max Entradas', key: 'max_entries_per_trade', isCurrency: false, lowerIsBetter: true, decimals: 0 },
+    { label: 'LL/DD %', key: 'll_dd', isPct: true, lowerIsBetter: false },
+    { label: 'LL MÊS', key: 'avg_profit_per_month', isCurrency: true, lowerIsBetter: false },
+    { label: 'VaR DME %', key: 'var_95_dd_cap', isPct: true, scale100: true, lowerIsBetter: true },
+    { label: 'Compras (win%)', key: 'long_win_pct', isPct: true, lowerIsBetter: false },
+    { label: 'Vendas (win%)', key: 'short_win_pct', isPct: true, lowerIsBetter: false },
+    { label: 'Expected Payoff', key: 'expected_payoff', isCurrency: true, lowerIsBetter: false },
+    { label: 'Sharpe Ratio', key: 'sharpe_ratio', isCurrency: false, lowerIsBetter: false },
+    { label: 'Depósito Inicial', key: 'initial_deposit', isCurrency: true, lowerIsBetter: false, decimals: 0, isNeutral: true },
+  ];
+
+  const getMetricValue = (robot: any, key: string) => {
+    if (key === 'max_dd') {
+      return Number(robot.max_dd_from_csv > 0 ? robot.max_dd_from_csv : robot.max_dd_equity) || 0;
+    }
+    if (key === 'll_dd') {
+      const maxDD = Number(robot.max_dd_from_csv > 0 ? robot.max_dd_from_csv : robot.max_dd_equity) || 1;
+      return (Number(robot.avg_profit_per_month) / maxDD) * 100;
+    }
+    return Number(robot[key]) || 0;
+  };
+
+  // Logic to calculate best indices when compRobots.length >= 3
+  const getBestIndices = () => {
+    if (compRobots.length < 3) return {} as any;
+
+    const bestMap: { [key: string]: number[] } = {};
+
+    METRICS.forEach(m => {
+      if (m.isNeutral) return;
+
+      const values = compRobots.map(r => getMetricValue(r, m.key));
+      const uniqueVals = new Set(values);
+
+      // Only highlight if there is a difference between robots
+      if (uniqueVals.size > 1) {
+        const extremeVal = m.lowerIsBetter ? Math.min(...values) : Math.max(...values);
+        const indices: number[] = [];
+        values.forEach((v, idx) => {
+          if (v === extremeVal) {
+            indices.push(idx);
+          }
+        });
+        bestMap[m.key] = indices;
+      }
+    });
+
+    return bestMap;
+  };
+
+  const bestIndicesMap = getBestIndices();
+
+  const isBest = (robotIdx: number, key: string) => {
+    return bestIndicesMap[key]?.includes(robotIdx) || false;
+  };
+
+  const renderDeltaValue = (metric: any, val1: number, val2: number) => {
+    const delta = val1 - val2;
+    const absDelta = Math.abs(delta);
+    if (absDelta === 0) return <span style={{ color: 'var(--text-muted)' }}>0.00 (igual)</span>;
+
+    const sign = delta > 0 ? '+' : '-';
+    const isBetter = metric.lowerIsBetter ? delta < 0 : delta > 0;
+    const color = isBetter ? 'var(--accent-green)' : 'var(--accent-red)';
+
+    let formatted = '';
+    if (metric.isCurrency) {
+      formatted = `${sign}$${fmt(absDelta, metric.decimals ?? 2)}`;
+    } else if (metric.isPct) {
+      const scale = metric.scale100 ? 100 : 1;
+      formatted = `${sign}${fmt(absDelta * scale, metric.decimals ?? 2)}%`;
+    } else {
+      formatted = `${sign}${fmt(absDelta, metric.decimals ?? 2)}`;
+    }
+
+    return (
+      <span style={{ color, fontWeight: '800' }}>
+        {formatted}
+      </span>
+    );
+  };
+
+  // Helper for formatting standard values
+  const renderStandardValue = (r: any, m: any, rIdx: number) => {
+    const val = getMetricValue(r, m.key);
+    const best = isBest(rIdx, m.key);
+
+    let formatted = '';
+    if (m.key === 'long_win_pct') {
+      formatted = `${r.long_trades} (${fmt(r.long_win_pct)}%)`;
+    } else if (m.key === 'short_win_pct') {
+      formatted = `${r.short_trades} (${fmt(r.short_win_pct)}%)`;
+    } else if (m.isCurrency) {
+      formatted = fmtCurrency(val);
+    } else if (m.isPct) {
+      const scale = m.scale100 ? 100 : 1;
+      formatted = `${fmt(val * scale, m.decimals ?? 2)}%`;
+    } else {
+      formatted = fmt(val, m.decimals ?? 2);
+    }
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', justifyContent: 'center' }}>
+        {best && <span title="Melhor resultado" style={{ fontSize: '0.9rem' }}>🏆</span>}
+        <span style={best ? { color: 'var(--accent-green)', fontWeight: '800' } : {}}>{formatted}</span>
+      </div>
+    );
+  };
+
+  const getCellStyle = (rIdx: number, key: string) => {
+    const best = isBest(rIdx, key);
+    return {
+      padding: '0.6rem 0.4rem',
+      background: best ? 'rgba(34,197,94,0.08)' : 'transparent',
+      fontWeight: best ? '800' as any : 'normal' as any
+    };
+  };
+
+  const thStyle = { padding: '0.6rem 0.4rem', fontSize: '0.70rem', textAlign: 'center', whiteSpace: 'nowrap' } as any;
+
+  return (
+    <section 
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{ 
+        marginBottom: '2.5rem',
+        border: dragOver ? '2px dashed var(--accent-blue)' : '2px solid rgba(255,255,255,0.05)',
+        borderRadius: '12px',
+        background: 'rgba(24, 28, 37, 0.4)',
+        padding: '1.2rem',
+        position: 'relative'
+      }}
+    >
+      <div className="flex-between" style={{ marginBottom: '1rem' }}>
+        <div>
+          <h2 style={{ color: 'var(--accent-blue)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
+            Comparativo de Robôs ({compRobots.length}/10)
+          </h2>
+          <p style={{ margin: '0.2rem 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+            Arrastar robôs adicionais atualiza os dados em tempo real. Solte aqui para adicionar.
+          </p>
+        </div>
+        <button 
+          className="btn btn-danger" 
+          style={{ fontSize: '0.72rem', padding: '0.4rem 0.8rem' }}
+          onClick={onClear}
+        >
+          <Trash2 size={12} /> Limpar Comparação
+        </button>
+      </div>
+
+      {/* VERSION A: ROBOTS AS ROWS */}
+      <div style={{ marginBottom: '2.1rem' }}>
+        <h3 style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', textTransform: 'uppercase', marginBottom: '0.6rem', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.3rem' }}>
+          Visualização em Linhas (Robô por Linha)
+        </h3>
+        <div className="table-container" style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+          <table className="oakmont-table" style={{ fontSize: '0.75rem', textAlign: 'center' }}>
+            <thead>
+              <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <th style={{ ...thStyle, textAlign: 'left', minWidth: '22ch' }}>ROBÔ</th>
+                <th style={thStyle}>LUCRO LIQ</th>
+                <th style={thStyle}>MAX DD</th>
+                <th style={thStyle}>FATOR</th>
+                <th style={thStyle}>TRADES</th>
+                <th style={thStyle}>LOTES</th>
+                <th style={thStyle}>L.MES</th>
+                <th style={thStyle}>MAX L.</th>
+                <th style={thStyle}>ENT.</th>
+                <th style={thStyle}>LL/DD%</th>
+                <th style={thStyle}>LL MÊS</th>
+                <th style={thStyle}>VaR DME</th>
+                <th style={thStyle}>COMPRAS</th>
+                <th style={thStyle}>VENDAS</th>
+                <th style={thStyle}>PAYOFF</th>
+                <th style={thStyle}>SHARPE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {compRobots.map((r, rIdx) => (
+                <tr className="oakmont-row" key={r.id}>
+                  <td style={{ textAlign: 'left', padding: '0.6rem 0.4rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                      <div className="val-stack">
+                        <span className="ticker-name" style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', fontWeight: '700' }}>
+                          {r.name && r.name.length > 25 ? r.name.slice(0, 22) + '...' : r.name}
+                        </span>
+                        <span className="company-name" style={{ fontSize: '0.65rem' }}>{r.asset} · {r.timeframe}</span>
+                      </div>
+                      <button
+                        onClick={() => onRemoveRobot(r.id)}
+                        className="btn"
+                        style={{
+                          padding: '0.15rem 0.3rem',
+                          background: 'rgba(239,68,68,0.1)',
+                          color: 'var(--accent-red)',
+                          minWidth: 'auto',
+                          borderRadius: '4px'
+                        }}
+                        title="Remover"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  </td>
+                  <td style={getCellStyle(rIdx, 'total_net_profit')}>
+                    {renderStandardValue(r, METRICS[0], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'max_dd')}>
+                    {renderStandardValue(r, METRICS[1], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'profit_factor')}>
+                    {renderStandardValue(r, METRICS[2], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'total_trades')}>
+                    {renderStandardValue(r, METRICS[3], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'total_lots')}>
+                    {renderStandardValue(r, METRICS[4], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'lots_per_month')}>
+                    {renderStandardValue(r, METRICS[5], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'max_lot_exposure')}>
+                    {renderStandardValue(r, METRICS[6], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'max_entries_per_trade')}>
+                    {renderStandardValue(r, METRICS[7], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'll_dd')}>
+                    {renderStandardValue(r, METRICS[8], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'avg_profit_per_month')}>
+                    {renderStandardValue(r, METRICS[9], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'var_95_dd_cap')}>
+                    {renderStandardValue(r, METRICS[10], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'long_win_pct')}>
+                    {renderStandardValue(r, METRICS[11], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'short_win_pct')}>
+                    {renderStandardValue(r, METRICS[12], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'expected_payoff')}>
+                    {renderStandardValue(r, METRICS[13], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'sharpe_ratio')}>
+                    {renderStandardValue(r, METRICS[14], rIdx)}
+                  </td>
+                </tr>
+              ))}
+
+              {/* DELTA ROW (Exactly 2 robots) */}
+              {compRobots.length === 2 && (
+                <tr style={{ background: 'rgba(56,189,248,0.04)', borderTop: '1px solid rgba(56,189,248,0.2)' }}>
+                  <td style={{ textAlign: 'left', padding: '0.6rem 0.4rem', fontWeight: '800', color: 'var(--accent-blue)' }}>
+                    Diferença (R1 - R2)
+                  </td>
+                  {METRICS.slice(0, 15).map(m => {
+                    const val1 = getMetricValue(compRobots[0], m.key);
+                    const val2 = getMetricValue(compRobots[1], m.key);
+                    return (
+                      <td key={m.key} style={{ padding: '0.6rem 0.4rem' }}>
+                        {renderDeltaValue(m, val1, val2)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* VERSION B: ROBOTS AS COLUMNS (ESPELHO) */}
+      <div>
+        <h3 style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', textTransform: 'uppercase', marginBottom: '0.6rem', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.3rem' }}>
+          Visualização em Colunas (Robô por Coluna)
+        </h3>
+        <div className="table-container" style={{ overflowX: 'auto' }}>
+          <table className="oakmont-table" style={{ fontSize: '0.75rem', textAlign: 'center' }}>
+            <thead>
+              <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <th style={{ ...thStyle, textAlign: 'left', minWidth: '150px' }}>MÉTRICA</th>
+                {compRobots.map((r, rIdx) => (
+                  <th key={r.id} style={thStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: '700' }}>
+                          R{rIdx + 1}: {r.name && r.name.length > 20 ? r.name.slice(0, 17) + '...' : r.name}
+                        </div>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{r.asset} · {r.timeframe}</div>
+                      </div>
+                      <button
+                        onClick={() => onRemoveRobot(r.id)}
+                        className="btn"
+                        style={{
+                          padding: '0.15rem 0.3rem',
+                          background: 'rgba(239,68,68,0.1)',
+                          color: 'var(--accent-red)',
+                          minWidth: 'auto',
+                          borderRadius: '4px'
+                        }}
+                        title="Remover"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  </th>
+                ))}
+                {compRobots.length === 2 && (
+                  <th style={{ ...thStyle, color: 'var(--accent-blue)', fontWeight: '800' }}>Diferença (R1 - R2)</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {METRICS.map(m => {
+                return (
+                  <tr className="oakmont-row" key={m.key}>
+                    <td style={{ textAlign: 'left', fontWeight: '600', color: 'var(--text-main)', padding: '0.6rem 0.8rem', borderRight: '1px solid rgba(255,255,255,0.03)' }}>
+                      {m.label}
+                    </td>
+                    {compRobots.map((r, rIdx) => {
+                      const val = getMetricValue(r, m.key);
+                      const best = isBest(rIdx, m.key);
+                      return (
+                        <td 
+                          key={r.id} 
+                          style={{ 
+                            padding: '0.6rem 0.8rem', 
+                            background: best ? 'rgba(34,197,94,0.08)' : 'transparent'
+                          }}
+                        >
+                          {renderStandardValue(r, m, rIdx)}
+                        </td>
+                      );
+                    })}
+                    {compRobots.length === 2 && (
+                      <td style={{ padding: '0.6rem 0.8rem', background: 'rgba(56,189,248,0.02)' }}>
+                        {renderDeltaValue(m, getMetricValue(compRobots[0], m.key), getMetricValue(compRobots[1], m.key))}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 export default Diagnostico;
+
