@@ -754,6 +754,7 @@ export const RobotComparisonModule = ({
 
   // Define metrics with metadata
   const METRICS = [
+    { label: '🏆 Troféus Vencidos', key: 'wins_count', isCurrency: false, lowerIsBetter: false, decimals: 0, isNeutral: true, isWins: true },
     { label: 'Lucro Líquido', key: 'total_net_profit', isCurrency: true, lowerIsBetter: false },
     { label: 'Max DD', key: 'max_dd', isCurrency: true, lowerIsBetter: true },
     { label: 'Profit Factor', key: 'profit_factor', isCurrency: false, lowerIsBetter: false },
@@ -773,6 +774,10 @@ export const RobotComparisonModule = ({
   ];
 
   const getMetricValue = (robot: any, key: string) => {
+    if (key === 'wins_count') {
+      const idx = compRobots.findIndex(cr => cr.id === robot.id);
+      return idx !== -1 ? getRobotWins(idx) : 0;
+    }
     if (key === 'max_dd') {
       return Number(robot.max_dd_from_csv > 0 ? robot.max_dd_from_csv : robot.max_dd_equity) || 0;
     }
@@ -786,7 +791,6 @@ export const RobotComparisonModule = ({
   // Logic to calculate best indices when compRobots.length >= 2
   const getBestIndices = () => {
     if (compRobots.length < 2) return {} as any;
-
 
     const bestMap: { [key: string]: number[] } = {};
 
@@ -818,6 +822,26 @@ export const RobotComparisonModule = ({
     return bestIndicesMap[key]?.includes(robotIdx) || false;
   };
 
+  // Dynamically calculate trophies count after bestIndicesMap is built
+  const getRobotWins = (robotIdx: number) => {
+    let wins = 0;
+    METRICS.forEach(m => {
+      if (m.isNeutral || m.isWins) return;
+      if (bestIndicesMap[m.key]?.includes(robotIdx)) {
+        wins++;
+      }
+    });
+    return wins;
+  };
+
+  const isWinsLeader = (robotIdx: number) => {
+    if (compRobots.length < 2) return false;
+    const winsArray = compRobots.map((_, idx) => getRobotWins(idx));
+    const maxWins = Math.max(...winsArray);
+    if (maxWins === 0) return false;
+    return winsArray[robotIdx] === maxWins;
+  };
+
   const renderDeltaValue = (metric: any, val1: number, val2: number) => {
     const delta = val1 - val2;
     const absDelta = Math.abs(delta);
@@ -828,7 +852,9 @@ export const RobotComparisonModule = ({
     const color = isBetter ? 'var(--accent-green)' : 'var(--accent-red)';
 
     let formatted = '';
-    if (metric.isCurrency) {
+    if (metric.isWins) {
+      formatted = `${sign}${absDelta} ${absDelta === 1 ? 'troféu' : 'troféus'}`;
+    } else if (metric.isCurrency) {
       formatted = `${sign}$${fmt(absDelta, metric.decimals ?? 2)}`;
     } else if (metric.isPct) {
       const scale = metric.scale100 ? 100 : 1;
@@ -846,6 +872,19 @@ export const RobotComparisonModule = ({
 
   // Helper for formatting standard values
   const renderStandardValue = (r: any, m: any, rIdx: number) => {
+    if (m.isWins) {
+      const wins = getRobotWins(rIdx);
+      const isLeader = isWinsLeader(rIdx);
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', justifyContent: 'center' }}>
+          {isLeader && <span title="Vencedor do comparativo">⭐</span>}
+          <span style={isLeader ? { color: '#F59E0B', fontWeight: '800' } : { fontWeight: '700' }}>
+            {wins} {wins === 1 ? 'troféu' : 'troféus'}
+          </span>
+        </div>
+      );
+    }
+
     const val = getMetricValue(r, m.key);
     const best = isBest(rIdx, m.key);
 
@@ -924,6 +963,7 @@ export const RobotComparisonModule = ({
             <thead>
               <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
                 <th style={{ ...thStyle, textAlign: 'left', minWidth: '22ch' }}>ROBÔ</th>
+                <th style={thStyle}>🏆 VENCEU</th>
                 <th style={thStyle}>LUCRO LIQ</th>
                 <th style={thStyle}>MAX DD</th>
                 <th style={thStyle}>FATOR</th>
@@ -968,50 +1008,53 @@ export const RobotComparisonModule = ({
                       </button>
                     </div>
                   </td>
-                  <td style={getCellStyle(rIdx, 'total_net_profit')}>
+                  <td style={{ padding: '0.6rem 0.4rem', background: isWinsLeader(rIdx) ? 'rgba(245,158,11,0.04)' : 'transparent' }}>
                     {renderStandardValue(r, METRICS[0], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'max_dd')}>
+                  <td style={getCellStyle(rIdx, 'total_net_profit')}>
                     {renderStandardValue(r, METRICS[1], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'profit_factor')}>
+                  <td style={getCellStyle(rIdx, 'max_dd')}>
                     {renderStandardValue(r, METRICS[2], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'total_trades')}>
+                  <td style={getCellStyle(rIdx, 'profit_factor')}>
                     {renderStandardValue(r, METRICS[3], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'total_lots')}>
+                  <td style={getCellStyle(rIdx, 'total_trades')}>
                     {renderStandardValue(r, METRICS[4], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'lots_per_month')}>
+                  <td style={getCellStyle(rIdx, 'total_lots')}>
                     {renderStandardValue(r, METRICS[5], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'max_lot_exposure')}>
+                  <td style={getCellStyle(rIdx, 'lots_per_month')}>
                     {renderStandardValue(r, METRICS[6], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'max_entries_per_trade')}>
+                  <td style={getCellStyle(rIdx, 'max_lot_exposure')}>
                     {renderStandardValue(r, METRICS[7], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'll_dd')}>
+                  <td style={getCellStyle(rIdx, 'max_entries_per_trade')}>
                     {renderStandardValue(r, METRICS[8], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'avg_profit_per_month')}>
+                  <td style={getCellStyle(rIdx, 'll_dd')}>
                     {renderStandardValue(r, METRICS[9], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'var_95_dd_cap')}>
+                  <td style={getCellStyle(rIdx, 'avg_profit_per_month')}>
                     {renderStandardValue(r, METRICS[10], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'long_win_pct')}>
+                  <td style={getCellStyle(rIdx, 'var_95_dd_cap')}>
                     {renderStandardValue(r, METRICS[11], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'short_win_pct')}>
+                  <td style={getCellStyle(rIdx, 'long_win_pct')}>
                     {renderStandardValue(r, METRICS[12], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'expected_payoff')}>
+                  <td style={getCellStyle(rIdx, 'short_win_pct')}>
                     {renderStandardValue(r, METRICS[13], rIdx)}
                   </td>
-                  <td style={getCellStyle(rIdx, 'sharpe_ratio')}>
+                  <td style={getCellStyle(rIdx, 'expected_payoff')}>
                     {renderStandardValue(r, METRICS[14], rIdx)}
+                  </td>
+                  <td style={getCellStyle(rIdx, 'sharpe_ratio')}>
+                    {renderStandardValue(r, METRICS[15], rIdx)}
                   </td>
                 </tr>
               ))}
@@ -1022,7 +1065,7 @@ export const RobotComparisonModule = ({
                   <td style={{ textAlign: 'left', padding: '0.6rem 0.4rem', fontWeight: '800', color: 'var(--accent-blue)' }}>
                     Diferença (R1 - R2)
                   </td>
-                  {METRICS.slice(0, 15).map(m => {
+                  {METRICS.slice(0, 16).map(m => {
                     const val1 = getMetricValue(compRobots[0], m.key);
                     const val2 = getMetricValue(compRobots[1], m.key);
                     return (
@@ -1094,7 +1137,7 @@ export const RobotComparisonModule = ({
                           key={r.id} 
                           style={{ 
                             padding: '0.6rem 0.8rem', 
-                            background: best ? 'rgba(34,197,94,0.08)' : 'transparent'
+                            background: m.isWins && isWinsLeader(rIdx) ? 'rgba(245,158,11,0.04)' : (best ? 'rgba(34,197,94,0.08)' : 'transparent')
                           }}
                         >
                           {renderStandardValue(r, m, rIdx)}
@@ -1118,4 +1161,5 @@ export const RobotComparisonModule = ({
 };
 
 export default Diagnostico;
+
 
