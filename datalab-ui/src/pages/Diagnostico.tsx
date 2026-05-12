@@ -744,7 +744,7 @@ export const RobotComparisonModule = ({
           <div style={{ color: dragOver ? 'var(--accent-blue)' : 'var(--text-muted)', fontSize: '0.85rem' }}>
             💡 <strong>Módulo de Comparação Drag & Drop</strong>
             <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem' }}>
-              Arraste até 10 robôs das tabelas de diagnóstico acima ou abaixo e solte aqui para comparar todos os dados históricos, calcular deltas automáticos (2 robôs) ou destacar vencedores por coluna (3+ robôs)!
+              Arraste até 10 robôs das tabelas de diagnóstico acima ou abaixo e solte aqui para comparar todos os dados históricos, calcular deltas automáticos (2 robôs) e destacar vencedores por coluna (2+ robôs)!
             </p>
           </div>
         </div>
@@ -783,9 +783,10 @@ export const RobotComparisonModule = ({
     return Number(robot[key]) || 0;
   };
 
-  // Logic to calculate best indices when compRobots.length >= 3
+  // Logic to calculate best indices when compRobots.length >= 2
   const getBestIndices = () => {
-    if (compRobots.length < 3) return {} as any;
+    if (compRobots.length < 2) return {} as any;
+
 
     const bestMap: { [key: string]: number[] } = {};
 
