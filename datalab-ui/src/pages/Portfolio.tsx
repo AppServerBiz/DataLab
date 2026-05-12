@@ -3,14 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 import {
-  fetchPortfolios, createPortfolio, updatePortfolio, deletePortfolio,
+  fetchPortfolios, createPortfolio, updatePortfolio, deletePortfolio, copyPortfolio,
   fetchRobots, addRobotToPortfolio, updateRobotWeight, removeRobotFromPortfolio,
   fetchPortfolioStats, getExportPortfolioUrl
 } from '../api';
 import {
   TrendingUp, TrendingDown, Activity, DollarSign,
   RefreshCw, Edit2, Trash2, Check, X, FolderOpen, Plus, Loader, BarChart2,
-  Lock, Unlock, Download, Printer
+  Lock, Unlock, Download, Printer, Copy
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Line, Bar, Pie } from 'react-chartjs-2';
@@ -170,6 +170,23 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
   const [isOver, setIsOver] = useState(false);
   const [confirmDeleteRobot, setConfirmDeleteRobot] = useState<{ id: string, name: string } | null>(null);
   const [locking, setLocking] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const navigate = useNavigate();
+
+  const handleCopyPortfolio = async () => {
+    if (!window.confirm('Deseja criar uma cópia deste portfólio com todos os robôs e pesos?')) return;
+    setCopying(true);
+    try {
+      const newPortfolio = await copyPortfolio(portfolio.id);
+      if (onRefreshList) onRefreshList();
+      alert(`Portfólio copiado com sucesso como "${newPortfolio.name}"!`);
+      navigate(`/portfolio/${newPortfolio.id}`);
+    } catch (err: any) {
+      alert('Erro ao copiar portfólio: ' + (err.response?.data?.error || String(err)));
+    } finally {
+      setCopying(false);
+    }
+  };
 
   useEffect(() => { setLocalPortfolio(portfolio); }, [portfolio]);
 
@@ -344,6 +361,14 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               onClick={() => setShowEditPortfolio(true)}
             >
               <Edit2 size={13} /> Editar Fundo
+            </button>
+            <button 
+              className="btn" 
+              style={{ ...btnCommonStyle, background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }} 
+              onClick={handleCopyPortfolio}
+              disabled={copying}
+            >
+              {copying ? <Loader size={13} className="spin" /> : <Copy size={13} />} COPIAR
             </button>
             <a 
               href={getExportPortfolioUrl(portfolio.id)} 
@@ -854,6 +879,18 @@ const Portfolio = () => {
     navigate(`/portfolio/${portfolio.id}`);
   };
 
+  const handleCopyRequest = async (e: any, pf: any) => {
+    e.stopPropagation();
+    if (!window.confirm(`Deseja criar uma cópia do portfólio "${pf.name}" com todos os robôs e pesos?`)) return;
+    try {
+      const newPortfolio = await copyPortfolio(pf.id);
+      await load();
+      navigate(`/portfolio/${newPortfolio.id}`);
+    } catch (err: any) {
+      alert('Erro ao copiar portfólio: ' + (err.response?.data?.error || String(err)));
+    }
+  };
+
   const handleDeleteRequest = async (e: any, portfolio: any) => {
     e.stopPropagation();
     if (portfolio.locked) {
@@ -925,9 +962,14 @@ const Portfolio = () => {
                     {pf.name} {pf.locked && <Lock size={14} style={{ color: 'var(--accent-red)' }} />}
                   </h2>
                 </div>
-                <button className="btn btn-danger" style={{ padding: '0.3rem 0.4rem', zIndex: 2, opacity: pf.locked ? 0.3 : 1 }} onClick={e => handleDeleteRequest(e, pf)} title={pf.locked ? "Portfólio Travado" : "Excluir"}>
-                  <Trash2 size={13} />
-                </button>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <button className="btn" style={{ padding: '0.3rem 0.4rem', background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)', zIndex: 2 }} onClick={e => handleCopyRequest(e, pf)} title="Copiar Portfólio">
+                    <Copy size={13} />
+                  </button>
+                  <button className="btn btn-danger" style={{ padding: '0.3rem 0.4rem', zIndex: 2, opacity: pf.locked ? 0.3 : 1 }} onClick={e => handleDeleteRequest(e, pf)} title={pf.locked ? "Portfólio Travado" : "Excluir"}>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem', marginTop: '1rem' }}>
                 <div style={{ background: 'var(--bg-main)', borderRadius: '6px', padding: '0.6rem 0.8rem' }}>

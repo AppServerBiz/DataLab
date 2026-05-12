@@ -314,6 +314,49 @@ app.put('/api/portfolios/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: String(err) }); }
 });
 
+// POST /api/portfolios/:id/copy
+app.post('/api/portfolios/:id/copy', async (req, res) => {
+  try {
+    const db = await getDb();
+    const sourceId = req.params.id;
+    
+    // Find source portfolio
+    const sourcePf = await db.get(`SELECT * FROM portfolios WHERE id = ?`, [sourceId]);
+    if (!sourcePf) {
+      return res.status(404).json({ error: 'Portfólio de origem não encontrado' });
+    }
+    
+    // Find robots belonging to the source portfolio
+    const sourceRobots = await db.all(
+      `SELECT robot_id, weight FROM portfolio_robots WHERE portfolio_id = ?`,
+      [sourceId]
+    );
+    
+    // Create new portfolio with a "(Cópia)" suffix
+    const newId = `pf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const newName = `${sourcePf.name} (Cópia)`;
+    
+    await db.run(
+      `INSERT INTO portfolios (id, name, capital, target_dd, manual_dme, locked) VALUES (?, ?, ?, ?, ?, ?)`,
+      [newId, newName, sourcePf.capital, sourcePf.target_dd, sourcePf.manual_dme, 0]
+    );
+    
+    // Copy the robots
+    for (const r of sourceRobots) {
+      const prId = `pr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      await db.run(
+        `INSERT INTO portfolio_robots (id, portfolio_id, robot_id, weight) VALUES (?, ?, ?, ?)`,
+        [prId, newId, r.robot_id, r.weight]
+      );
+    }
+    
+    const newPortfolio = await db.get(`SELECT * FROM portfolios WHERE id = ?`, [newId]);
+    res.json(newPortfolio);
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 // DELETE /api/portfolios/:id
 app.delete('/api/portfolios/:id', async (req, res) => {
   console.log('DELETE /api/portfolios/', req.params.id);

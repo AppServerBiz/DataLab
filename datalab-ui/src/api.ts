@@ -54,6 +54,7 @@ export const createPortfolio = async (data: { name: string; capital: number; tar
 export const updatePortfolio = async (id: string, data: { name: string; capital: number; target_dd: number, locked?: boolean }) =>
   (await api.put(`/portfolios/${id}`, data)).data;
 export const deletePortfolio = async (id: string) => (await api.delete(`/portfolios/${id}`)).data;
+export const copyPortfolio = async (id: string) => (await api.post(`/portfolios/${id}/copy`)).data;
 
 export const fetchPortfolioRobots = async (id: string) => (await api.get(`/portfolios/${id}/robots`)).data;
 export const addRobotToPortfolio = async (portfolioId: string, robotId: string, weight: number) =>
