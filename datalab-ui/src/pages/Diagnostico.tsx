@@ -637,6 +637,11 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
                     {r.name && r.name.length > 30 ? r.name.slice(0, 27) + '...' : r.name}
                   </span>
                   <span className="company-name" style={{ fontSize: '0.65rem' }}>{r.asset} · {r.timeframe}</span>
+                  {r.warnings && r.warnings.map((w: string, idx: number) => (
+                    <div key={idx} style={{ color: '#F59E0B', fontSize: '0.65rem', background: 'rgba(245, 158, 11, 0.1)', padding: '4px 8px', borderRadius: '4px', borderLeft: '3px solid #F59E0B', marginTop: '0.3rem', whiteSpace: 'normal', maxWidth: '300px', lineHeight: '1.3' }}>
+                      ⚠️ {w}
+                    </div>
+                  ))}
                 </div>
               </td>
               <td style={{ fontWeight: '800', color: r.total_net_profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', padding: '0.6rem 0.2rem' }}>{fmtCurrency(r.total_net_profit)}</td>

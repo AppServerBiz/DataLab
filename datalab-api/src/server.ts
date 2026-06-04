@@ -42,6 +42,18 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
       const robotName = getRobotNameFromFilename(htmlFile.originalname);
       const robotId = makeRobotId(robotName);
 
+      // Check if this robot name already exists and is approved (approved = 1) in database
+      const existing = await db.get(`SELECT id FROM robots WHERE id = ? AND approved = 1`, [robotId]);
+      
+      let finalRobotId = robotId;
+      let finalRobotName = robotName;
+      let isStaging = false;
+      if (existing) {
+        finalRobotId = `${robotId}_pending`;
+        finalRobotName = `${robotName} (Pendente)`;
+        isStaging = true;
+      }
+
       const htmlText = decodeBuffer(htmlFile.buffer);
       
       // Look for matching CSV text BEFORE parsing HTML (so we can pass it for monthly DD calc)
@@ -124,7 +136,7 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
           var_95_dd_cap=excluded.var_95_dd_cap,
           updated_at=CURRENT_TIMESTAMP
       `, [
-        robotId, robotName,
+        finalRobotId, finalRobotName,
         m.total_net_profit, m.max_dd_equity, m.max_dd_equity_pct, m.profit_factor,
         m.total_trades, m.short_trades, m.short_win_pct, m.long_trades, m.long_win_pct,
         m.expected_payoff, m.sharpe_ratio, m.max_drawdown_abs, m.initial_deposit,
@@ -140,7 +152,7 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
         parsed.configHtml, htmlText, csvText, 0, 'pending', m.var_95_dd_cap
       ]);
 
-      processed.push({ id: robotId, name: robotName, hasCSV: !!csvParsed });
+      processed.push({ id: finalRobotId, name: finalRobotName, hasCSV: !!csvParsed, isStaging });
     }
 
     res.json({ success: true, processed });
@@ -193,11 +205,43 @@ app.get('/api/comparativo', async (req, res) => {
       FROM robots 
       ORDER BY created_at DESC
     `);
-    res.json(rows.map(r => ({
-      ...r,
-      parameters: r.parameters ? JSON.parse(r.parameters) : {},
-      equity_curve: null
-    })));
+    res.json(rows.map(r => {
+      const parameters = r.parameters ? JSON.parse(r.parameters) : {};
+      const warnings: string[] = [];
+
+      if (r.id.endsWith('_pending')) {
+        const parentId = r.id.replace('_pending', '');
+        const parent = rows.find(x => x.id === parentId && x.approved === 1);
+        if (parent) {
+          const oldFrom = parent.date_from || '';
+          const oldTo = parent.date_to || '';
+          const newFrom = r.date_from || '';
+          const newTo = r.date_to || '';
+
+          if (oldFrom !== newFrom || oldTo !== newTo) {
+            warnings.push(`Divergência de datas detectada: Período atual [${oldFrom} a ${oldTo}] vs Novo período [${newFrom} a ${newTo}]`);
+          }
+
+          if (oldFrom && oldTo && newFrom && newTo) {
+            const dOldFrom = new Date(oldFrom.replace(/\./g, '-'));
+            const dOldTo = new Date(oldTo.replace(/\./g, '-'));
+            const dNewFrom = new Date(newFrom.replace(/\./g, '-'));
+            const dNewTo = new Date(newTo.replace(/\./g, '-'));
+
+            if (dNewFrom > dOldFrom && dNewTo < dOldTo) {
+              warnings.push(`Alerta: O novo backteste está contido no período já existente no banco de dados (Novo período é menor e interno: [${newFrom} a ${newTo}] está dentro de [${oldFrom} a ${oldTo}]).`);
+            }
+          }
+        }
+      }
+
+      return {
+        ...r,
+        parameters,
+        warnings,
+        equity_curve: null
+      };
+    }));
   } catch (err) { res.status(500).json({ error: String(err) }); }
 });
 
@@ -250,7 +294,73 @@ app.get('/api/robot/:id/info', async (req, res) => {
 app.post('/api/robot/:id/approve', async (req, res) => {
   try {
     const db = await getDb();
-    await db.run(`UPDATE robots SET approved = 1, status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [req.params.id]);
+    const targetId = req.params.id;
+
+    if (targetId.endsWith('_pending')) {
+      const parentId = targetId.replace('_pending', '');
+      
+      // Get the staging record details
+      const pendingRobot = await db.get(`SELECT * FROM robots WHERE id = ?`, [targetId]);
+      if (!pendingRobot) {
+        return res.status(404).json({ error: 'Robô pendente não encontrado' });
+      }
+
+      // Extract parent name (strip ' (Pendente)')
+      const parentName = pendingRobot.name.replace(' (Pendente)', '');
+
+      // Check if parent already exists
+      const parentExists = await db.get(`SELECT id FROM robots WHERE id = ?`, [parentId]);
+
+      if (parentExists) {
+        // Safe UPDATE: copy all metrics and data columns to keep the original ID in place
+        // to prevent CASCADE DELETE from triggering on portfolio links.
+        await db.run(`
+          UPDATE robots SET
+            name = ?,
+            total_net_profit = ?, max_dd_equity = ?, max_dd_equity_pct = ?, profit_factor = ?,
+            total_trades = ?, short_trades = ?, short_win_pct = ?, long_trades = ?, long_win_pct = ?,
+            expected_payoff = ?, sharpe_ratio = ?, max_drawdown_abs = ?, initial_deposit = ?,
+            gross_profit = ?, gross_loss = ?, recovery_factor = ?, profitable_trades = ?, losing_trades = ?,
+            win_rate = ?, avg_win = ?, avg_loss = ?, max_win = ?, max_loss = ?,
+            max_consecutive_wins = ?, max_consecutive_losses = ?, avg_trade_duration = ?, quality = ?,
+            asset = ?, period = ?, timeframe = ?, date_from = ?, date_to = ?, broker = ?, parameters = ?,
+            total_months = ?, avg_profit_per_month = ?, total_lots = ?, lots_per_month = ?, max_lot_exposure = ?, max_entries_per_trade = ?,
+            equity_curve = ?, monthly_drawdown = ?, max_dd_from_csv = ?, max_dd_pct_from_csv = ?,
+            config_html = ?, raw_html = ?, raw_csv = ?, approved = 1, status = 'approved', var_95_dd_cap = ?,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `, [
+          parentName,
+          pendingRobot.total_net_profit, pendingRobot.max_dd_equity, pendingRobot.max_dd_equity_pct, pendingRobot.profit_factor,
+          pendingRobot.total_trades, pendingRobot.short_trades, pendingRobot.short_win_pct, pendingRobot.long_trades, pendingRobot.long_win_pct,
+          pendingRobot.expected_payoff, pendingRobot.sharpe_ratio, pendingRobot.max_drawdown_abs, pendingRobot.initial_deposit,
+          pendingRobot.gross_profit, pendingRobot.gross_loss, pendingRobot.recovery_factor, pendingRobot.profitable_trades, pendingRobot.losing_trades,
+          pendingRobot.win_rate, pendingRobot.avg_win, pendingRobot.avg_loss, pendingRobot.max_win, pendingRobot.max_loss,
+          pendingRobot.max_consecutive_wins, pendingRobot.max_consecutive_losses, pendingRobot.avg_trade_duration, pendingRobot.quality,
+          pendingRobot.asset, pendingRobot.period, pendingRobot.timeframe, pendingRobot.date_from, pendingRobot.date_to, pendingRobot.broker, pendingRobot.parameters,
+          pendingRobot.total_months, pendingRobot.avg_profit_per_month, pendingRobot.total_lots, pendingRobot.lots_per_month, pendingRobot.max_lot_exposure, pendingRobot.max_entries_per_trade,
+          pendingRobot.equity_curve, pendingRobot.monthly_drawdown, pendingRobot.max_dd_from_csv, pendingRobot.max_dd_pct_from_csv,
+          pendingRobot.config_html, pendingRobot.raw_html, pendingRobot.raw_csv, pendingRobot.var_95_dd_cap,
+          parentId
+        ]);
+
+        // Delete staging record
+        await db.run(`DELETE FROM robots WHERE id = ?`, [targetId]);
+      } else {
+        // If no parent exists, just rename this staging record to the original ID and name
+        await db.run(`
+          UPDATE robots SET
+            id = ?,
+            name = ?,
+            approved = 1,
+            status = 'approved',
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `, [parentId, parentName, targetId]);
+      }
+    } else {
+      await db.run(`UPDATE robots SET approved = 1, status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [targetId]);
+    }
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: String(err) }); }
 });
