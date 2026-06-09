@@ -218,7 +218,18 @@ const PortfolioReport = () => {
             
             { label: 'DD Soma Individual', value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), color: '#ef4444' },
             { label: 'DD Soma %', value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), color: '#ef4444' },
-            { label: 'VaR 95% (Prob.)', value: `${fmtCurrency((totals?.var95 || 0) / 100 * portfolio.capital)} - ${fmtPct(totals?.var95 || 0)}`, color: '#f59e0b' },
+            { 
+              label: 'VaR 95% (Prob.)', 
+              value: (
+                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.1' }}>
+                  <span>{fmtPct(totals?.var95 || 0)}</span>
+                  <span style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', marginTop: '3px' }}>
+                    {fmtCurrency((totals?.var95 || 0) / 100 * portfolio.capital)}
+                  </span>
+                </div>
+              ), 
+              color: '#f59e0b' 
+            },
             { label: 'DME Atual', value: fmtCurrency(totals?.dme || portfolio.manual_dme || 0), color: '#0f172a' },
 
             { label: 'Fator LL/DD', value: fmt(totals?.llDdPct || 0) + '%', color: '#0b57d0' },
