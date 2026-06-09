@@ -933,9 +933,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
-                  </div>                <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+
                     <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                       Opção 1: Matriz de Contribuição de Risco ao Portfólio (%)
                     </h3>
