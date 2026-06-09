@@ -426,7 +426,7 @@ const PortfolioReport = () => {
                   labels: (stats?.top10DD || []).map((d: any) => d.day),
                   datasets: (robots || []).map((r: any, idx: number) => ({
                     label: r.name,
-                    data: (stats.top10DD || []).map((d: any) => d[r.name] || 0),
+                    data: (stats?.top10DD || []).map((d: any) => d[r.name] || 0),
                     backgroundColor: ROBOT_COLORS[idx % ROBOT_COLORS.length] + 'BB',
                     stack: 'Stack 0'
                   }))
