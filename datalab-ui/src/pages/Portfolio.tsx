@@ -347,9 +347,9 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
           // Diagonal: Weighted Drawdown
           ddCorrelationRisk[rA][rB] = ddA * wA;
         } else {
-          // Off-diagonal: Correlation Drawdown Risk Impact
+          // Off-diagonal: Correlation Drawdown Risk Impact (Geometric Mean in $)
           const baseCorr = corr?.[rA]?.[rB] ?? 0;
-          ddCorrelationRisk[rA][rB] = baseCorr * (ddA * wA) * (ddB * wB) / capital;
+          ddCorrelationRisk[rA][rB] = baseCorr * Math.sqrt((ddA * wA) * (ddB * wB));
         }
       });
     });
