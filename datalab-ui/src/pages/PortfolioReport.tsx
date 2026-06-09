@@ -218,7 +218,7 @@ const PortfolioReport = () => {
             
             { label: 'DD Soma Individual', value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), color: '#ef4444' },
             { label: 'DD Soma %', value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), color: '#ef4444' },
-            { label: 'VaR 95% (Prob.)', value: fmtPct(totals?.var95 || 0), color: '#f59e0b' },
+            { label: 'VaR 95% (Prob.)', value: `${fmtCurrency((totals?.var95 || 0) / 100 * portfolio.capital)} - ${fmtPct(totals?.var95 || 0)}`, color: '#f59e0b' },
             { label: 'DME Atual', value: fmtCurrency(totals?.dme || portfolio.manual_dme || 0), color: '#0f172a' },
 
             { label: 'Fator LL/DD', value: fmt(totals?.llDdPct || 0) + '%', color: '#0b57d0' },
@@ -455,7 +455,7 @@ const PortfolioReport = () => {
                       <td style={{ padding: '8px', fontWeight: '700' }}>{name.length > 20 ? name.slice(0, 18) + '..' : name}</td>
                       <td style={{ padding: '8px', textAlign: 'right', color: r.profit >= 0 ? '#10b981' : '#ef4444', fontWeight: '700' }}>{fmtCurrency(r.profit)}</td>
                       <td style={{ padding: '8px', textAlign: 'right', color: '#ef4444' }}>{fmtCurrency(r.maxDD)}</td>
-                      <td style={{ padding: '8px', textAlign: 'right', color: '#f59e0b' }}>{fmtPct(r.var95)}</td>
+                      <td style={{ padding: '8px', textAlign: 'right', color: '#f59e0b' }}>{fmtCurrency(r.var95)}</td>
                       <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600' }}>{fmt(r.lots, 1)}</td>
                     </tr>
                   ))}
