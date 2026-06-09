@@ -448,7 +448,7 @@ const PortfolioReport = () => {
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
             Matriz de Correlação Diária
           </h3>
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '40px' }}>
             <table className="correlation-matrix" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
               <thead>
                 <tr>
@@ -476,6 +476,59 @@ const PortfolioReport = () => {
                     ))}
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
+            Matriz de Correlação Ponderada (Peso)
+          </h3>
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <table className="correlation-matrix" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '8px', background: '#f8fafc' }}></th>
+                  {Object.keys(stats?.correlation || {}).map(n => {
+                    const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
+                    return (
+                      <th key={n} style={{ padding: '8px', background: '#f8fafc', fontWeight: '900', textAlign: 'center' }}>
+                        {n.length > 12 ? n.slice(0, 10) + '..' : n}
+                        <div style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal' }}>({w}x)</div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(stats?.correlation || {}).map(([rA, row]: any) => {
+                  const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
+                  return (
+                    <tr key={rA}>
+                      <td style={{ padding: '8px', fontWeight: '900', background: '#f8fafc' }}>
+                        {rA.length > 12 ? rA.slice(0, 10) + '..' : rA}
+                        <span style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
+                      </td>
+                      {Object.entries(row).map(([rB, val]: any) => {
+                        const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
+                        const weightedVal = val * wA * wB;
+                        return (
+                          <td key={rB} style={{ 
+                            padding: '8px', 
+                            textAlign: 'center', 
+                            background: corrColor(val), 
+                            color: corrTextColor(val),
+                            fontWeight: '700',
+                            border: '1px solid #fff'
+                          }}>
+                            {weightedVal.toFixed(2)}
+                            <div style={{ fontSize: '7px', opacity: 0.7, fontWeight: 'normal' }}>({val.toFixed(2)})</div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

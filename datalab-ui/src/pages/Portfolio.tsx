@@ -805,37 +805,84 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
 
             {/* Correlation Matrix */}
             {corr && Object.keys(corr).length >= 2 && (
-              <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
-                <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Matriz de Correlação Diária</h3>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ padding: '0.4rem 0.6rem' }}></th>
-                        {Object.keys(corr).map(n => (
-                          <th key={n} title={n} style={{ padding: '0.4rem 0.5rem', color: 'var(--accent-blue)', minWidth: '80px', textAlign: 'center', cursor: 'help' }}>
-                            {n.length > 15 ? n.slice(0, 13) + '..' : n}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(corr).map(([rA, row]: any) => (
-                        <tr key={rA}>
-                          <td title={rA} style={{ padding: '0.4rem 0.6rem', color: 'var(--accent-blue)', fontWeight: '600', cursor: 'help' }}>
-                            {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
-                          </td>
-                          {Object.entries(row).map(([rB, val]: any) => (
-                            <td key={rB} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(val), color: corrTextColor(val), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '600' }}>
-                              {val.toFixed(2)}
-                            </td>
+              <>
+                <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
+                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Matriz de Correlação Diária</h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ padding: '0.4rem 0.6rem' }}></th>
+                          {Object.keys(corr).map(n => (
+                            <th key={n} title={n} style={{ padding: '0.4rem 0.5rem', color: 'var(--accent-blue)', minWidth: '80px', textAlign: 'center', cursor: 'help' }}>
+                              {n.length > 15 ? n.slice(0, 13) + '..' : n}
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {Object.entries(corr).map(([rA, row]: any) => (
+                          <tr key={rA}>
+                            <td title={rA} style={{ padding: '0.4rem 0.6rem', color: 'var(--accent-blue)', fontWeight: '600', cursor: 'help' }}>
+                              {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
+                            </td>
+                            {Object.entries(row).map(([rB, val]: any) => (
+                              <td key={rB} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(val), color: corrTextColor(val), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '600' }}>
+                                {val.toFixed(2)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+
+                <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
+                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Matriz de Correlação Ponderada (Peso)</h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ padding: '0.4rem 0.6rem' }}></th>
+                          {Object.keys(corr).map(n => {
+                            const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
+                            return (
+                              <th key={n} title={`${n} (Peso: ${w}x)`} style={{ padding: '0.4rem 0.5rem', color: 'var(--accent-blue)', minWidth: '80px', textAlign: 'center', cursor: 'help' }}>
+                                {n.length > 15 ? n.slice(0, 13) + '..' : n}
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>({w}x)</div>
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(corr).map(([rA, row]: any) => {
+                          const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
+                          return (
+                            <tr key={rA}>
+                              <td title={`${rA} (Peso: ${wA}x)`} style={{ padding: '0.4rem 0.6rem', color: 'var(--accent-blue)', fontWeight: '600', cursor: 'help' }}>
+                                {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
+                              </td>
+                              {Object.entries(row).map(([rB, val]: any) => {
+                                const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
+                                const weightedVal = val * wA * wB;
+                                return (
+                                  <td key={rB} title={`${val.toFixed(2)} × ${wA}x × ${wB}x = ${weightedVal.toFixed(2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(val), color: corrTextColor(val), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '600', cursor: 'help' }}>
+                                    {weightedVal.toFixed(2)}
+                                    <div style={{ fontSize: '0.55rem', opacity: 0.7, fontWeight: 'normal' }}>({val.toFixed(2)})</div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}
