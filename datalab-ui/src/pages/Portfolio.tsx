@@ -29,6 +29,7 @@ const fmt = (v: any, d = 2) => {
 const fmtCurrency = (v: number) => `$${fmt(v)}`;
 const fmtPct = (v: number) => `${fmt(v)}%`;
 
+// Color for correlation values
 const corrColor = (v: number) => {
   if (v >= 0.7) return 'rgba(239,68,68,0.7)';
   if (v >= 0.4) return 'rgba(245,158,11,0.5)';
@@ -37,31 +38,6 @@ const corrColor = (v: number) => {
   return 'rgba(34,197,94,0.5)';
 };
 const corrTextColor = (v: number) => v >= 0.4 ? '#fff' : '#94A3B8';
-
-// Color for risk contribution values
-const riskColor = (val: number) => {
-  if (val > 15) return 'rgba(239, 68, 68, 0.7)'; // Red
-  if (val > 5) return 'rgba(245, 158, 11, 0.5)';  // Amber
-  if (val > 0) return 'rgba(245, 158, 11, 0.2)';  // Light Amber
-  if (val < -5) return 'rgba(34, 197, 94, 0.5)'; // Dark Green
-  if (val < 0) return 'rgba(34, 197, 94, 0.2)';  // Light Green
-  return 'rgba(148, 163, 184, 0.2)';             // Gray
-};
-const riskTextColor = (val: number) => {
-  if (val > 15 || val < -5) return '#fff';
-  return '#94A3B8';
-};
-
-// Color for covariance values based on the maximum covariance in the matrix
-const covColor = (val: number, maxVal: number) => {
-  if (maxVal === 0) return 'rgba(148, 163, 184, 0.2)';
-  const ratio = Math.abs(val) / maxVal;
-  if (val > 0) {
-    return `rgba(239, 68, 68, ${Math.min(0.8, ratio * 0.7 + 0.1)})`; // Red
-  } else {
-    return `rgba(34, 197, 94, ${Math.min(0.8, ratio * 0.7 + 0.1)})`;  // Green
-  }
-};
 
 const ROBOT_COLORS = [
   '#38BDF8', '#22C55E', '#F59E0B', '#EF4444', '#A855F7', 
@@ -292,81 +268,6 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
   const corr = stats?.correlation;
   const robots = stats?.robots ?? [];
   const existingRobotIds = robots.map((r: any) => r.robot_id);
-
-  // Compute Risk, Covariance, and Normalized Weighted Correlation Matrices
-  const matrices = (() => {
-    if (!stats?.robot_curves || Object.keys(stats.robot_curves).length === 0) return null;
-    const rNames = Object.keys(stats.robot_curves);
-    if (rNames.length === 0) return null;
-    const numPoints = stats.robot_curves[rNames[0]].length;
-    if (numPoints === 0) return null;
-
-    const series: { [name: string]: number[] } = {};
-    const means: { [name: string]: number } = {};
-
-    rNames.forEach(name => {
-      const pts = stats.robot_curves[name] || [];
-      const vals = pts.map((pt: any) => pt.dd || 0);
-      series[name] = vals;
-      const sum = vals.reduce((a: number, b: number) => a + b, 0);
-      means[name] = sum / (vals.length || 1);
-    });
-
-    const cov: { [rA: string]: { [rB: string]: number } } = {};
-    let totalVariance = 0;
-    let maxCovVal = 0;
-
-    rNames.forEach(rA => {
-      cov[rA] = {};
-      rNames.forEach(rB => {
-        const valsA = series[rA] || [];
-        const valsB = series[rB] || [];
-        const meanA = means[rA] || 0;
-        const meanB = means[rB] || 0;
-
-        let sumProd = 0;
-        const ptsCount = Math.min(valsA.length, valsB.length, numPoints);
-        for (let i = 0; i < ptsCount; i++) {
-          sumProd += (valsA[i] - meanA) * (valsB[i] - meanB);
-        }
-        const covariance = sumProd / (ptsCount - 1 || 1);
-        cov[rA][rB] = covariance;
-        totalVariance += covariance;
-        if (Math.abs(covariance) > maxCovVal) maxCovVal = Math.abs(covariance);
-      });
-    });
-
-    const contribution: { [rA: string]: { [rB: string]: number } } = {};
-    rNames.forEach(rA => {
-      contribution[rA] = {};
-      rNames.forEach(rB => {
-        contribution[rA][rB] = totalVariance > 0 ? (cov[rA][rB] / totalVariance) * 100 : 0;
-      });
-    });
-
-    const sumSqWeights = rNames.reduce((s, name) => {
-      const w = robots.find((r: any) => r.name === name)?.weight ?? 1;
-      return s + w * w;
-    }, 0) || 1;
-
-    const normalizedWeightedCorr: { [rA: string]: { [rB: string]: number } } = {};
-    rNames.forEach(rA => {
-      normalizedWeightedCorr[rA] = {};
-      const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
-      rNames.forEach(rB => {
-        const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
-        const baseCorr = corr?.[rA]?.[rB] ?? 0;
-        normalizedWeightedCorr[rA][rB] = baseCorr * (wA * wB) / sumSqWeights;
-      });
-    });
-
-    return {
-      contribution,
-      covariance: cov,
-      maxCovVal,
-      normalizedWeightedCorr
-    };
-  })();
 
   const btnCommonStyle: any = {
     fontSize: '0.65rem',
@@ -795,7 +696,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         labels: (stats?.top10DD || []).map((d: any) => d.day),
                         datasets: (robots || []).map((r: any, idx: number) => ({
                           label: (r.name || 'Robô').length > 15 ? (r.name || 'Robô').slice(0, 13) + '..' : (r.name || 'Robô'),
-                          data: (stats?.top10DD || []).map((d: any) => d[r.name] || 0),
+                          data: (stats.top10DD || []).map((d: any) => d[r.name] || 0),
                           backgroundColor: ROBOT_COLORS[idx % ROBOT_COLORS.length] + '99',
                           borderColor: ROBOT_COLORS[idx % ROBOT_COLORS.length],
                           borderWidth: 1,
@@ -926,8 +827,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                               {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
                             </td>
                             {Object.entries(row).map(([rB, val]: any) => (
-                              <td key={rB} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(val || 0), color: corrTextColor(val || 0), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '600' }}>
-                                {fmt(val, 2)}
+                              <td key={rB} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(val), color: corrTextColor(val), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '600' }}>
+                                {val.toFixed(2)}
                               </td>
                             ))}
                           </tr>
@@ -938,178 +839,48 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 </div>
 
                 <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      Opção 1: Matriz de Contribuição de Risco ao Portfólio (%)
-                    </h3>
-                    <span title="Esta matriz mostra a contribuição percentual de cada par para a variância (risco) total do drawdown do portfólio. A soma de todas as células é exatamente 100%." style={{ cursor: 'help', fontSize: '0.65rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>
-                      Como ler?
-                    </span>
-                  </div>
-                  
-                  {matrices?.contribution ? (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ padding: '0.4rem 0.6rem' }}></th>
-                            {Object.keys(matrices.contribution).map(n => {
-                              const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
-                              return (
-                                <th key={n} title={`${n} (Peso: ${w}x)`} style={{ padding: '0.4rem 0.5rem', color: 'var(--accent-blue)', minWidth: '80px', textAlign: 'center', cursor: 'help' }}>
-                                  {n.length > 15 ? n.slice(0, 13) + '..' : n}
-                                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>({w}x)</div>
-                                </th>
-                              );
-                            })}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(matrices.contribution).map(([rA, row]: any) => {
-                            const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
+                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Matriz de Correlação Ponderada (Peso)</h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ padding: '0.4rem 0.6rem' }}></th>
+                          {Object.keys(corr).map(n => {
+                            const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
                             return (
-                              <tr key={rA}>
-                                <td title={`${rA} (Peso: ${wA}x)`} style={{ padding: '0.4rem 0.6rem', color: 'var(--accent-blue)', fontWeight: '600', cursor: 'help' }}>
-                                  {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
-                                </td>
-                                {Object.entries(row).map(([rB, val]: any) => {
-                                  return (
-                                    <td key={rB} title={`${rA} ↔ ${rB}: ${fmt(val, 2)}% do risco total`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: riskColor(val || 0), color: riskTextColor(val || 0), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
-                                      {fmt(val, 2)}%
-                                    </td>
-                                  );
-                                })}
-                              </tr>
+                              <th key={n} title={`${n} (Peso: ${w}x)`} style={{ padding: '0.4rem 0.5rem', color: 'var(--accent-blue)', minWidth: '80px', textAlign: 'center', cursor: 'help' }}>
+                                {n.length > 15 ? n.slice(0, 13) + '..' : n}
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>({w}x)</div>
+                              </th>
                             );
                           })}
-                        </tbody>
-                      </table>
-                      <div style={{ marginTop: '0.8rem', padding: '0.6rem 0.8rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                        💡 <strong>Diagonal (Variância Direta):</strong> Risco próprio de cada robô escalado pelo seu peso. <br/>
-                        💡 <strong>Fora da Diagonal (Co-variância):</strong> Impacto da correlação de um robô com o outro. Valores negativos (-) mostram efeito benéfico de <strong>diversificação</strong> que reduz o risco total. <br/>
-                        🎯 <strong>Soma total de todas as células = 100.00%.</strong>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: '1rem', textAlign: 'center' }}>
-                      Dados de curvas individuais insuficientes para cálculo de risco.
-                    </div>
-                  )}
-                </div>
-
-                <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      Opção 2: Matriz de Covariância Ponderada (Absoluta em $)
-                    </h3>
-                    <span title="Esta matriz mostra o risco conjunto absoluto (covariância) dos robôs em valores absolutos. Valores maiores indicam maior dependência de risco entre os robôs." style={{ cursor: 'help', fontSize: '0.65rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>
-                      Como ler?
-                    </span>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(corr).map(([rA, row]: any) => {
+                          const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
+                          return (
+                            <tr key={rA}>
+                              <td title={`${rA} (Peso: ${wA}x)`} style={{ padding: '0.4rem 0.6rem', color: 'var(--accent-blue)', fontWeight: '600', cursor: 'help' }}>
+                                {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
+                              </td>
+                              {Object.entries(row).map(([rB, val]: any) => {
+                                const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
+                                const weightedVal = val * wA * wB;
+                                return (
+                                  <td key={rB} title={`${val.toFixed(2)} × ${wA}x × ${wB}x = ${weightedVal.toFixed(2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(val), color: corrTextColor(val), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '600', cursor: 'help' }}>
+                                    {weightedVal.toFixed(2)}
+                                    <div style={{ fontSize: '0.55rem', opacity: 0.7, fontWeight: 'normal' }}>({val.toFixed(2)})</div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  
-                  {matrices?.covariance ? (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ padding: '0.4rem 0.6rem' }}></th>
-                            {Object.keys(matrices.covariance).map(n => {
-                              const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
-                              return (
-                                <th key={n} title={`${n} (Peso: ${w}x)`} style={{ padding: '0.4rem 0.5rem', color: 'var(--accent-blue)', minWidth: '80px', textAlign: 'center', cursor: 'help' }}>
-                                  {n.length > 15 ? n.slice(0, 13) + '..' : n}
-                                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>({w}x)</div>
-                                </th>
-                              );
-                            })}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(matrices.covariance).map(([rA, row]: any) => {
-                            const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
-                            return (
-                              <tr key={rA}>
-                                <td title={`${rA} (Peso: ${wA}x)`} style={{ padding: '0.4rem 0.6rem', color: 'var(--accent-blue)', fontWeight: '600', cursor: 'help' }}>
-                                  {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
-                                </td>
-                                {Object.entries(row).map(([rB, val]: any) => {
-                                  return (
-                                    <td key={rB} title={`${rA} ↔ ${rB}: ${fmt(val, 2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: covColor(val || 0, matrices.maxCovVal || 0), color: '#fff', borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
-                                      {fmt(val, 0)}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: '1rem', textAlign: 'center' }}>
-                      Dados insuficientes para cálculo.
-                    </div>
-                  )}
-                </div>
-
-                <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      Opção 3: Matriz de Correlação Ponderada Normalizada ([-1, +1])
-                    </h3>
-                    <span title="Esta matriz normaliza as correlações diárias aplicando a proporção do peso de cada par de robôs em relação ao portfólio total. O valor é garantido a ficar no intervalo clássico de -1.0 a +1.0." style={{ cursor: 'help', fontSize: '0.65rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>
-                      Como ler?
-                    </span>
-                  </div>
-                  
-                  {matrices?.normalizedWeightedCorr ? (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ padding: '0.4rem 0.6rem' }}></th>
-                            {Object.keys(matrices.normalizedWeightedCorr).map(n => {
-                              const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
-                              return (
-                                <th key={n} title={`${n} (Peso: ${w}x)`} style={{ padding: '0.4rem 0.5rem', color: 'var(--accent-blue)', minWidth: '80px', textAlign: 'center', cursor: 'help' }}>
-                                  {n.length > 15 ? n.slice(0, 13) + '..' : n}
-                                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>({w}x)</div>
-                                </th>
-                              );
-                            })}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(matrices.normalizedWeightedCorr).map(([rA, row]: any) => {
-                            const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
-                            return (
-                              <tr key={rA}>
-                                <td title={`${rA} (Peso: ${wA}x)`} style={{ padding: '0.4rem 0.6rem', color: 'var(--accent-blue)', fontWeight: '600', cursor: 'help' }}>
-                                  {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
-                                </td>
-                                {Object.entries(row).map(([rB, val]: any) => {
-                                  const baseVal = corr?.[rA]?.[rB] ?? 0;
-                                  return (
-                                    <td key={rB} title={`Base Corr: ${fmt(baseVal, 2)} × ${wA}x × ${wB}x / SumSqWeights = ${fmt(val, 2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(baseVal || 0), color: corrTextColor(baseVal || 0), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
-                                      {fmt(val, 2)}
-                                      <div style={{ fontSize: '0.55rem', opacity: 0.7, fontWeight: 'normal' }}>({fmt(baseVal, 2)})</div>
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: '1rem', textAlign: 'center' }}>
-                      Dados insuficientes para cálculo.
-                    </div>
-                  )}
                 </div>
               </>
             )}
