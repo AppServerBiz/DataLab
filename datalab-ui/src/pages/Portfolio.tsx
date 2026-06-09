@@ -300,7 +300,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
   const robots = stats?.robots ?? [];
   const existingRobotIds = robots.map((r: any) => r.robot_id);
 
-  // Compute Risk and Covariance Matrices
+  // Compute Risk and Normalized Weighted Correlation Matrices
   const matrices = (() => {
     if (!stats?.robot_curves || Object.keys(stats.robot_curves).length === 0) return null;
     const rNames = Object.keys(stats.robot_curves);
@@ -323,7 +323,6 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
 
     const cov: { [rA: string]: { [rB: string]: number } } = {};
     let totalVariance = 0;
-    let maxCovVal = 0;
 
     rNames.forEach(rA => {
       cov[rA] = {};
@@ -341,7 +340,6 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
         const covariance = sumProd / (ptsCount - 1 || 1);
         cov[rA][rB] = covariance;
         totalVariance += covariance;
-        if (Math.abs(covariance) > maxCovVal) maxCovVal = Math.abs(covariance);
       });
     });
 
@@ -353,10 +351,25 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
       });
     });
 
+    const sumSqWeights = rNames.reduce((s, name) => {
+      const w = robots.find((r: any) => r.name === name)?.weight ?? 1;
+      return s + w * w;
+    }, 0) || 1;
+
+    const normalizedWeightedCorr: { [rA: string]: { [rB: string]: number } } = {};
+    rNames.forEach(rA => {
+      normalizedWeightedCorr[rA] = {};
+      const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
+      rNames.forEach(rB => {
+        const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
+        const baseCorr = corr?.[rA]?.[rB] ?? 0;
+        normalizedWeightedCorr[rA][rB] = baseCorr * (wA * wB) / sumSqWeights;
+      });
+    });
+
     return {
       contribution,
-      covariance: cov,
-      maxCovVal
+      normalizedWeightedCorr
     };
   })();
 
@@ -991,24 +1004,24 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   )}
                 </div>
 
-                {/* Opção 2: Matriz de Covariância Ponderada (Absoluta em $) */}
+                {/* Opção 3: Matriz de Correlação Ponderada Normalizada ([-1, +1]) */}
                 <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      Opção 2: Matriz de Covariância Ponderada (Absoluta em $)
+                      Opção 3: Matriz de Correlação Ponderada Normalizada ([-1, +1])
                     </h3>
-                    <span title="Esta matriz mostra o risco conjunto absoluto (covariância) dos robôs em valores absolutos. Valores maiores indicam maior dependência de risco entre os robôs." style={{ cursor: 'help', fontSize: '0.65rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>
+                    <span title="Esta matriz normaliza as correlações diárias aplicando a proporção do peso de cada par de robôs em relação ao portfólio total. O valor é garantido a ficar no intervalo clássico de -1.0 a +1.0." style={{ cursor: 'help', fontSize: '0.65rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>
                       Como ler?
                     </span>
                   </div>
                   
-                  {matrices?.covariance ? (
+                  {matrices?.normalizedWeightedCorr ? (
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
                         <thead>
                           <tr>
                             <th style={{ padding: '0.4rem 0.6rem' }}></th>
-                            {Object.keys(matrices.covariance).map(n => {
+                            {Object.keys(matrices.normalizedWeightedCorr).map(n => {
                               const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
                               return (
                                 <th key={n} title={`${n} (Peso: ${w}x)`} style={{ padding: '0.4rem 0.5rem', color: 'var(--accent-blue)', minWidth: '80px', textAlign: 'center', cursor: 'help' }}>
@@ -1020,7 +1033,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                           </tr>
                         </thead>
                         <tbody>
-                          {Object.entries(matrices.covariance).map(([rA, row]: any) => {
+                          {Object.entries(matrices.normalizedWeightedCorr).map(([rA, row]: any) => {
                             const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
                             return (
                               <tr key={rA}>
@@ -1029,9 +1042,11 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
                                 </td>
                                 {Object.entries(row).map(([rB, val]: any) => {
+                                  const baseVal = corr?.[rA]?.[rB] ?? 0;
                                   return (
-                                    <td key={rB} title={`${rA} ↔ ${rB}: ${fmt(val, 2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: covColor(val || 0, matrices.maxCovVal || 0), color: '#fff', borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
-                                      {fmt(val, 0)}
+                                    <td key={rB} title={`Base Corr: ${fmt(baseVal, 2)} × ${wA}x × ${wB}x / SumSqWeights = ${fmt(val, 2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(baseVal || 0), color: corrTextColor(baseVal || 0), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
+                                      {fmt(val, 2)}
+                                      <div style={{ fontSize: '0.55rem', opacity: 0.7, fontWeight: 'normal' }}>({fmt(baseVal, 2)})</div>
                                     </td>
                                   );
                                 })}

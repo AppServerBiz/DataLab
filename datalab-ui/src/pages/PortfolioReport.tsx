@@ -51,21 +51,6 @@ const riskTextColorPrint = (val: number) => {
   return '#000';
 };
 
-// Color for covariance values based on maximum covariance in print
-const covColorPrint = (val: number, maxVal: number) => {
-  const v = Number(val);
-  const m = Number(maxVal);
-  if (isNaN(v) || isNaN(m) || m === 0) return '#f8fafc';
-  const ratio = Math.abs(v) / m;
-  if (v > 0) {
-    const alpha = Math.min(0.9, ratio * 0.7 + 0.1);
-    return `rgba(239, 68, 68, ${alpha})`;
-  } else {
-    const alpha = Math.min(0.9, ratio * 0.7 + 0.1);
-    return `rgba(34, 197, 94, ${alpha})`;
-  }
-};
-
 const PortfolioReport = () => {
   const [data, setData] = useState<any>(null);
 
@@ -93,7 +78,7 @@ const PortfolioReport = () => {
   const totals = stats?.totals;
   const robots = stats?.robots ?? [];
 
-  // Compute Risk and Covariance Matrices
+  // Compute Risk and Normalized Weighted Correlation Matrices
   const matrices = (() => {
     if (!stats?.robot_curves || Object.keys(stats.robot_curves).length === 0) return null;
     const rNames = Object.keys(stats.robot_curves);
@@ -116,7 +101,6 @@ const PortfolioReport = () => {
 
     const cov: { [rA: string]: { [rB: string]: number } } = {};
     let totalVariance = 0;
-    let maxCovVal = 0;
 
     rNames.forEach(rA => {
       cov[rA] = {};
@@ -134,7 +118,6 @@ const PortfolioReport = () => {
         const covariance = sumProd / (ptsCount - 1 || 1);
         cov[rA][rB] = covariance;
         totalVariance += covariance;
-        if (Math.abs(covariance) > maxCovVal) maxCovVal = Math.abs(covariance);
       });
     });
 
@@ -146,10 +129,26 @@ const PortfolioReport = () => {
       });
     });
 
+    const corr = stats?.correlation;
+    const sumSqWeights = rNames.reduce((s, name) => {
+      const w = robots.find((r: any) => r.name === name)?.weight ?? 1;
+      return s + w * w;
+    }, 0) || 1;
+
+    const normalizedWeightedCorr: { [rA: string]: { [rB: string]: number } } = {};
+    rNames.forEach(rA => {
+      normalizedWeightedCorr[rA] = {};
+      const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
+      rNames.forEach(rB => {
+        const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
+        const baseCorr = corr?.[rA]?.[rB] ?? 0;
+        normalizedWeightedCorr[rA][rB] = baseCorr * (wA * wB) / sumSqWeights;
+      });
+    });
+
     return {
       contribution,
-      covariance: cov,
-      maxCovVal
+      normalizedWeightedCorr
     };
   })();
 
@@ -633,15 +632,15 @@ const PortfolioReport = () => {
 
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginTop: '30px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Opção 2: Matriz de Covariância Ponderada (Absoluta em $)
+            Opção 3: Matriz de Correlação Ponderada Normalizada ([-1, +1])
           </h3>
-          {matrices?.covariance ? (
+          {matrices?.normalizedWeightedCorr ? (
             <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '30px' }}>
               <table className="correlation-matrix" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
                 <thead>
                   <tr>
                     <th style={{ padding: '8px', background: '#f8fafc' }}></th>
-                    {Object.keys(matrices.covariance).map(n => {
+                    {Object.keys(matrices.normalizedWeightedCorr).map(n => {
                       const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
                       return (
                         <th key={n} style={{ padding: '8px', background: '#f8fafc', fontWeight: '900', textAlign: 'center' }}>
@@ -653,7 +652,7 @@ const PortfolioReport = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(matrices.covariance).map(([rA, row]: any) => {
+                  {Object.entries(matrices.normalizedWeightedCorr).map(([rA, row]: any) => {
                     const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
                     return (
                       <tr key={rA}>
@@ -662,16 +661,19 @@ const PortfolioReport = () => {
                           <span style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
                         </td>
                         {Object.entries(row).map(([rB, val]: any) => {
+                          const baseVal = stats?.correlation?.[rA]?.[rB] ?? 0;
+                          const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
                           return (
                             <td key={rB} style={{ 
-                              padding: '8px', 
+                              padding: '6px 8px', 
                               textAlign: 'center', 
-                              background: covColorPrint(val || 0, matrices.maxCovVal || 0), 
-                              color: '#fff',
+                              background: corrColor(baseVal || 0), 
+                              color: corrTextColor(baseVal || 0),
                               fontWeight: '700',
                               border: '1px solid #fff'
                             }}>
-                              {fmt(val, 0)}
+                              {fmt(val, 2)}
+                              <div style={{ fontSize: '7px', fontWeight: 'normal', opacity: 0.8 }}>({fmt(baseVal, 2)})</div>
                             </td>
                           );
                         })}
@@ -683,7 +685,7 @@ const PortfolioReport = () => {
             </div>
           ) : (
             <div style={{ fontSize: '10px', color: '#64748b', padding: '20px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '30px' }}>
-              Dados insuficientes para cálculo de covariância.
+              Dados insuficientes para cálculo de correlação ponderada normalizada.
             </div>
           )}
 
