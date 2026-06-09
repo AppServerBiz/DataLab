@@ -351,25 +351,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
       });
     });
 
-    const sumSqWeights = rNames.reduce((s, name) => {
-      const w = robots.find((r: any) => r.name === name)?.weight ?? 1;
-      return s + w * w;
-    }, 0) || 1;
-
-    const normalizedWeightedCorr: { [rA: string]: { [rB: string]: number } } = {};
-    rNames.forEach(rA => {
-      normalizedWeightedCorr[rA] = {};
-      const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
-      rNames.forEach(rB => {
-        const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
-        const baseCorr = corr?.[rA]?.[rB] ?? 0;
-        normalizedWeightedCorr[rA][rB] = baseCorr * (wA * wB) / sumSqWeights;
-      });
-    });
-
     return {
-      contribution,
-      normalizedWeightedCorr
+      contribution
     };
   })();
 
@@ -1004,64 +987,6 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   )}
                 </div>
 
-                {/* Opção 3: Matriz de Correlação Ponderada Normalizada ([-1, +1]) */}
-                <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      Opção 3: Matriz de Correlação Ponderada Normalizada ([-1, +1])
-                    </h3>
-                    <span title="Esta matriz normaliza as correlações diárias aplicando a proporção do peso de cada par de robôs em relação ao portfólio total. O valor é garantido a ficar no intervalo clássico de -1.0 a +1.0." style={{ cursor: 'help', fontSize: '0.65rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>
-                      Como ler?
-                    </span>
-                  </div>
-                  
-                  {matrices?.normalizedWeightedCorr ? (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ padding: '0.4rem 0.6rem' }}></th>
-                            {Object.keys(matrices.normalizedWeightedCorr).map(n => {
-                              const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
-                              return (
-                                <th key={n} title={`${n} (Peso: ${w}x)`} style={{ padding: '0.4rem 0.5rem', color: 'var(--accent-blue)', minWidth: '80px', textAlign: 'center', cursor: 'help' }}>
-                                  {n.length > 15 ? n.slice(0, 13) + '..' : n}
-                                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>({w}x)</div>
-                                </th>
-                              );
-                            })}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(matrices.normalizedWeightedCorr).map(([rA, row]: any) => {
-                            const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
-                            return (
-                              <tr key={rA}>
-                                <td title={`${rA} (Peso: ${wA}x)`} style={{ padding: '0.4rem 0.6rem', color: 'var(--accent-blue)', fontWeight: '600', cursor: 'help' }}>
-                                  {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
-                                </td>
-                                {Object.entries(row).map(([rB, val]: any) => {
-                                  const baseVal = corr?.[rA]?.[rB] ?? 0;
-                                  return (
-                                    <td key={rB} title={`Base Corr: ${fmt(baseVal, 2)} × ${wA}x × ${wB}x / SumSqWeights = ${fmt(val, 2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(baseVal || 0), color: corrTextColor(baseVal || 0), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
-                                      {fmt(val, 2)}
-                                      <div style={{ fontSize: '0.55rem', opacity: 0.7, fontWeight: 'normal' }}>({fmt(baseVal, 2)})</div>
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', padding: '1rem', textAlign: 'center' }}>
-                      Dados insuficientes para cálculo.
-                    </div>
-                  )}
-                </div>
               </>
             )}
           </div>

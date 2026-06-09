@@ -129,26 +129,8 @@ const PortfolioReport = () => {
       });
     });
 
-    const corr = stats?.correlation;
-    const sumSqWeights = rNames.reduce((s, name) => {
-      const w = robots.find((r: any) => r.name === name)?.weight ?? 1;
-      return s + w * w;
-    }, 0) || 1;
-
-    const normalizedWeightedCorr: { [rA: string]: { [rB: string]: number } } = {};
-    rNames.forEach(rA => {
-      normalizedWeightedCorr[rA] = {};
-      const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
-      rNames.forEach(rB => {
-        const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
-        const baseCorr = corr?.[rA]?.[rB] ?? 0;
-        normalizedWeightedCorr[rA][rB] = baseCorr * (wA * wB) / sumSqWeights;
-      });
-    });
-
     return {
-      contribution,
-      normalizedWeightedCorr
+      contribution
     };
   })();
 
@@ -630,64 +612,7 @@ const PortfolioReport = () => {
             </div>
           )}
 
-          <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginTop: '30px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Opção 3: Matriz de Correlação Ponderada Normalizada ([-1, +1])
-          </h3>
-          {matrices?.normalizedWeightedCorr ? (
-            <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '30px' }}>
-              <table className="correlation-matrix" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
-                <thead>
-                  <tr>
-                    <th style={{ padding: '8px', background: '#f8fafc' }}></th>
-                    {Object.keys(matrices.normalizedWeightedCorr).map(n => {
-                      const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
-                      return (
-                        <th key={n} style={{ padding: '8px', background: '#f8fafc', fontWeight: '900', textAlign: 'center' }}>
-                          {n.length > 12 ? n.slice(0, 10) + '..' : n}
-                          <div style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal' }}>({w}x)</div>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(matrices.normalizedWeightedCorr).map(([rA, row]: any) => {
-                    const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
-                    return (
-                      <tr key={rA}>
-                        <td style={{ padding: '8px', fontWeight: '900', background: '#f8fafc' }}>
-                          {rA.length > 12 ? rA.slice(0, 10) + '..' : rA}
-                          <span style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
-                        </td>
-                        {Object.entries(row).map(([rB, val]: any) => {
-                          const baseVal = stats?.correlation?.[rA]?.[rB] ?? 0;
-                          const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
-                          return (
-                            <td key={rB} style={{ 
-                              padding: '6px 8px', 
-                              textAlign: 'center', 
-                              background: corrColor(baseVal || 0), 
-                              color: corrTextColor(baseVal || 0),
-                              fontWeight: '700',
-                              border: '1px solid #fff'
-                            }}>
-                              {fmt(val, 2)}
-                              <div style={{ fontSize: '7px', fontWeight: 'normal', opacity: 0.8 }}>({fmt(baseVal, 2)})</div>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div style={{ fontSize: '10px', color: '#64748b', padding: '20px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '30px' }}>
-              Dados insuficientes para cálculo de correlação ponderada normalizada.
-            </div>
-          )}
+
 
           {/* PDF Footer Final */}
           <div style={{ marginTop: '100px', borderTop: '2px solid #000', paddingTop: '20px', textAlign: 'center', fontSize: '9pt', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
