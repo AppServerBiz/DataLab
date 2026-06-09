@@ -51,6 +51,27 @@ const riskTextColorPrint = (val: number) => {
   return '#000';
 };
 
+// Print-friendly colors for drawdown risk matrix
+const ddRiskColorPrint = (val: number, capital: number) => {
+  const v = Number(val);
+  const cap = Number(capital) || 30000;
+  if (isNaN(v)) return '#f8fafc';
+  const ratio = Math.abs(v) / (cap * 0.05 || 1);
+  const alpha = Math.min(0.9, ratio * 0.7 + 0.1);
+  if (v > 0) {
+    return `rgba(239, 68, 68, ${alpha})`; // Red
+  } else if (v < 0) {
+    return `rgba(34, 197, 94, ${alpha})`;  // Green
+  }
+  return '#f8fafc';
+};
+const ddRiskTextColorPrint = (val: number, capital: number) => {
+  const v = Number(val);
+  const cap = Number(capital) || 30000;
+  const ratio = Math.abs(v) / (cap * 0.05 || 1);
+  return ratio > 0.4 ? '#fff' : '#000';
+};
+
 const PortfolioReport = () => {
   const [data, setData] = useState<any>(null);
 
@@ -78,31 +99,40 @@ const PortfolioReport = () => {
   const totals = stats?.totals;
   const robots = stats?.robots ?? [];
 
-  // Compute Normalized Weighted Correlation Matrix
+  // Compute Drawdown Correlation Risk Matrix ($)
   const matrices = (() => {
     if (!stats?.correlation || Object.keys(stats.correlation).length === 0) return null;
     const rNames = Object.keys(stats.correlation);
     if (rNames.length === 0) return null;
 
     const corr = stats.correlation;
-    const sumSqWeights = rNames.reduce((s, name) => {
-      const w = robots.find((r: any) => r.name === name)?.weight ?? 1;
-      return s + w * w;
-    }, 0) || 1;
+    const capital = Number(portfolio?.capital || 30000);
 
-    const normalizedWeightedCorr: { [rA: string]: { [rB: string]: number } } = {};
+    const ddCorrelationRisk: { [rA: string]: { [rB: string]: number } } = {};
     rNames.forEach(rA => {
-      normalizedWeightedCorr[rA] = {};
-      const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
+      ddCorrelationRisk[rA] = {};
+      const robotA = robots.find((r: any) => r.name === rA);
+      const ddA = Number(robotA?.max_dd_from_csv || robotA?.max_dd_equity || 0);
+      const wA = robotA?.weight ?? 1;
+
       rNames.forEach(rB => {
-        const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
-        const baseCorr = corr?.[rA]?.[rB] ?? 0;
-        normalizedWeightedCorr[rA][rB] = baseCorr * (wA * wB) / sumSqWeights;
+        const robotB = robots.find((r: any) => r.name === rB);
+        const ddB = Number(robotB?.max_dd_from_csv || robotB?.max_dd_equity || 0);
+        const wB = robotB?.weight ?? 1;
+
+        if (rA === rB) {
+          // Diagonal: Weighted Drawdown
+          ddCorrelationRisk[rA][rB] = ddA * wA;
+        } else {
+          // Off-diagonal: Correlation Drawdown Risk Impact
+          const baseCorr = corr?.[rA]?.[rB] ?? 0;
+          ddCorrelationRisk[rA][rB] = baseCorr * (ddA * wA) * (ddB * wB) / capital;
+        }
       });
     });
 
     return {
-      normalizedWeightedCorr
+      ddCorrelationRisk
     };
   })();
 
@@ -530,15 +560,15 @@ const PortfolioReport = () => {
 
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginTop: '30px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Matriz de Correlação Ponderada Normalizada ([-1, +1])
+            Matriz de Impacto de Risco de Drawdown ($)
           </h3>
-          {matrices?.normalizedWeightedCorr ? (
+          {matrices?.ddCorrelationRisk ? (
             <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '30px' }}>
               <table className="correlation-matrix" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
                 <thead>
                   <tr>
                     <th style={{ padding: '8px', background: '#f8fafc' }}></th>
-                    {Object.keys(matrices.normalizedWeightedCorr).map(n => {
+                    {Object.keys(matrices.ddCorrelationRisk).map(n => {
                       const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
                       return (
                         <th key={n} style={{ padding: '8px', background: '#f8fafc', fontWeight: '900', textAlign: 'center' }}>
@@ -550,7 +580,7 @@ const PortfolioReport = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(matrices.normalizedWeightedCorr).map(([rA, row]: any) => {
+                  {Object.entries(matrices.ddCorrelationRisk).map(([rA, row]: any) => {
                     const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
                     return (
                       <tr key={rA}>
@@ -559,18 +589,22 @@ const PortfolioReport = () => {
                           <span style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
                         </td>
                         {Object.entries(row).map(([rB, val]: any) => {
-                          const baseVal = stats?.correlation?.[rA]?.[rB] ?? 0;
+                          const isDiagonal = rA === rB;
+                          const baseCorr = stats?.correlation?.[rA]?.[rB] ?? 0;
+                          const cap = Number(portfolio?.capital || 30000);
                           return (
                             <td key={rB} style={{ 
                               padding: '6px 8px', 
                               textAlign: 'center', 
-                              background: corrColor(baseVal || 0), 
-                              color: corrTextColor(baseVal || 0),
+                              background: isDiagonal ? '#f1f5f9' : ddRiskColorPrint(val || 0, cap), 
+                              color: isDiagonal ? '#000' : ddRiskTextColorPrint(val || 0, cap),
                               fontWeight: '700',
                               border: '1px solid #fff'
                             }}>
-                              {fmt(val, 2)}
-                              <div style={{ fontSize: '7px', fontWeight: 'normal', opacity: 0.8 }}>({fmt(baseVal, 2)})</div>
+                              {val > 0 && !isDiagonal ? '+' : ''}{fmtCurrency(val)}
+                              {!isDiagonal && (
+                                <div style={{ fontSize: '7px', fontWeight: 'normal', opacity: 0.8 }}>({fmt(baseCorr, 2)})</div>
+                              )}
                             </td>
                           );
                         })}
@@ -582,7 +616,7 @@ const PortfolioReport = () => {
             </div>
           ) : (
             <div style={{ fontSize: '10px', color: '#64748b', padding: '20px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '30px' }}>
-              Dados insuficientes para cálculo de correlação ponderada normalizada.
+              Dados insuficientes para cálculo de impacto de risco de drawdown.
             </div>
           )}
 
