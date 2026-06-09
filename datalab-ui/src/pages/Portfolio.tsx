@@ -926,8 +926,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                               {rA.length > 15 ? rA.slice(0, 13) + '..' : rA}
                             </td>
                             {Object.entries(row).map(([rB, val]: any) => (
-                              <td key={rB} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(val), color: corrTextColor(val), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '600' }}>
-                                {val.toFixed(2)}
+                              <td key={rB} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(val || 0), color: corrTextColor(val || 0), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '600' }}>
+                                {fmt(val, 2)}
                               </td>
                             ))}
                           </tr>
@@ -975,8 +975,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                                 </td>
                                 {Object.entries(row).map(([rB, val]: any) => {
                                   return (
-                                    <td key={rB} title={`${rA} ↔ ${rB}: ${val.toFixed(2)}% do risco total`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: riskColor(val), color: riskTextColor(val), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
-                                      {val.toFixed(2)}%
+                                    <td key={rB} title={`${rA} ↔ ${rB}: ${fmt(val, 2)}% do risco total`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: riskColor(val || 0), color: riskTextColor(val || 0), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
+                                      {fmt(val, 2)}%
                                     </td>
                                   );
                                 })}
@@ -1036,8 +1036,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                                 </td>
                                 {Object.entries(row).map(([rB, val]: any) => {
                                   return (
-                                    <td key={rB} title={`${rA} ↔ ${rB}: ${val.toFixed(2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: covColor(val, matrices.maxCovVal), color: '#fff', borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
-                                      {val.toFixed(0)}
+                                    <td key={rB} title={`${rA} ↔ ${rB}: ${fmt(val, 2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: covColor(val || 0, matrices.maxCovVal || 0), color: '#fff', borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
+                                      {fmt(val, 0)}
                                     </td>
                                   );
                                 })}
@@ -1093,9 +1093,9 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                                 {Object.entries(row).map(([rB, val]: any) => {
                                   const baseVal = corr?.[rA]?.[rB] ?? 0;
                                   return (
-                                    <td key={rB} title={`Base Corr: ${baseVal.toFixed(2)} × ${wA}x × ${wB}x / SumSqWeights = ${val.toFixed(2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(baseVal), color: corrTextColor(baseVal), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
-                                      {val.toFixed(2)}
-                                      <div style={{ fontSize: '0.55rem', opacity: 0.7, fontWeight: 'normal' }}>({baseVal.toFixed(2)})</div>
+                                    <td key={rB} title={`Base Corr: ${fmt(baseVal, 2)} × ${wA}x × ${wB}x / SumSqWeights = ${fmt(val, 2)}`} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', background: corrColor(baseVal || 0), color: corrTextColor(baseVal || 0), borderRadius: '3px', margin: '1px', border: '1px solid rgba(255,255,255,0.03)', fontWeight: '700', cursor: 'help' }}>
+                                      {fmt(val, 2)}
+                                      <div style={{ fontSize: '0.55rem', opacity: 0.7, fontWeight: 'normal' }}>({fmt(baseVal, 2)})</div>
                                     </td>
                                   );
                                 })}

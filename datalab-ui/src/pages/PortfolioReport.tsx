@@ -565,12 +565,12 @@ const PortfolioReport = () => {
                       <td key={rB} style={{ 
                         padding: '8px', 
                         textAlign: 'center', 
-                        background: corrColor(val), 
-                        color: corrTextColor(val),
+                        background: corrColor(val || 0), 
+                        color: corrTextColor(val || 0),
                         fontWeight: '700',
                         border: '1px solid #fff'
                       }}>
-                        {val.toFixed(2)}
+                        {fmt(val, 2)}
                       </td>
                     ))}
                   </tr>
@@ -614,12 +614,12 @@ const PortfolioReport = () => {
                             <td key={rB} style={{ 
                               padding: '8px', 
                               textAlign: 'center', 
-                              background: riskColorPrint(val), 
-                              color: riskTextColorPrint(val),
+                              background: riskColorPrint(val || 0), 
+                              color: riskTextColorPrint(val || 0),
                               fontWeight: '700',
                               border: '1px solid #fff'
                             }}>
-                              {val.toFixed(2)}%
+                              {fmt(val, 2)}%
                             </td>
                           );
                         })}
@@ -670,12 +670,12 @@ const PortfolioReport = () => {
                             <td key={rB} style={{ 
                               padding: '8px', 
                               textAlign: 'center', 
-                              background: covColorPrint(val, matrices.maxCovVal), 
+                              background: covColorPrint(val || 0, matrices.maxCovVal || 0), 
                               color: '#fff',
                               fontWeight: '700',
                               border: '1px solid #fff'
                             }}>
-                              {val.toFixed(0)}
+                              {fmt(val, 0)}
                             </td>
                           );
                         })}
@@ -727,13 +727,13 @@ const PortfolioReport = () => {
                             <td key={rB} style={{ 
                               padding: '8px', 
                               textAlign: 'center', 
-                              background: corrColor(baseVal), 
-                              color: corrTextColor(baseVal),
+                              background: corrColor(baseVal || 0), 
+                              color: corrTextColor(baseVal || 0),
                               fontWeight: '700',
                               border: '1px solid #fff'
                             }}>
-                              {val.toFixed(2)}
-                              <div style={{ fontSize: '7px', opacity: 0.7, fontWeight: 'normal' }}>({baseVal.toFixed(2)})</div>
+                              {fmt(val, 2)}
+                              <div style={{ fontSize: '7px', opacity: 0.7, fontWeight: 'normal' }}>({fmt(baseVal, 2)})</div>
                             </td>
                           );
                         })}
