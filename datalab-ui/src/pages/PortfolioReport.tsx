@@ -78,59 +78,31 @@ const PortfolioReport = () => {
   const totals = stats?.totals;
   const robots = stats?.robots ?? [];
 
-  // Compute Risk and Normalized Weighted Correlation Matrices
+  // Compute Normalized Weighted Correlation Matrix
   const matrices = (() => {
-    if (!stats?.robot_curves || Object.keys(stats.robot_curves).length === 0) return null;
-    const rNames = Object.keys(stats.robot_curves);
+    if (!stats?.correlation || Object.keys(stats.correlation).length === 0) return null;
+    const rNames = Object.keys(stats.correlation);
     if (rNames.length === 0) return null;
-    
-    const firstCurve = stats.robot_curves[rNames[0]];
-    const numPoints = firstCurve ? firstCurve.length : 0;
-    if (numPoints === 0) return null;
 
-    const series: { [name: string]: number[] } = {};
-    const means: { [name: string]: number } = {};
+    const corr = stats.correlation;
+    const sumSqWeights = rNames.reduce((s, name) => {
+      const w = robots.find((r: any) => r.name === name)?.weight ?? 1;
+      return s + w * w;
+    }, 0) || 1;
 
-    rNames.forEach(name => {
-      const pts = stats.robot_curves[name] || [];
-      const vals = pts.map((pt: any) => pt.dd || 0);
-      series[name] = vals;
-      const sum = vals.reduce((a: number, b: number) => a + b, 0);
-      means[name] = sum / (vals.length || 1);
-    });
-
-    const cov: { [rA: string]: { [rB: string]: number } } = {};
-    let totalVariance = 0;
-
+    const normalizedWeightedCorr: { [rA: string]: { [rB: string]: number } } = {};
     rNames.forEach(rA => {
-      cov[rA] = {};
+      normalizedWeightedCorr[rA] = {};
+      const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
       rNames.forEach(rB => {
-        const valsA = series[rA] || [];
-        const valsB = series[rB] || [];
-        const meanA = means[rA] || 0;
-        const meanB = means[rB] || 0;
-
-        let sumProd = 0;
-        const ptsCount = Math.min(valsA.length, valsB.length, numPoints);
-        for (let i = 0; i < ptsCount; i++) {
-          sumProd += (valsA[i] - meanA) * (valsB[i] - meanB);
-        }
-        const covariance = sumProd / (ptsCount - 1 || 1);
-        cov[rA][rB] = covariance;
-        totalVariance += covariance;
-      });
-    });
-
-    const contribution: { [rA: string]: { [rB: string]: number } } = {};
-    rNames.forEach(rA => {
-      contribution[rA] = {};
-      rNames.forEach(rB => {
-        contribution[rA][rB] = totalVariance > 0 ? (cov[rA][rB] / totalVariance) * 100 : 0;
+        const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
+        const baseCorr = corr?.[rA]?.[rB] ?? 0;
+        normalizedWeightedCorr[rA][rB] = baseCorr * (wA * wB) / sumSqWeights;
       });
     });
 
     return {
-      contribution
+      normalizedWeightedCorr
     };
   })();
 
@@ -558,15 +530,15 @@ const PortfolioReport = () => {
 
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginTop: '30px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Opção 1: Matriz de Contribuição de Risco ao Portfólio (%)
+            Matriz de Correlação Ponderada Normalizada ([-1, +1])
           </h3>
-          {matrices?.contribution ? (
+          {matrices?.normalizedWeightedCorr ? (
             <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '30px' }}>
               <table className="correlation-matrix" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
                 <thead>
                   <tr>
                     <th style={{ padding: '8px', background: '#f8fafc' }}></th>
-                    {Object.keys(matrices.contribution).map(n => {
+                    {Object.keys(matrices.normalizedWeightedCorr).map(n => {
                       const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
                       return (
                         <th key={n} style={{ padding: '8px', background: '#f8fafc', fontWeight: '900', textAlign: 'center' }}>
@@ -578,7 +550,7 @@ const PortfolioReport = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(matrices.contribution).map(([rA, row]: any) => {
+                  {Object.entries(matrices.normalizedWeightedCorr).map(([rA, row]: any) => {
                     const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
                     return (
                       <tr key={rA}>
@@ -587,16 +559,18 @@ const PortfolioReport = () => {
                           <span style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
                         </td>
                         {Object.entries(row).map(([rB, val]: any) => {
+                          const baseVal = stats?.correlation?.[rA]?.[rB] ?? 0;
                           return (
                             <td key={rB} style={{ 
-                              padding: '8px', 
+                              padding: '6px 8px', 
                               textAlign: 'center', 
-                              background: riskColorPrint(val || 0), 
-                              color: riskTextColorPrint(val || 0),
+                              background: corrColor(baseVal || 0), 
+                              color: corrTextColor(baseVal || 0),
                               fontWeight: '700',
                               border: '1px solid #fff'
                             }}>
-                              {fmt(val, 2)}%
+                              {fmt(val, 2)}
+                              <div style={{ fontSize: '7px', fontWeight: 'normal', opacity: 0.8 }}>({fmt(baseVal, 2)})</div>
                             </td>
                           );
                         })}
@@ -608,7 +582,7 @@ const PortfolioReport = () => {
             </div>
           ) : (
             <div style={{ fontSize: '10px', color: '#64748b', padding: '20px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '30px' }}>
-              Curvas individuais indisponíveis para cálculo de contribuição de risco.
+              Dados insuficientes para cálculo de correlação ponderada normalizada.
             </div>
           )}
 
