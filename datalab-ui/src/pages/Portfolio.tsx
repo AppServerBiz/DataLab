@@ -644,7 +644,10 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 <div className="card chart-row" style={{ padding: '1.2rem', height: '280px' }}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                      <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Exposição (Drawdown) em Tempo Real ($)</h3>
-                     <span title="Diferença: Séries mensais usam apenas fechamentos de mês. O Real-time captura todas as oscilações intra-dia do histórico do relatório." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Diferença entre Real-time e Mensal</span>
+                     <div style={{ display: 'flex', gap: '0.8rem' }}>
+                       <span title="Cálculo Consolidado: Soma aritmética direta dos drawdowns máximos diários individuais de cada robô no portfólio. Representa uma visão conservadora de pior cenário." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculado?</span>
+                       <span title="Diferença: Séries mensais usam apenas fechamentos de mês. O Real-time captura todas as oscilações intra-dia do histórico do relatório." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Diferença entre Real-time e Mensal</span>
+                     </div>
                    </div>
                    <div style={{ height: '200px' }}>
                      <Line 
@@ -659,7 +662,10 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 <div className="print-spacer" style={{ height: '3rem', display: 'none' }}></div>
 
                 <div className="card chart-row" style={{ padding: '1.2rem', height: '320px' }}>
-                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Drawdown Individual por Robô ($)</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Drawdown Individual por Robô ($)</h3>
+                    <span title="Cálculo Individual: Plota o rebaixamento diário máximo de cada robô isoladamente, multiplicado por seu respectivo peso no portfólio." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculado?</span>
+                  </div>
                   <div style={{ height: '240px' }}>
                     <Line 
                       data={{
