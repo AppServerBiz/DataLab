@@ -308,10 +308,13 @@ const PortfolioReport = () => {
           </div>
 
           <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
-            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-              Top 10 Maiores Drawdowns (Histórico Agregado)
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
+                Top 10 maiores drawdowns (dia)
+              </h3>
+              <span title="Cálculo Diário: Identifica e ordena os maiores períodos de rebaixamento consolidado da curva diária do portfólio, e não por trade isolado." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">Como é calculado?</span>
+            </div>
             <div style={{ height: '400px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
               <Bar 
                 data={{

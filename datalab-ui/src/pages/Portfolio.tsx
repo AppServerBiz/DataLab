@@ -680,7 +680,10 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 <div className="print-spacer" style={{ height: '3rem', display: 'none' }}></div>
 
                 <div className="card" style={{ padding: '1.2rem' }}>
-                  <h3 style={{ margin: '0 0 1.2rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Top 10 Maiores Drawdowns</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Top 10 maiores drawdowns (dia)</h3>
+                    <span title="Cálculo Diário: Identifica e ordena os maiores períodos de rebaixamento consolidado da curva diária do portfólio, e não por trade isolado." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculado?</span>
+                  </div>
                   <div style={{ height: '320px' }}>
                     <Bar 
                       data={{
