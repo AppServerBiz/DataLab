@@ -494,9 +494,9 @@ const PortfolioReport = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>VaR 95%</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#f59e0b', flex: 1, textAlign: 'right' }}>{fmtPct(totals?.recent?.var95 || 0)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtPct(totals?.past?.var95 || 0)}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtPct(totals?.past?.var95 || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#f59e0b', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.var95 || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.var95 || 0)}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.var95 || 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>ROI Médio/Mês</span>
