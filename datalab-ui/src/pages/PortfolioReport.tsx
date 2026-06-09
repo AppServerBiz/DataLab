@@ -145,8 +145,8 @@ const PortfolioReport = () => {
 
             { label: 'Fator LL/DD', value: fmt(totals?.llDdPct || 0) + '%', color: '#0b57d0' },
             { label: 'Total Trades', value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), color: '#0f172a' },
-            { label: 'Soma Lotes', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0), 0), 2), color: '#0f172a' },
-            { label: 'Lotes Mês', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0), 0), 2), color: '#0f172a' },
+            { label: 'Soma Lotes', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0) * (r.weight || 1), 0), 2), color: '#0f172a' },
+            { label: 'Lotes Mês', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0) * (r.weight || 1), 0), 2), color: '#0f172a' },
           ].map(m => (
             <div key={m.label} style={{ background: '#fff', padding: '15px' }}>
               <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '5px' }}>{m.label}</div>

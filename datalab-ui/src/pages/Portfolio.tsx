@@ -438,8 +438,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   { label: 'VAR 95%', value: `${fmtCurrency((totals.var95 || 0) / 100 * portfolio.capital)} - ${fmtPct(totals.var95 || 0)}`, icon: <DollarSign size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', note: '95% Prob. DD' },
                   { label: 'LL/DD FATOR', value: fmt(totals.llDdPct || 0) + '%', icon: <Activity size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.05)' },
                   { label: 'TOTAL TRADES', value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
-                  { label: 'SOMA LOTES', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
-                  { label: 'LOTES MÊS', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
+                  { label: 'SOMA LOTES', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0) * (r.weight || 1), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
+                  { label: 'LOTES MÊS', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0) * (r.weight || 1), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
                 ].map(s => (
                   <div key={s.label} className="metric-card" style={{ background: s.bg, border: `1px solid ${s.color}22`, borderRadius: '10px', padding: '1rem' }}>
                     <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: s.color, marginBottom: '0.5rem', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
