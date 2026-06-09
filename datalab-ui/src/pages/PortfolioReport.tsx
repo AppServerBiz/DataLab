@@ -31,6 +31,20 @@ const corrColor = (v: number) => {
 };
 const corrTextColor = (v: number) => v >= 0.4 ? '#fff' : '#000';
 
+const riskColorPrint = (val: number) => {
+  if (val > 15) return 'rgba(239, 68, 68, 0.8)';
+  if (val > 5) return 'rgba(245, 158, 11, 0.6)';
+  if (val > 0) return 'rgba(245, 158, 11, 0.2)';
+  if (val < -5) return 'rgba(34, 197, 94, 0.8)';
+  if (val < 0) return 'rgba(34, 197, 94, 0.3)';
+  return 'rgba(241, 245, 249, 1)';
+};
+
+const riskTextColorPrint = (val: number) => {
+  if (val > 15 || val < -5) return '#fff';
+  return '#000';
+};
+
 const PortfolioReport = () => {
   const [data, setData] = useState<any>(null);
 
@@ -57,6 +71,58 @@ const PortfolioReport = () => {
   const { portfolio, stats } = data;
   const totals = stats?.totals;
   const robots = stats?.robots ?? [];
+
+  // Compute Risk Contribution Matrix
+  const riskMatrix = (() => {
+    if (!stats?.robot_curves || Object.keys(stats.robot_curves).length === 0) return null;
+    const rNames = Object.keys(stats.robot_curves);
+    if (rNames.length === 0) return null;
+    const numPoints = stats.robot_curves[rNames[0]].length;
+    if (numPoints === 0) return null;
+
+    const series: { [name: string]: number[] } = {};
+    const means: { [name: string]: number } = {};
+
+    rNames.forEach(name => {
+      const pts = stats.robot_curves[name] || [];
+      const vals = pts.map((pt: any) => pt.dd || 0);
+      series[name] = vals;
+      const sum = vals.reduce((a: number, b: number) => a + b, 0);
+      means[name] = sum / (vals.length || 1);
+    });
+
+    const cov: { [rA: string]: { [rB: string]: number } } = {};
+    let totalVariance = 0;
+
+    rNames.forEach(rA => {
+      cov[rA] = {};
+      rNames.forEach(rB => {
+        const valsA = series[rA] || [];
+        const valsB = series[rB] || [];
+        const meanA = means[rA] || 0;
+        const meanB = means[rB] || 0;
+
+        let sumProd = 0;
+        const ptsCount = Math.min(valsA.length, valsB.length, numPoints);
+        for (let i = 0; i < ptsCount; i++) {
+          sumProd += (valsA[i] - meanA) * (valsB[i] - meanB);
+        }
+        const covariance = sumProd / (ptsCount - 1 || 1);
+        cov[rA][rB] = covariance;
+        totalVariance += covariance;
+      });
+    });
+
+    const contribution: { [rA: string]: { [rB: string]: number } } = {};
+    rNames.forEach(rA => {
+      contribution[rA] = {};
+      rNames.forEach(rB => {
+        contribution[rA][rB] = totalVariance > 0 ? (cov[rA][rB] / totalVariance) * 100 : 0;
+      });
+    });
+
+    return contribution;
+  })();
 
   const getPrintChartOptions = (originalOptions: any = {}) => ({
     ...originalOptions,
@@ -480,58 +546,61 @@ const PortfolioReport = () => {
             </table>
           </div>
 
-          <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginTop: '30px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Matriz de Correlação Ponderada (Peso)
+            Matriz de Contribuição de Risco ao Portfólio (%)
           </h3>
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-            <table className="correlation-matrix" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: '8px', background: '#f8fafc' }}></th>
-                  {Object.keys(stats?.correlation || {}).map(n => {
-                    const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
+          {riskMatrix ? (
+            <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <table className="correlation-matrix" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: '8px', background: '#f8fafc' }}></th>
+                    {Object.keys(riskMatrix).map(n => {
+                      const w = robots.find((r: any) => r.name === n)?.weight ?? 1;
+                      return (
+                        <th key={n} style={{ padding: '8px', background: '#f8fafc', fontWeight: '900', textAlign: 'center' }}>
+                          {n.length > 12 ? n.slice(0, 10) + '..' : n}
+                          <div style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal' }}>({w}x)</div>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(riskMatrix).map(([rA, row]: any) => {
+                    const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
                     return (
-                      <th key={n} style={{ padding: '8px', background: '#f8fafc', fontWeight: '900', textAlign: 'center' }}>
-                        {n.length > 12 ? n.slice(0, 10) + '..' : n}
-                        <div style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal' }}>({w}x)</div>
-                      </th>
+                      <tr key={rA}>
+                        <td style={{ padding: '8px', fontWeight: '900', background: '#f8fafc' }}>
+                          {rA.length > 12 ? rA.slice(0, 10) + '..' : rA}
+                          <span style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
+                        </td>
+                        {Object.entries(row).map(([rB, val]: any) => {
+                          return (
+                            <td key={rB} style={{ 
+                              padding: '8px', 
+                              textAlign: 'center', 
+                              background: riskColorPrint(val), 
+                              color: riskTextColorPrint(val),
+                              fontWeight: '700',
+                              border: '1px solid #fff'
+                            }}>
+                              {val.toFixed(2)}%
+                            </td>
+                          );
+                        })}
+                      </tr>
                     );
                   })}
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(stats?.correlation || {}).map(([rA, row]: any) => {
-                  const wA = robots.find((r: any) => r.name === rA)?.weight ?? 1;
-                  return (
-                    <tr key={rA}>
-                      <td style={{ padding: '8px', fontWeight: '900', background: '#f8fafc' }}>
-                        {rA.length > 12 ? rA.slice(0, 10) + '..' : rA}
-                        <span style={{ fontSize: '7px', color: '#64748b', fontWeight: 'normal', marginLeft: '4px' }}>({wA}x)</span>
-                      </td>
-                      {Object.entries(row).map(([rB, val]: any) => {
-                        const wB = robots.find((r: any) => r.name === rB)?.weight ?? 1;
-                        const weightedVal = val * wA * wB;
-                        return (
-                          <td key={rB} style={{ 
-                            padding: '8px', 
-                            textAlign: 'center', 
-                            background: corrColor(val), 
-                            color: corrTextColor(val),
-                            fontWeight: '700',
-                            border: '1px solid #fff'
-                          }}>
-                            {weightedVal.toFixed(2)}
-                            <div style={{ fontSize: '7px', opacity: 0.7, fontWeight: 'normal' }}>({val.toFixed(2)})</div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ fontSize: '10px', color: '#64748b', padding: '20px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              Curvas individuais indisponíveis para cálculo de contribuição de risco.
+            </div>
+          )}
 
           {/* PDF Footer Final */}
           <div style={{ marginTop: '100px', borderTop: '2px solid #000', paddingTop: '20px', textAlign: 'center', fontSize: '9pt', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
