@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -676,6 +676,84 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                     />
                   </div>
                 </div>
+                <div className="print-spacer" style={{ height: '3rem', display: 'none' }}></div>
+
+                {/* Monthly Rentability & Risk Table */}
+                {stats?.monthly_returns && stats.monthly_returns.length > 0 && (
+                  <div className="card" style={{ padding: '1.2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '0.85rem', color: '#fff', fontWeight: '700' }}>Rentabilidade histórica</h3>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Lucro ($) | % Capital Inicial ({fmtCurrency(portfolio.capital)}) | DME ($)</span>
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
+                        <thead>
+                          <tr style={{ background: '#262930', color: '#fff', textAlign: 'center' }}>
+                            <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: '800' }}>ANO</th>
+                            {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map(m => (
+                              <th key={m} style={{ padding: '0.6rem 0.4rem', fontWeight: '700', minWidth: '55px' }}>{m}</th>
+                            ))}
+                            <th style={{ padding: '0.6rem 0.6rem', fontWeight: '800', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>No ano</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stats.monthly_returns.map((row: any) => (
+                            <React.Fragment key={row.year}>
+                              {/* Row 1: Profit $ */}
+                              <tr style={{ background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                                <td rowSpan={3} style={{ padding: '0.6rem 0.8rem', fontWeight: '900', color: '#fff', fontSize: '0.9rem', verticalAlign: 'middle', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+                                  {row.year}
+                                </td>
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                                  const cell = row.months[m];
+                                  if (!cell) return <td key={m} style={{ padding: '0.4rem', textAlign: 'center', color: 'var(--text-muted)' }}>—</td>;
+                                  return (
+                                    <td key={m} style={{ padding: '0.4rem', textAlign: 'center', color: cell.profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: '700' }}>
+                                      {fmtCurrency(cell.profit)}
+                                    </td>
+                                  );
+                                })}
+                                <td style={{ padding: '0.4rem 0.6rem', textAlign: 'center', color: row.yearTotal.profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: '900', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                                  {fmtCurrency(row.yearTotal.profit)}
+                                </td>
+                              </tr>
+                              {/* Row 2: % Capital */}
+                              <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                                  const cell = row.months[m];
+                                  if (!cell) return <td key={m} style={{ padding: '0.3rem 0.4rem', textAlign: 'center', color: 'var(--text-muted)' }}>—</td>;
+                                  return (
+                                    <td key={m} style={{ padding: '0.3rem 0.4rem', textAlign: 'center', color: cell.pct >= 0 ? '#4ade80' : '#f87171', fontWeight: '600', fontSize: '0.68rem' }}>
+                                      {fmtPct(cell.pct)}
+                                    </td>
+                                  );
+                                })}
+                                <td style={{ padding: '0.3rem 0.6rem', textAlign: 'center', color: row.yearTotal.pct >= 0 ? '#4ade80' : '#f87171', fontWeight: '800', borderLeft: '1px solid rgba(255,255,255,0.1)', fontSize: '0.72rem' }}>
+                                  {fmtPct(row.yearTotal.pct)}
+                                </td>
+                              </tr>
+                              {/* Row 3: DME */}
+                              <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                                  const cell = row.months[m];
+                                  if (!cell) return <td key={m} style={{ padding: '0.3rem 0.4rem', textAlign: 'center', color: 'var(--text-muted)' }}>—</td>;
+                                  return (
+                                    <td key={m} style={{ padding: '0.3rem 0.4rem', textAlign: 'center', color: 'var(--accent-red)', fontSize: '0.65rem', opacity: 0.85 }}>
+                                      DME: {fmtCurrency(cell.dme)}
+                                    </td>
+                                  );
+                                })}
+                                <td style={{ padding: '0.3rem 0.6rem', textAlign: 'center', color: 'var(--accent-red)', fontWeight: '700', borderLeft: '1px solid rgba(255,255,255,0.1)', fontSize: '0.68rem' }}>
+                                  DME: {fmtCurrency(row.yearTotal.dme)}
+                                </td>
+                              </tr>
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
                 <div className="print-spacer" style={{ height: '3rem', display: 'none' }}></div>
 
                 <div className="flex-between chart-row" style={{ gap: '1.2rem', flexWrap: 'wrap' }}>

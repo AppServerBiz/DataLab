@@ -891,6 +891,69 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       }).filter((_, i) => i % Math.max(1, Math.floor(sortedDays.length / 400)) === 0);
     }
 
+    // 4. Calculate monthly returns table (Year x Month: profit $, return %, DME $)
+    const monthlyDataMap = new Map<string, { year: number, month: number, startBalanceProfit: number, endBalanceProfit: number, maxDD: number }>();
+    
+    // Iterate over combinedCurve to group by year and month
+    combinedCurve.forEach((pt, idx) => {
+      const parts = pt.day.split('-'); // YYYY-MM-DD
+      if (parts.length < 2) return;
+      const yr = parseInt(parts[0], 10);
+      const mo = parseInt(parts[1], 10);
+      const key = `${yr}-${mo}`;
+
+      if (!monthlyDataMap.has(key)) {
+        // Start balance profit is previous point's balanceProfit or first point's balanceProfit
+        const prevPt = idx > 0 ? combinedCurve[idx - 1] : pt;
+        monthlyDataMap.set(key, {
+          year: yr,
+          month: mo,
+          startBalanceProfit: prevPt.balanceProfit,
+          endBalanceProfit: pt.balanceProfit,
+          maxDD: pt.dd
+        });
+      } else {
+        const item = monthlyDataMap.get(key)!;
+        item.endBalanceProfit = pt.balanceProfit;
+        if (pt.dd > item.maxDD) item.maxDD = pt.dd;
+      }
+    });
+
+    // Structure into array of years sorted descending
+    const yearsSet = new Set<number>();
+    monthlyDataMap.forEach(v => yearsSet.add(v.year));
+    const sortedYears = Array.from(yearsSet).sort((a, b) => b - a);
+
+    const monthlyReturns = sortedYears.map(year => {
+      const months: { [m: number]: { profit: number, pct: number, dme: number } } = {};
+      let totalYearProfit = 0;
+      let maxYearDD = 0;
+
+      for (let m = 1; m <= 12; m++) {
+        const key = `${year}-${m}`;
+        if (monthlyDataMap.has(key)) {
+          const item = monthlyDataMap.get(key)!;
+          const profit = item.endBalanceProfit - item.startBalanceProfit;
+          const pct = pf.capital > 0 ? (profit / pf.capital) * 100 : 0;
+          const dme = item.maxDD;
+          months[m] = { profit, pct, dme };
+          totalYearProfit += profit;
+          if (dme > maxYearDD) maxYearDD = dme;
+        }
+      }
+
+      const totalYearPct = pf.capital > 0 ? (totalYearProfit / pf.capital) * 100 : 0;
+      return {
+        year,
+        months,
+        yearTotal: {
+          profit: totalYearProfit,
+          pct: totalYearPct,
+          dme: maxYearDD
+        }
+      };
+    });
+
     res.json({
       portfolio: pf,
       robots: robots.map(({ equity_curve: _e, ...rest }) => ({
@@ -916,6 +979,7 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       combined_curve: combinedCurve.filter((_, i) => i % Math.max(1, Math.floor(combinedCurve.length / 400)) === 0),
       robot_curves: robotCurves,
       top10DD: top10Stacked,
+      monthly_returns: monthlyReturns,
       correlation
     });
   } catch (err) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Line, Bar, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -315,6 +315,81 @@ const PortfolioReport = () => {
             />
           </div>
         </div>
+
+        {/* Rentabilidade Histórica Table for Report */}
+        {stats?.monthly_returns && stats.monthly_returns.length > 0 && (
+          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
+              Rentabilidade Histórica Mês a Mês
+            </h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+              <thead>
+                <tr style={{ background: '#334155', color: '#fff', textAlign: 'center' }}>
+                  <th style={{ padding: '8px', textAlign: 'left', fontWeight: '900' }}>ANO</th>
+                  {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map(m => (
+                    <th key={m} style={{ padding: '8px 4px', fontWeight: '800' }}>{m}</th>
+                  ))}
+                  <th style={{ padding: '8px', fontWeight: '900', borderLeft: '1px solid #475569' }}>No ano</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.monthly_returns.map((row: any) => (
+                  <React.Fragment key={row.year}>
+                    {/* Row 1: Profit $ */}
+                    <tr style={{ background: '#fff', borderTop: '1px solid #cbd5e1' }}>
+                      <td rowSpan={3} style={{ padding: '8px', fontWeight: '900', fontSize: '11px', verticalAlign: 'middle', borderRight: '1px solid #cbd5e1', background: '#f8fafc' }}>
+                        {row.year}
+                      </td>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                        const cell = row.months[m];
+                        if (!cell) return <td key={m} style={{ padding: '4px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
+                        return (
+                          <td key={m} style={{ padding: '4px', textAlign: 'center', color: cell.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '700' }}>
+                            {fmtCurrency(cell.profit)}
+                          </td>
+                        );
+                      })}
+                      <td style={{ padding: '4px 6px', textAlign: 'center', color: row.yearTotal.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '900', borderLeft: '1px solid #cbd5e1', background: '#f8fafc' }}>
+                        {fmtCurrency(row.yearTotal.profit)}
+                      </td>
+                    </tr>
+                    {/* Row 2: % Return */}
+                    <tr style={{ background: '#fff' }}>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                        const cell = row.months[m];
+                        if (!cell) return <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
+                        return (
+                          <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: cell.pct >= 0 ? '#15803d' : '#b91c1c', fontWeight: '600', fontSize: '9px' }}>
+                            {fmtPct(cell.pct)}
+                          </td>
+                        );
+                      })}
+                      <td style={{ padding: '3px 6px', textAlign: 'center', color: row.yearTotal.pct >= 0 ? '#15803d' : '#b91c1c', fontWeight: '800', borderLeft: '1px solid #cbd5e1', fontSize: '10px', background: '#f8fafc' }}>
+                        {fmtPct(row.yearTotal.pct)}
+                      </td>
+                    </tr>
+                    {/* Row 3: DME */}
+                    <tr style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                        const cell = row.months[m];
+                        if (!cell) return <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
+                        return (
+                          <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: '#b91c1c', fontSize: '8.5px' }}>
+                            DME: {fmtCurrency(cell.dme)}
+                          </td>
+                        );
+                      })}
+                      <td style={{ padding: '3px 6px', textAlign: 'center', color: '#b91c1c', fontWeight: '700', borderLeft: '1px solid #cbd5e1', fontSize: '9px', background: '#f8fafc' }}>
+                        DME: {fmtCurrency(row.yearTotal.dme)}
+                      </td>
+                    </tr>
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <div style={{ pageBreakAfter: 'always' }}></div>
 
