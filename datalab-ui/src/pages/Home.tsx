@@ -280,11 +280,11 @@ const Home = () => {
                 <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700 }}>ATIVO</th>
                 <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700 }}>PESO LOTE</th>
                 <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#EF4444' }}>DD × PESO</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight 700, color: '#22C55E' }}>LUCRO × PESO</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight 700, color: '#F59E0B' }}>VAR DME</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight 700, color: '#F59E0B' }}>F. CORREL.</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight 700, color: '#38BDF8' }}>LL/DD %</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight 700, color: '#22C55E' }}>RETORNO %</th>
+                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#22C55E' }}>LUCRO × PESO</th>
+                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#F59E0B' }}>VAR DME</th>
+                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#F59E0B' }}>F. CORREL.</th>
+                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#38BDF8' }}>LL/DD %</th>
+                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#22C55E' }}>RETORNO %</th>
               </tr>
             </thead>
             <tbody>
