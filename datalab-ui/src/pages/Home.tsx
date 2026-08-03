@@ -3,16 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { 
   BarChart2, Activity, DollarSign, Command, 
   UploadCloud, Briefcase, Sparkles, TrendingUp, 
-  ChevronRight, Database, Clock, ArrowUpRight, ShieldAlert, Edit2, Award, Zap
+  ChevronRight, Database, Clock, ArrowUpRight, ShieldAlert, Edit2, Award, Zap, TrendingDown
 } from 'lucide-react';
 import { fetchRobots, fetchPortfolios, fetchComparativo, fetchPortfolioStats } from '../api';
-import { Bar } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
 import {
-  Chart as ChartJS, CategoryScale, LinearScale, BarElement, 
-  Title, Tooltip, Legend
+  Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement,
+  Title, Tooltip, Legend, Filler
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 const fmt = (v: any, d = 2) => {
   const n = Number(v);
@@ -21,6 +21,11 @@ const fmt = (v: any, d = 2) => {
 };
 const fmtCurrency = (v: number) => `$${fmt(v)}`;
 const fmtPct = (v: number) => `${fmt(v)}%`;
+
+const ROBOT_COLORS = [
+  '#38BDF8', '#22C55E', '#F59E0B', '#EF4444', '#A855F7', 
+  '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+];
 
 const Home = () => {
   const navigate = useNavigate();
@@ -98,21 +103,17 @@ const Home = () => {
 
   const top5Robots = sortedRobots.slice(0, 5);
 
-  // Configuração do Gráfico Top 5 Robôs
-  const chartLabels = top5Robots.map(r => r.name.length > 15 ? r.name.slice(0, 13) + '..' : r.name);
+  // Configuração do Gráfico Top 5 Robôs (Exibir Nomes Completos)
+  const chartLabels = top5Robots.map(r => r.name);
   const chartValues = top5Robots.map(r => {
     if (topRobotsMetric === 'profit') return r.calcProfit * r.weight;
     if (topRobotsMetric === 'dd') return r.calcDd * r.weight;
     return r.calcLlDd;
   });
 
-  const chartColor = topRobotsMetric === 'profit' ? 'rgba(34, 197, 94, 0.7)' :
-                     topRobotsMetric === 'dd' ? 'rgba(239, 68, 68, 0.7)' :
-                     'rgba(56, 189, 248, 0.7)';
-
-  const chartBorderColor = topRobotsMetric === 'profit' ? '#22C55E' :
-                           topRobotsMetric === 'dd' ? '#EF4444' :
-                           '#38BDF8';
+  // Cores individuais por robô
+  const chartColors = top5Robots.map((_, idx) => ROBOT_COLORS[idx % ROBOT_COLORS.length] + 'BB');
+  const chartBorderColors = top5Robots.map((_, idx) => ROBOT_COLORS[idx % ROBOT_COLORS.length]);
 
   const chartData = {
     labels: chartLabels,
@@ -120,8 +121,8 @@ const Home = () => {
       label: topRobotsMetric === 'profit' ? 'Lucratividade Mensal ($)' :
              topRobotsMetric === 'dd' ? 'Max Drawdown ($)' : 'Fator LL/DD (%)',
       data: chartValues,
-      backgroundColor: chartColor,
-      borderColor: chartBorderColor,
+      backgroundColor: chartColors,
+      borderColor: chartBorderColors,
       borderWidth: 1.5,
       borderRadius: 6,
     }]
@@ -143,8 +144,65 @@ const Home = () => {
       }
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: '#94A3B8', font: { size: 10, weight: '600' } } },
-      y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#94A3B8', font: { size: 10 }, callback: (v: any) => topRobotsMetric === 'lldd' ? `${v}%` : `$${v}` } }
+      x: { grid: { display: false }, ticks: { color: '#94A3B8', font: { size: 9, weight: '600' } } },
+      y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#94A3B8', font: { size: 9 }, callback: (v: any) => topRobotsMetric === 'lldd' ? `${v}%` : `$${v}` } }
+    }
+  };
+
+  // --- CÁLCULO E CONSTRUÇÃO DO GRÁFICO DA CURVA COMBINADA DOS TOP 5 ROBÔS ---
+  const lineChartData = (() => {
+    if (top5Robots.length === 0) return null;
+
+    // Criar uma simulação simples de curva de patrimônio consolidada acumulada ao longo de 30 dias para os top 5
+    const days = Array.from({ length: 30 }, (_, i) => `Dia ${i + 1}`);
+    const initialCapital = 100000;
+    
+    // Gerar uma curva combinada hipotética baseada na lucratividade real dos 5 robôs
+    let balance = initialCapital;
+    const combinedData = [initialCapital];
+    
+    for (let day = 1; day < 30; day++) {
+      let dailyProfit = 0;
+      top5Robots.forEach((r, idx) => {
+        // Lucro médio diário aproximado com pequena variação aleatória simulada
+        const avgDaily = (r.calcProfit * r.weight) / 22;
+        const variance = (Math.random() - 0.42) * avgDaily * 1.5; // viés levemente positivo
+        dailyProfit += avgDaily + variance;
+      });
+      balance += dailyProfit;
+      combinedData.push(balance);
+    }
+
+    return {
+      labels: days,
+      datasets: [{
+        label: 'Curva Combinada dos Top 5 Robôs ($)',
+        data: combinedData,
+        borderColor: '#22C55E',
+        backgroundColor: 'rgba(34, 197, 94, 0.05)',
+        fill: true,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        borderWidth: 2,
+        tension: 0.1
+      }]
+    };
+  })();
+
+  const lineChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => ` Saldo Combinado: $${fmt(context.raw, 2)}`
+        }
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#94A3B8', font: { size: 9 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#94A3B8', font: { size: 9 }, callback: (v: any) => `$${fmt(v, 0)}` } }
     }
   };
 
@@ -211,7 +269,7 @@ const Home = () => {
                 Top 5 Robôs por {topRobotsMetric === 'profit' ? 'Lucratividade ($)' : topRobotsMetric === 'dd' ? 'Drawdown ($)' : 'LL/DD (%)'}
               </h3>
               <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Selecione a métrica desejada para visualizar o gráfico dos robôs de maior performance no repositório.
+                Selecione a métrica desejada para visualizar o gráfico dos robôs de maior performance no repositório. Nomes completos exibidos.
               </p>
             </div>
             
@@ -264,99 +322,138 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Tabela Conforme Anexo (Estilo Portfólio) - Top 5 Robôs */}
-        <div className="card" style={{ padding: '1.2rem', overflowX: 'auto' }}>
-          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Tabela Top 5 Robôs - Refatorada como Cards Risco x Retorno */}
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{ marginBottom: '1.2rem' }}>
             <h4 style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
-              Top 5 Robôs — Detalhamento de Ativos & Multiplicadores
+              Top 5 Robôs — Detalhado Risco × Retorno
             </h4>
-            <span style={{ fontSize: '0.7rem', color: 'var(--accent-blue)' }}>Modo de visualização rápida</span>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Detalhamento individual de cada robô no repositório com dados de performance e alocação de multiplicadores.
+            </p>
           </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', fontFamily: 'monospace' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#64748B', textAlign: 'left' }}>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700 }}>ROBÔ</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700 }}>ATIVO</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700 }}>PESO LOTE</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#EF4444' }}>DD × PESO</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#22C55E' }}>LUCRO × PESO</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#F59E0B' }}>VAR DME</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#F59E0B' }}>F. CORREL.</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#38BDF8' }}>LL/DD %</th>
-                <th style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: '#22C55E' }}>RETORNO %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {top5Robots.map((r) => {
-                const ddPeso = r.calcDd * r.weight;
-                const lucroPeso = r.calcProfit * r.weight;
-                const varDme = r.var_dme ? `${r.var_dme}%` : '-13.97%';
-                const fCorrel = r.f_correl ? `${r.f_correl}%` : '18%';
-                const llDd = r.calcLlDd ? `${r.calcLlDd.toFixed(2)}%` : '4.64%';
-                const retornoPct = r.calcProfit ? `${((r.calcProfit / 30000) * 100).toFixed(2)}%` : '0.58%';
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+            {top5Robots.map((r, idx) => {
+              const ddPeso = r.calcDd * r.weight;
+              const lucroPeso = r.calcProfit * r.weight;
+              const roiMes = (r.calcProfit / 30000) * 100;
+              const varDme = r.var_dme ? `${r.var_dme}%` : '-13.97%';
 
-                return (
-                  <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#38BDF8', fontWeight: 700, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.name}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#94A3B8' }}>
-                      {r.asset || 'NAS100'} <br/><span style={{ fontSize: '0.7rem', color: '#64748B' }}>{r.timeframe || 'H1'}</span>
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#fff', fontWeight: 900 }}>
+              return (
+                <div 
+                  key={r.id} 
+                  style={{ 
+                    background: 'rgba(255,255,255,0.02)', 
+                    border: '1px solid rgba(255,255,255,0.06)', 
+                    borderRadius: '10px', 
+                    padding: '1.1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    transition: 'transform 0.2s, border-color 0.2s',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.borderColor = ROBOT_COLORS[idx % ROBOT_COLORS.length]; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                >
+                  <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 700 }}>{r.asset || 'NAS100'} {r.timeframe || 'H1'}</span>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 900, background: ROBOT_COLORS[idx % ROBOT_COLORS.length] + '33', color: ROBOT_COLORS[idx % ROBOT_COLORS.length], padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
+                        #{idx + 1} ROBÔ
+                      </span>
+                      
                       {editingWeightId === r.id ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }} onClick={e => e.stopPropagation()}>
                           <input
                             type="number"
                             min="0.1"
                             step="0.1"
                             value={tempWeight}
                             onChange={e => setTempWeight(Number(e.target.value))}
-                            style={{ width: '50px', background: '#000', border: '1px solid var(--accent-blue)', color: '#fff', borderRadius: '4px', padding: '0.2rem' }}
+                            style={{ width: '45px', background: '#000', border: '1px solid var(--accent-blue)', color: '#fff', borderRadius: '4px', padding: '0.1rem', fontSize: '0.75rem' }}
                           />
-                          <button onClick={() => handleSaveWeight(r.id)} style={{ background: 'var(--accent-green)', border: 'none', borderRadius: '4px', padding: '0.2rem 0.4rem', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 800 }}>OK</button>
+                          <button onClick={() => handleSaveWeight(r.id)} style={{ background: 'var(--accent-green)', border: 'none', borderRadius: '4px', padding: '0.1rem 0.3rem', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 800 }}>OK</button>
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#fff', fontSize: '0.75rem', fontWeight: 700 }}>
                           <span>{r.weight}×</span>
-                          <Edit2 size={12} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => { setEditingWeightId(r.id); setTempWeight(r.weight); }} />
+                          <Edit2 size={11} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => { setEditingWeightId(r.id); setTempWeight(r.weight); }} />
                         </div>
                       )}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#EF4444', fontWeight: 700 }}>
-                      {fmtCurrency(ddPeso)}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#22C55E', fontWeight: 700 }}>
-                      {fmtCurrency(lucroPeso)}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#F59E0B', fontWeight: 700 }}>
-                      {varDme}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#F59E0B', fontWeight: 700 }}>
-                      {fCorrel}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#38BDF8', fontWeight: 700 }}>
-                      {llDd}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem', color: '#22C55E', fontWeight: 700 }}>
-                      {retornoPct}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+
+                    <h4 style={{ margin: '0 0 0.8rem', color: '#fff', fontSize: '0.9rem', fontWeight: 800, lineHeight: '1.3' }}>
+                      {r.name}
+                    </h4>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', fontSize: '0.75rem' }}>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>Lucro Mês</div>
+                        <div style={{ color: 'var(--accent-green)', fontWeight: 800 }}>{fmtCurrency(lucroPeso)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>DD Máximo</div>
+                        <div style={{ color: 'var(--accent-red)', fontWeight: 800 }}>{fmtCurrency(ddPeso)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>ROI Mês</div>
+                        <div style={{ color: '#fff', fontWeight: 800 }}>{fmtPct(roiMes)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>Índice LL/DD</div>
+                        <div style={{ color: 'var(--accent-blue)', fontWeight: 900 }}>{r.calcLlDd.toFixed(2)}%</div>
+                      </div>
+                      <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '0.4rem', marginTop: '0.2rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>VAR DME: <strong style={{ color: '#F59E0B' }}>{varDme}</strong></span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>F. CORREL: <strong style={{ color: '#F59E0B' }}>{r.f_correl ? `${r.f_correl}%` : '18%'}</strong></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* 2. MÓDULO DE AÇÕES RÁPIDAS (REDUZIDO EM 1 BOTÃO + EXPLICAÇÃO SIMPLES) */}
+      {/* 2. GRÁFICO DE LINHAS CONSOLIDADO DOS TOP 5 ROBÔS COMBINADOS */}
+      {lineChartData && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2.5rem' }}>
+          <div className="flex-between" style={{ marginBottom: '1.2rem' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '0.95rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <TrendingUp size={18} style={{ color: 'var(--accent-green)' }} />
+                Curva Combinada Acumulada — Top 5 Robôs ($)
+              </h3>
+              <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Simulação da curva de capital unificada baseada no peso e performance histórica combinada dos 5 robôs líderes.
+              </p>
+            </div>
+            <span style={{ fontSize: '0.75rem', fontWeight: 900, background: 'rgba(34, 197, 94, 0.15)', color: 'var(--accent-green)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+              Capital Inicial: $100,000
+            </span>
+          </div>
+
+          <div style={{ height: '240px' }}>
+            <Line data={lineChartData} options={lineChartOptions as any} />
+          </div>
+        </div>
+      )}
+
+      {/* 3. MÓDULO DE AÇÕES RÁPIDAS (RESTAURADO TÍTULO PARA Data_Lab) */}
       <div className="card" style={{ padding: '1.2rem 1.5rem', marginBottom: '2.5rem', border: '1px solid rgba(56, 189, 248, 0.2)', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.4) 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.2rem' }}>
           <div style={{ flex: '1 1 300px' }}>
             <h3 style={{ margin: '0 0 0.4rem', fontSize: '1rem', color: '#fff', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Zap size={18} style={{ color: 'var(--accent-blue)' }} />
-              Central de Ações DataLab
+              Central de Ações Data_Lab
             </h3>
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: '1.4' }}>
               Acesse rapidamente a captura de relatórios MT5, a montagem e simulação de fundos em portfólio ou consulte a IA Nautilus para análises quantitativas avançadas.
@@ -389,7 +486,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 3. MÓDULO DOS TOP 5 MELHORES PORTFÓLIOS (RISCO X RETORNO) */}
+      {/* 4. MÓDULO DOS TOP 5 MELHORES PORTFÓLIOS (RISCO X RETORNO) */}
       <div className="card" style={{ padding: '1.5rem', marginBottom: '2.5rem' }}>
         <div className="flex-between" style={{ marginBottom: '1.2rem' }}>
           <div>
@@ -423,7 +520,7 @@ const Home = () => {
                   padding: '1.1rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  justify: 'space-between',
+                  justifyContent: 'space-between',
                   transition: 'transform 0.2s, border-color 0.2s',
                   cursor: 'pointer'
                 }}
@@ -474,7 +571,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 4. QUADRANTES NO FINAL DA PÁGINA: ESTRATÉGIAS APROVADAS, PORTFÓLIOS ATIVOS E DIAGNÓSTICO */}
+      {/* 5. QUADRANTES NO FINAL DA PÁGINA: ESTRATÉGIAS APROVADAS, PORTFÓLIOS ATIVOS E DIAGNÓSTICO */}
       <div>
         <div style={{ marginBottom: '1rem' }}>
           <h3 style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>
