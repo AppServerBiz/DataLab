@@ -392,33 +392,33 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         fontFamily: 'Inter, sans-serif'
       }}
     >
-      {/* Header Bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '1.5rem',
-          flexWrap: 'wrap',
-          gap: '1rem'
-        }}
-      >
-        <div>
-          <h3
-            style={{
-              margin: 0,
-              fontSize: '0.8rem',
-              fontWeight: '700',
-              color: printMode ? '#0F172A' : '#fff',
-              textTransform: 'uppercase',
-              letterSpacing: '1px'
-            }}
-          >
-            Evolução de Rentabilidade Mensal vs Benchmarks
-          </h3>
-        </div>
+      {/* Header Bar (hidden in report printMode as report has standard module title) */}
+      {!printMode && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '1.5rem',
+            flexWrap: 'wrap',
+            gap: '1rem'
+          }}
+        >
+          <div>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: '0.8rem',
+                fontWeight: '700',
+                color: '#fff',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}
+            >
+              Evolução de Rentabilidade Mensal vs Benchmarks
+            </h3>
+          </div>
 
-        {!printMode && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* Sync Button */}
             <button
@@ -476,8 +476,8 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               })}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Chart Canvas Area */}
       <div style={{ height: '300px', position: 'relative', width: '100%' }}>

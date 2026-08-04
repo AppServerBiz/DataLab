@@ -317,18 +317,6 @@ const PortfolioReport = () => {
           </div>
         </div>
 
-        {/* Benchmark Profitability Chart (CDI / IBOV) */}
-        {stats?.combined_curve && stats.combined_curve.length > 0 && (
-          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
-            <ProfitabilityChart
-              portfolioName={portfolio?.name || 'ALPHA1 GOLD'}
-              capital={Number(portfolio?.capital || 30000)}
-              combinedCurve={stats?.combined_curve || []}
-              printMode={true}
-            />
-          </div>
-        )}
-
         {/* Rentabilidade Histórica Table for Report */}
         {stats?.monthly_returns && stats.monthly_returns.length > 0 && (
           <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
@@ -413,6 +401,22 @@ const PortfolioReport = () => {
                 <div>* <strong>Aviso de Histórico Parcial:</strong> Os robôs sinalizados com asterisco (*) possuem dados históricos que não cobrem todo o período de análise do portfólio. Para os meses em que um robô não operou, sua contribuição é tratada como zero ou estimada via média móvel.</div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Benchmark Profitability Chart (CDI / IBOV) */}
+        {stats?.combined_curve && stats.combined_curve.length > 0 && (
+          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
+              Evolução de Rentabilidade Mensal vs Benchmarks
+            </h3>
+            <ProfitabilityChart
+              portfolioName={portfolio?.name || 'ALPHA1 GOLD'}
+              capital={Number(portfolio?.capital || 30000)}
+              combinedCurve={stats?.combined_curve || []}
+              printMode={true}
+            />
           </div>
         )}
 
