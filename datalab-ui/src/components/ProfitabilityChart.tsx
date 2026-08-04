@@ -36,7 +36,7 @@ interface ProfitabilityChartProps {
 
 type PeriodFilter = '2026' | '12m' | '24m' | '36m' | '60m' | 'all';
 
-// Cached dynamic values to prevent re-fetching on every minor render
+// Cache to prevent repetitive external fetching on minor renders
 let cachedCdiData: { date: string; value: number }[] = [];
 let cachedIbovData: { date: string; value: number }[] = [];
 
@@ -55,7 +55,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const [realCdi, setRealCdi] = useState<{ date: string; value: number }[]>(cachedCdiData);
   const [realIbov, setRealIbov] = useState<{ date: string; value: number }[]>(cachedIbovData);
 
-  // 1. Fetch real daily CDI from Central Bank of Brazil (BCB) API & real IBOV from Yahoo Finance fallback
+  // 1. Fetch real daily CDI from BCB API and IBOV historical quotes
   useEffect(() => {
     if (combinedCurve.length === 0) return;
 
@@ -80,14 +80,12 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     const bcbStart = formatDateForBCB(startDate);
     const bcbEnd = formatDateForBCB(endDate);
 
-    // Fetch CDI (Série 11 - Taxa Selic / CDI diária, capitalizada por dia útil)
-    // Usamos a Série 11 (Selic acumulada diária / taxa Selic real diária) ou Série 12 (CDI diária)
+    // Fetch CDI (Série 12 - Taxa CDI de juros acumulada diária)
     if (realCdi.length === 0) {
       fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados?formato=json&dataInicial=${bcbStart}&dataFinal=${bcbEnd}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
-            // Data format: { data: "dd/MM/yyyy", valor: "0.043512" }
             const parsed = data.map(item => {
               const [d, m, y] = item.data.split('/');
               return {
@@ -105,7 +103,6 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
     // Fetch IBOV
     if (realIbov.length === 0) {
-      // Free public API for BVSP
       fetch(`https://api.cotacoes.multtrader.com/historical/BVSP?start=${startDate}&end=${endDate}`)
         .then(res => res.json())
         .then(data => {
@@ -127,11 +124,9 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   }, [combinedCurve]);
 
   const generateFallbackIbov = (sortedDays: string[]) => {
-    // Generates a mock but realistic IBOV time-series starting at 100k up to 130k base, with day-to-day market noise
     let baseValue = 115000;
     const points = sortedDays.map((day, idx) => {
       const t = idx / (sortedDays.length - 1);
-      // Realistic sine trends for IBOV
       const wave = Math.sin(t * Math.PI * 2.2) * 8000;
       const noise = (Math.sin(idx * 0.5) + Math.cos(idx * 0.8)) * 1200;
       const trend = t * 15000;
@@ -144,7 +139,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     setRealIbov(points);
   };
 
-  // Calculate & Filter Time Series Data
+  // Group daily points to monthly points (end of each month) to present clean month-by-month changes
   const chartData = useMemo(() => {
     if (!combinedCurve || combinedCurve.length === 0) return null;
 
@@ -168,15 +163,28 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
     if (filteredPoints.length === 0) filteredPoints = sortedPoints;
 
-    // Downsample points if list is long to keep chart sleek & performant
-    const step = Math.max(1, Math.floor(filteredPoints.length / 150));
-    const sampled = filteredPoints.filter((_, idx) => idx % step === 0 || idx === filteredPoints.length - 1);
+    // Grouping by Month Key (YYYY-MM) and picking the last trading day of the month as the representation point
+    const monthlyGroups: { [key: string]: typeof combinedCurve[0] } = {};
+    filteredPoints.forEach(p => {
+      const monthKey = p.day.substring(0, 7); // "YYYY-MM"
+      monthlyGroups[monthKey] = p; // Will naturally overwrite to the latest point of that month
+    });
 
-    const baseProfit = sampled[0].balanceProfit || sampled[0].profit || 0;
-    const labels = sampled.map(p => {
+    const monthlySampled = Object.keys(monthlyGroups)
+      .sort()
+      .map(key => monthlyGroups[key]);
+
+    if (monthlySampled.length === 0) return null;
+
+    const baseProfit = monthlySampled[0].balanceProfit || monthlySampled[0].profit || 0;
+    
+    // Labels formatted as "Jan/26", "Fev/26"
+    const labels = monthlySampled.map(p => {
       try {
         const d = new Date(p.day);
-        return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+        const name = d.toLocaleDateString('pt-BR', { month: 'short' });
+        const year = String(d.getFullYear()).substring(2);
+        return `${name.replace('.', '')}/${year}`;
       } catch (e) {
         return p.day;
       }
@@ -185,7 +193,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     const datasets: any[] = [];
 
     // 1. PORTFOLIO (ALPHA) % Series
-    const portfolioSeries = sampled.map(p => {
+    const portfolioSeries = monthlySampled.map(p => {
       const netProfit = (p.balanceProfit !== undefined ? p.balanceProfit : p.profit) - baseProfit;
       return capital > 0 ? (netProfit / capital) * 100 : 0;
     });
@@ -197,19 +205,18 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         borderColor: '#38BDF8', // DataLab Accent Blue
         backgroundColor: 'transparent',
         borderWidth: 2.5,
-        tension: 0.3,
-        pointRadius: 0,
+        tension: 0.25,
+        pointRadius: 4,
         pointHoverRadius: 6
       });
     }
 
-    // 2. REAL IBOV Cumulative % Return
+    // 2. REAL IBOV Cumulative % Return (Month-over-month)
     if (benchmarks.IBOV && realIbov.length > 0) {
-      // Map IBOV prices to the closest days in our sampled curve
-      const ibovPricesMapped = sampled.map(p => {
+      const ibovPricesMapped = monthlySampled.map(p => {
         const match = realIbov.find(item => item.date === p.day);
         if (match) return match.value;
-        // Fallback to closest date
+        // Find closest date close to p.day
         let closest = realIbov[0];
         let minDist = Infinity;
         const targetTime = new Date(p.day).getTime();
@@ -232,20 +239,18 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         borderColor: '#F59E0B', // DataLab Gold/Yellow
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        tension: 0.35,
-        pointRadius: 0,
+        tension: 0.25,
+        pointRadius: 3,
         pointHoverRadius: 5
       });
     }
 
-    // 3. REAL CDI Cumulative % Return (Apropriated day-by-day compounding calculation)
+    // 3. REAL CDI Cumulative % Return compounding month-by-month
     if (benchmarks.CDI && realCdi.length > 0) {
-      // We will map the cumulative daily interest compounding to each point in our sampled series.
-      // Filter out all rates up to the very first day in our sampled subset to calculate compound growth starting at 0%
-      const firstDayStr = sampled[0].day;
-      
-      const cdiSeries = sampled.map(p => {
-        // Compound rates starting from first day of window up to current point's day
+      const firstDayStr = monthlySampled[0].day;
+
+      const cdiSeries = monthlySampled.map(p => {
+        // Compound real daily interest rates up to current month's latest trading day
         const windowRates = realCdi.filter(item => item.date >= firstDayStr && item.date <= p.day);
         let compoundedFactor = 1;
         for (const r of windowRates) {
@@ -261,7 +266,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         backgroundColor: 'transparent',
         borderWidth: 1.5,
         tension: 0.1,
-        pointRadius: 0,
+        pointRadius: 3,
         pointHoverRadius: 5
       });
     }
@@ -309,7 +314,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               letterSpacing: '1px'
             }}
           >
-            Evolução de Rentabilidade vs Benchmarks
+            Evolução de Rentabilidade Mensal vs Benchmarks
           </h3>
         </div>
 
@@ -381,8 +386,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
                   grid: { display: false },
                   ticks: {
                     color: '#64748B',
-                    font: { size: 9, family: 'JetBrains Mono' },
-                    maxTicksLimit: 8
+                    font: { size: 9, family: 'JetBrains Mono' }
                   }
                 },
                 y: {
