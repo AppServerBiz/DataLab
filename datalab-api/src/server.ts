@@ -1286,6 +1286,42 @@ app.post('/api/ia/chat', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════
+// BENCHMARK PROXY ENDPOINTS (bypass CORS from BCB / IBOV APIs)
+// ══════════════════════════════════════════════════════════
+
+// GET /api/benchmarks/cdi?start=dd/MM/yyyy&end=dd/MM/yyyy
+// Proxies BCB série 4391 (CDI acumulado no mês)
+app.get('/api/benchmarks/cdi', async (req, res) => {
+  try {
+    let start = (req.query.start as string) || '01/01/2020';
+    let end = (req.query.end as string) || '31/12/2030';
+    const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.4391/dados?formato=json&dataInicial=${encodeURIComponent(start)}&dataFinal=${encodeURIComponent(end)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('BCB CDI proxy error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// GET /api/benchmarks/ibov?start=YYYY-MM-DD&end=YYYY-MM-DD
+// Proxies IBOV historical quotes
+app.get('/api/benchmarks/ibov', async (req, res) => {
+  try {
+    let start = (req.query.start as string) || '2020-01-01';
+    let end = (req.query.end as string) || '2030-12-31';
+    const url = `https://api.cotacoes.multtrader.com/historical/BVSP?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('IBOV proxy error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 app.listen(port, () => {
   console.log(`API Nautilus DataLab running on port ${port}`);
 });

@@ -55,7 +55,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const [realCdi, setRealCdi] = useState<{ date: string; value: number }[]>(cachedCdiData);
   const [realIbov, setRealIbov] = useState<{ date: string; value: number }[]>(cachedIbovData);
 
-  // 1. Fetch real daily CDI from BCB API and IBOV historical quotes
+  // 1. Fetch CDI and IBOV via backend proxy (bypasses CORS)
   useEffect(() => {
     if (combinedCurve.length === 0) return;
 
@@ -80,10 +80,9 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     const bcbStart = formatDateForBCB(startDate);
     const bcbEnd = formatDateForBCB(endDate);
 
-    // Fetch CDI (Série 4391 - CDI acumulado no mês, % a.m.)
-    // Returns one point per month with the total CDI return for that month
+    // Fetch CDI via backend proxy (série 4391 - CDI acumulado mensal)
     if (realCdi.length === 0) {
-      fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.4391/dados?formato=json&dataInicial=${bcbStart}&dataFinal=${bcbEnd}`)
+      fetch(`/api/benchmarks/cdi?start=${encodeURIComponent(bcbStart)}&end=${encodeURIComponent(bcbEnd)}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -98,12 +97,12 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
             setRealCdi(parsed);
           }
         })
-        .catch(err => console.error('Erro ao buscar CDI mensal do Banco Central:', err));
+        .catch(err => console.error('Erro ao buscar CDI mensal:', err));
     }
 
-    // Fetch IBOV
+    // Fetch IBOV via backend proxy
     if (realIbov.length === 0) {
-      fetch(`https://api.cotacoes.multtrader.com/historical/BVSP?start=${startDate}&end=${endDate}`)
+      fetch(`/api/benchmarks/ibov?start=${startDate}&end=${endDate}`)
         .then(res => res.json())
         .then(data => {
           if (data && Array.isArray(data.prices)) {
