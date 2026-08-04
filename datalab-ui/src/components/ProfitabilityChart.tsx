@@ -68,13 +68,15 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
     if (!startDate || !endDate) return;
 
-    // Convert to pt-BR format (dd/MM/yyyy) for BCB API
+    // Convert to pt-BR format (dd/MM/yyyy) for BCB API without timezone issues
     const formatDateForBCB = (dateStr: string) => {
-      const d = new Date(dateStr);
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
+      if (!dateStr) return '01/01/2020';
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const [y, m, d] = parts;
+        return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+      }
+      return dateStr;
     };
 
     const bcbStart = formatDateForBCB(startDate);
@@ -86,13 +88,22 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
-            const parsed = data.map(item => {
-              const [d, m, y] = item.data.split('/');
-              return {
-                date: `${y}-${m}`, // Monthly key "YYYY-MM"
-                value: parseFloat(item.valor) / 100 // e.g. 1.01% -> 0.0101
-              };
-            });
+            const parsed = data
+              .filter((item: any) => item && item.data && item.valor !== undefined)
+              .map((item: any) => {
+                const parts = item.data.split('/');
+                if (parts.length === 3) {
+                  const [d, m, y] = parts;
+                  const valStr = String(item.valor).replace(',', '.');
+                  return {
+                    date: `${y}-${m.padStart(2, '0')}`, // Monthly key "YYYY-MM"
+                    value: parseFloat(valStr) / 100 // e.g. 0.97% -> 0.0097
+                  };
+                }
+                return null;
+              })
+              .filter((item): item is { date: string; value: number } => item !== null);
+
             cachedCdiData = parsed;
             setRealCdi(parsed);
           }
@@ -246,25 +257,20 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
     // 3. REAL CDI Cumulative % Return compounding month-by-month (série 4391)
     if (benchmarks.CDI && realCdi.length > 0) {
-      // realCdi items have date as "YYYY-MM" and value as monthly decimal rate
-      // monthlySampled items have day as "YYYY-MM-DD" — extract "YYYY-MM" to match
-      const firstMonthKey = monthlySampled[0].day.substring(0, 7);
-
-      // Collect all month keys in the sampled range, sorted
+      // Collect all month keys in the sampled range
       const monthKeys = monthlySampled.map(p => p.day.substring(0, 7));
 
-      // Get all CDI months from firstMonthKey onwards, sorted
-      const cdiMonthsSorted = realCdi
-        .filter(item => item.date >= firstMonthKey)
-        .sort((a, b) => a.date.localeCompare(b.date));
+      // Fast lookup map for monthly CDI rate
+      const cdiMap = new Map<string, number>();
+      realCdi.forEach(item => cdiMap.set(item.date, item.value));
 
-      const cdiSeries = monthKeys.map(mk => {
-        // Compound all CDI monthly rates from firstMonthKey up to and including mk
-        let compoundedFactor = 1;
-        for (const cdiItem of cdiMonthsSorted) {
-          if (cdiItem.date > mk) break;
-          compoundedFactor *= (1 + cdiItem.value);
+      let compoundedFactor = 1.0;
+      const cdiSeries = monthKeys.map((mk, idx) => {
+        if (idx === 0) {
+          return 0; // Base month starts at 0%
         }
+        const rate = cdiMap.get(mk) ?? 0;
+        compoundedFactor *= (1 + rate);
         return (compoundedFactor - 1) * 100;
       });
 

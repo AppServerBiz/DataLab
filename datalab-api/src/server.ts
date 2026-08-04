@@ -1297,7 +1297,11 @@ app.get('/api/benchmarks/cdi', async (req, res) => {
     let start = (req.query.start as string) || '01/01/2020';
     let end = (req.query.end as string) || '31/12/2030';
     const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.4391/dados?formato=json&dataInicial=${encodeURIComponent(start)}&dataFinal=${encodeURIComponent(end)}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+      }
+    });
     const data = await response.json();
     res.json(data);
   } catch (err) {
