@@ -4,6 +4,7 @@ import multer from 'multer';
 import { parseMT5BacktestHTML, parseCSVEquity, decodeBuffer, getRobotNameFromFilename, normalizeRobotName, makeRobotId, ParsedBacktestData, ParsedCSVData } from './parser';
 import { getDb } from './database';
 import Groq from 'groq-sdk';
+import ExcelJS from 'exceljs';
 import 'dotenv/config';
 
 const app = express();
@@ -997,28 +998,267 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
   }
 });
 
-// GET /api/portfolios/:id/export-nautilus - Export daily CSV for Invest Nautilus
+// GET /api/portfolios/:id/export-nautilus - Export Excel (.xlsx) for Portfolio with native tables and charts
 app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
   try {
     const db = await getDb();
-    const pf = await db.get(`SELECT name FROM portfolios WHERE id = ?`, [req.params.id]);
+    const pf = await db.get(`SELECT * FROM portfolios WHERE id = ?`, [req.params.id]);
     if (!pf) return res.status(404).send('Portfolio not found');
 
     const robots = await db.all(`
-      SELECT pr.weight, r.name, r.equity_curve, r.initial_deposit
+      SELECT pr.weight, pr.robot_id,
+        r.name, r.asset, r.timeframe, r.avg_profit_per_month, r.initial_deposit,
+        r.max_dd_from_csv, r.max_dd_equity, r.profit_factor, r.sharpe_ratio,
+        r.total_months, r.monthly_drawdown, r.equity_curve, r.total_trades,
+        r.total_lots, r.lots_per_month, r.var_95_dd_cap
       FROM portfolio_robots pr
       JOIN robots r ON r.id = pr.robot_id
       WHERE pr.portfolio_id = ?
     `, [req.params.id]);
 
-    const csvLines: string[] = ['robo,data,lucro,DD Max'];
+    // 1. Calculate daily timeline & stats
+    const robotDailyData: Map<string, Map<string, { profit: number, dd: number, balanceProfit: number }>> = new Map();
+    const allGlobalDays: Set<string> = new Set();
 
+    for (const r of robots) {
+      const curve = JSON.parse(r.equity_curve || '[]');
+      if (curve.length === 0) continue;
+
+      const effectiveInitial = curve[0].equity;
+      let robotPeak = effectiveInitial;
+      const r_daily_group: Map<string, { profit: number, dd: number, balanceProfit: number }> = new Map();
+      let lastBalanceProfit = 0;
+      curve.forEach((pt: any) => {
+        const day = pt.date ? pt.date.split(' ')[0] : (pt.timestamp ? pt.timestamp.split(' ')[0] : '2020-01-01');
+        if (pt.equity > robotPeak) robotPeak = pt.equity;
+        const curDD = (robotPeak - pt.equity);
+        const profit = pt.equity - effectiveInitial;
+        if (pt.balance !== undefined) lastBalanceProfit = pt.balance - effectiveInitial;
+
+        allGlobalDays.add(day);
+        if (!r_daily_group.has(day)) {
+          r_daily_group.set(day, { profit, dd: curDD, balanceProfit: lastBalanceProfit });
+        } else {
+          const g = r_daily_group.get(day)!;
+          g.profit = profit;
+          g.balanceProfit = lastBalanceProfit;
+          if (curDD > g.dd) g.dd = curDD;
+        }
+      });
+      robotDailyData.set(r.name, r_daily_group);
+    }
+
+    const sortedDays = Array.from(allGlobalDays).sort();
+    const lastKnown = new Map<string, { profit: number, balanceProfit: number, dd: number }>();
+    for (const r of robots) lastKnown.set(r.name, { profit: 0, balanceProfit: 0, dd: 0 });
+
+    const combinedCurve: any[] = [];
+    for (const day of sortedDays) {
+      let totalProfit = 0;
+      let totalBalanceProfit = 0;
+      let totalSumDD = 0;
+
+      for (const r of robots) {
+        const weight = r.weight || 1;
+        const lk = lastKnown.get(r.name)!;
+        let profit = lk.profit;
+        let balanceProfit = lk.balanceProfit;
+        let dd = lk.dd;
+
+        const dayData = robotDailyData.get(r.name)?.get(day);
+        if (dayData) {
+          profit = dayData.profit;
+          balanceProfit = dayData.balanceProfit;
+          dd = dayData.dd;
+          lastKnown.set(r.name, { profit, balanceProfit, dd });
+        }
+
+        totalProfit += profit * weight;
+        totalBalanceProfit += balanceProfit * weight;
+        totalSumDD += dd * weight;
+      }
+
+      combinedCurve.push({
+        day,
+        profit: totalProfit,
+        balanceProfit: totalBalanceProfit,
+        equity: pf.capital + totalBalanceProfit,
+        dd: totalSumDD
+      });
+    }
+
+    // Calculate Monthly Returns table
+    const monthlyDataMap = new Map<string, { year: number, month: number, startBalanceProfit: number, endBalanceProfit: number, maxDD: number }>();
+    combinedCurve.forEach((pt, idx) => {
+      const parts = pt.day.split(/[-.]/);
+      if (parts.length < 2) return;
+      const yr = parseInt(parts[0], 10);
+      const mo = parseInt(parts[1], 10);
+      if (isNaN(yr) || isNaN(mo)) return;
+      const key = `${yr}-${mo}`;
+
+      if (!monthlyDataMap.has(key)) {
+        const prevPt = idx > 0 ? combinedCurve[idx - 1] : pt;
+        monthlyDataMap.set(key, { year: yr, month: mo, startBalanceProfit: prevPt.balanceProfit, endBalanceProfit: pt.balanceProfit, maxDD: pt.dd });
+      } else {
+        const item = monthlyDataMap.get(key)!;
+        item.endBalanceProfit = pt.balanceProfit;
+        if (pt.dd > item.maxDD) item.maxDD = pt.dd;
+      }
+    });
+
+    const yearsSet = new Set<number>();
+    monthlyDataMap.forEach(v => yearsSet.add(v.year));
+    const sortedYears = Array.from(yearsSet).sort((a, b) => b - a);
+
+    // Create Excel Workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'DATA_LAB Nautilus';
+    workbook.created = new Date();
+
+    // ── SHEET 1: RESUMO DO FUNDO (Tables & Summary) ──────────────────
+    const wsSummary = workbook.addWorksheet('Resumo Portfólio');
+
+    // Header Title
+    wsSummary.getCell('A1').value = `DATA_LAB Nautilus — RELATÓRIO DO PORTFÓLIO: ${pf.name.toUpperCase()}`;
+    wsSummary.getCell('A1').font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FF002060' } };
+    wsSummary.getCell('A2').value = `Capital Inicial: R$ ${pf.capital.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Data de Geração: ${new Date().toLocaleString('pt-BR')}`;
+    wsSummary.getCell('A2').font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF595959' } };
+
+    // Section 1: Robôs do Portfólio
+    wsSummary.getCell('A4').value = '1. ROBÔS ALOCADOS NO PORTFÓLIO';
+    wsSummary.getCell('A4').font = { name: 'Arial', size: 11, bold: true };
+
+    const robotHeaders = ['Nome do Robô', 'Ativo', 'Timeframe', 'Peso', 'Lucro Mês (R$)', 'DD Máx (R$)', 'Retorno Mês (%)'];
+    wsSummary.getRow(5).values = robotHeaders;
+    wsSummary.getRow(5).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    wsSummary.getRow(5).eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    let currentBaseline = 6;
+    robots.forEach(r => {
+      const row = wsSummary.getRow(currentBaseline);
+      const profitMonth = (r.avg_profit_per_month || 0) * (r.weight || 1);
+      const ddMax = (r.max_dd_from_csv || r.max_dd_equity || 0) * (r.weight || 1);
+      const returnPct = pf.capital > 0 ? (profitMonth / pf.capital) * 100 : 0;
+
+      row.values = [r.name, r.asset || '-', r.timeframe || '-', r.weight || 1, profitMonth, ddMax, returnPct / 100];
+      row.getCell(4).alignment = { horizontal: 'center' };
+      row.getCell(5).numFmt = 'R$ #,##0.00';
+      row.getCell(6).numFmt = 'R$ #,##0.00';
+      row.getCell(7).numFmt = '0.00%';
+      currentBaseline++;
+    });
+
+    // Section 2: Rentabilidade Histórica Mensal
+    currentBaseline += 2;
+    wsSummary.getCell(`A${currentBaseline}`).value = '2. RENTABILIDADE HISTÓRICA MENSAL (% CAPITAL / LUCRO R$)';
+    wsSummary.getCell(`A${currentBaseline}`).font = { name: 'Arial', size: 11, bold: true };
+    currentBaseline++;
+
+    const monthNames = ['Ano', 'Métrica', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez', 'No Ano'];
+    wsSummary.getRow(currentBaseline).values = monthNames;
+    wsSummary.getRow(currentBaseline).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    wsSummary.getRow(currentBaseline).eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } };
+      cell.alignment = { horizontal: 'center' };
+    });
+    currentBaseline++;
+
+    sortedYears.forEach(year => {
+      let totalYearProfit = 0;
+      const monthRowPctValues: (string | number)[] = [year, '% Capital'];
+      const monthRowProfitValues: (string | number)[] = ['', 'Lucro R$'];
+
+      for (let m = 1; m <= 12; m++) {
+        const key = `${year}-${m}`;
+        if (monthlyDataMap.has(key)) {
+          const item = monthlyDataMap.get(key)!;
+          const profit = item.endBalanceProfit - item.startBalanceProfit;
+          const pct = pf.capital > 0 ? profit / pf.capital : 0;
+          monthRowPctValues.push(pct);
+          monthRowProfitValues.push(profit);
+          totalYearProfit += profit;
+        } else {
+          monthRowPctValues.push('-');
+          monthRowProfitValues.push('-');
+        }
+      }
+      monthRowPctValues.push(pf.capital > 0 ? totalYearProfit / pf.capital : 0);
+      monthRowProfitValues.push(totalYearProfit);
+
+      // Row %
+      const rPct = wsSummary.getRow(currentBaseline);
+      rPct.values = monthRowPctValues;
+      rPct.font = { bold: true };
+      for (let c = 3; c <= 15; c++) {
+        if (typeof rPct.getCell(c).value === 'number') {
+          rPct.getCell(c).numFmt = '0.00%';
+        }
+        rPct.getCell(c).alignment = { horizontal: 'center' };
+      }
+      currentBaseline++;
+
+      // Row Profit
+      const rProf = wsSummary.getRow(currentBaseline);
+      rProf.values = monthRowProfitValues;
+      for (let c = 3; c <= 15; c++) {
+        if (typeof rProf.getCell(c).value === 'number') {
+          rProf.getCell(c).numFmt = 'R$ #,##0.00';
+        }
+        rProf.getCell(c).alignment = { horizontal: 'center' };
+      }
+      currentBaseline += 2;
+    });
+
+    // Adjust column widths
+    wsSummary.columns.forEach(col => { col.width = 16; });
+    wsSummary.getColumn(1).width = 35;
+
+    // ── SHEET 2: HISTÓRICO E GRÁFICO (Chart Sheet) ───────────────────
+    const wsCurve = workbook.addWorksheet('Curva de Patrimônio');
+
+    wsCurve.getRow(1).values = ['Data', 'Lucro Acumulado (R$)', 'Patrimônio Total (R$)', 'Drawdown Intraday (R$)'];
+    wsCurve.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    wsCurve.getRow(1).eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } };
+      cell.alignment = { horizontal: 'center' };
+    });
+
+    combinedCurve.forEach((pt, idx) => {
+      const row = wsCurve.getRow(idx + 2);
+      row.values = [pt.day, pt.balanceProfit, pt.equity, pt.dd];
+      row.getCell(2).numFmt = 'R$ #,##0.00';
+      row.getCell(3).numFmt = 'R$ #,##0.00';
+      row.getCell(4).numFmt = 'R$ #,##0.00';
+    });
+
+    wsCurve.columns.forEach(col => { col.width = 24; });
+
+    // Inserir Gráfico nativo no Excel usando ExcelJS AddChart
+    (wsCurve as any).addChart({
+      type: 'line',
+      title: { text: `Evolução Patrimonial — ${pf.name}` },
+      range: `A1:C${combinedCurve.length + 1}`,
+      position: {
+        from: { col: 5, row: 1 },
+        to: { col: 18, row: 28 }
+      }
+    });
+
+    // ── SHEET 3: DADOS DIÁRIOS ROBÔS (Nautilus Export) ───────────────
+    const wsDaily = workbook.addWorksheet('Dados Diários Robôs');
+    wsDaily.getRow(1).values = ['robo', 'data', 'lucro', 'DD Max'];
+    wsDaily.getRow(1).font = { bold: true };
+
+    let dailyRowIndex = 2;
     for (const r of robots) {
       const curve = JSON.parse(r.equity_curve || '[]');
       const initial = r.initial_deposit || 10000;
       const weight = r.weight || 1;
-      
-      // Group by day - normalization to match MT5 format YYYY.MM.DD
+
       const dailyData: Map<string, { points: any[] }> = new Map();
       curve.forEach((pt: any) => {
         const rawDate = pt.date || pt.timestamp || pt.day || '2020.01.01.00.00';
@@ -1027,38 +1267,36 @@ app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
         dailyData.get(day)!.points.push(pt);
       });
 
-      const sortedDays = Array.from(dailyData.keys()).sort();
+      const robotDays = Array.from(dailyData.keys()).sort();
       let prevEquity = initial;
-      let globalPeak = initial;
+      let robotGlobalPeak = initial;
 
-      for (const day of sortedDays) {
+      for (const day of robotDays) {
         const data = dailyData.get(day)!;
         const lastPt = data.points[data.points.length - 1];
-        
-        // Lucro Diário = Variação da Equity no dia * Peso
         const dailyProfit = (lastPt.equity - prevEquity) * weight;
-        
-        // DD Max Diário = O maior Drawdown (Topo Global - Equity Atual) registrado DURANTE o dia * Peso
+
         let maxDayDD = 0;
         for (const pt of data.points) {
-          if (pt.equity > globalPeak) globalPeak = pt.equity;
-          const currentDD = globalPeak - pt.equity;
+          if (pt.equity > robotGlobalPeak) robotGlobalPeak = pt.equity;
+          const currentDD = robotGlobalPeak - pt.equity;
           if (currentDD > maxDayDD) maxDayDD = currentDD;
         }
 
-        csvLines.push(`${r.name},${day},${dailyProfit.toFixed(2)},${(maxDayDD * weight).toFixed(2)}`);
-        
-        // Update prevEquity to start of next day
+        const row = wsDaily.getRow(dailyRowIndex++);
+        row.values = [r.name, day, Number(dailyProfit.toFixed(2)), Number((maxDayDD * weight).toFixed(2))];
         prevEquity = lastPt.equity;
       }
     }
+    wsDaily.columns.forEach(col => { col.width = 22; });
 
-    const csvContent = csvLines.join('\n');
-    const filename = `export_nautilus_${pf.name.replace(/\s+/g, '_')}_${Date.now()}.csv`;
-    
-    res.setHeader('Content-Type', 'text/csv');
+    // Generate buffer & response
+    const buffer = await workbook.xlsx.writeBuffer();
+    const filename = `Export_Nautilus_${pf.name.replace(/\s+/g, '_')}_${Date.now()}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.status(200).send(csvContent);
+    res.status(200).send(Buffer.from(buffer));
 
   } catch (err) {
     console.error(err);

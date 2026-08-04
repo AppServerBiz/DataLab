@@ -473,7 +473,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               }}
               download
             >
-              <Download size={13} /> Exportar p/ Nautilus
+              <Download size={13} /> Exportar
             </a>
             <button 
               className="btn" 
