@@ -40,6 +40,22 @@ type PeriodFilter = '2026' | '12m' | '24m' | '36m' | '60m' | 'all';
 let cachedCdiData: { date: string; value: number }[] = [];
 let cachedIbovData: { date: string; value: number }[] = [];
 
+// Helper to normalize any date string to YYYY-MM month key
+const getMonthKey = (dayStr: string): string => {
+  if (!dayStr) return '';
+  const parts = dayStr.split(/[-./]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD or YYYY.MM.DD
+      return `${parts[0]}-${parts[1].padStart(2, '0')}`;
+    } else if (parts[2].length === 4) {
+      // DD/MM/YYYY
+      return `${parts[2]}-${parts[1].padStart(2, '0')}`;
+    }
+  }
+  return dayStr.substring(0, 7);
+};
+
 export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   portfolioName,
   capital,
@@ -71,10 +87,12 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     // Convert to pt-BR format (dd/MM/yyyy) for BCB API without timezone issues
     const formatDateForBCB = (dateStr: string) => {
       if (!dateStr) return '01/01/2020';
-      const parts = dateStr.split('-');
+      const parts = dateStr.split(/[-./]/);
       if (parts.length === 3) {
-        const [y, m, d] = parts;
-        return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+        if (parts[0].length === 4) {
+          return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+        }
+        return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
       }
       return dateStr;
     };
@@ -87,7 +105,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
       fetch(`/api/benchmarks/cdi?start=${encodeURIComponent(bcbStart)}&end=${encodeURIComponent(bcbEnd)}`)
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data)) {
+          if (Array.isArray(data) && data.length > 0) {
             const parsed = data
               .filter((item: any) => item && item.data && item.valor !== undefined)
               .map((item: any) => {
@@ -104,11 +122,20 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               })
               .filter((item): item is { date: string; value: number } => item !== null);
 
-            cachedCdiData = parsed;
-            setRealCdi(parsed);
+            if (parsed.length > 0) {
+              cachedCdiData = parsed;
+              setRealCdi(parsed);
+            } else {
+              generateFallbackCdi(sortedDays);
+            }
+          } else {
+            generateFallbackCdi(sortedDays);
           }
         })
-        .catch(err => console.error('Erro ao buscar CDI mensal:', err));
+        .catch(err => {
+          console.error('Erro ao buscar CDI mensal:', err);
+          generateFallbackCdi(sortedDays);
+        });
     }
 
     // Fetch IBOV via backend proxy
@@ -132,6 +159,22 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         });
     }
   }, [combinedCurve]);
+
+  const generateFallbackCdi = (sortedDays: string[]) => {
+    const monthSet = new Set<string>();
+    sortedDays.forEach(day => {
+      const key = getMonthKey(day);
+      if (key) monthSet.add(key);
+    });
+
+    const fallback = Array.from(monthSet).map(date => ({
+      date,
+      value: 0.0095 // ~0.95% a.m. (fallback de segurança)
+    }));
+
+    cachedCdiData = fallback;
+    setRealCdi(fallback);
+  };
 
   const generateFallbackIbov = (sortedDays: string[]) => {
     let baseValue = 115000;
@@ -176,8 +219,10 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     // Grouping by Month Key (YYYY-MM) and picking the last trading day of the month as the representation point
     const monthlyGroups: { [key: string]: typeof combinedCurve[0] } = {};
     filteredPoints.forEach(p => {
-      const monthKey = p.day.substring(0, 7); // "YYYY-MM"
-      monthlyGroups[monthKey] = p; // Will naturally overwrite to the latest point of that month
+      const monthKey = getMonthKey(p.day);
+      if (monthKey) {
+        monthlyGroups[monthKey] = p; // Will naturally overwrite to the latest point of that month
+      }
     });
 
     const monthlySampled = Object.keys(monthlyGroups)
@@ -258,7 +303,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     // 3. REAL CDI Cumulative % Return compounding month-by-month (série 4391)
     if (benchmarks.CDI && realCdi.length > 0) {
       // Collect all month keys in the sampled range
-      const monthKeys = monthlySampled.map(p => p.day.substring(0, 7));
+      const monthKeys = monthlySampled.map(p => getMonthKey(p.day));
 
       // Fast lookup map for monthly CDI rate
       const cdiMap = new Map<string, number>();
@@ -269,7 +314,8 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         if (idx === 0) {
           return 0; // Base month starts at 0%
         }
-        const rate = cdiMap.get(mk) ?? 0;
+        // Fallback rate ~0.95% if missing for a specific month
+        const rate = cdiMap.get(mk) ?? 0.0095;
         compoundedFactor *= (1 + rate);
         return (compoundedFactor - 1) * 100;
       });
