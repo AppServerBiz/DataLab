@@ -1169,8 +1169,10 @@ app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
 
     sortedYears.forEach(year => {
       let totalYearProfit = 0;
+      let maxYearDME = 0;
       const monthRowPctValues: (string | number)[] = [year, '% Capital'];
       const monthRowProfitValues: (string | number)[] = ['', 'Lucro R$'];
+      const monthRowDmeValues: (string | number)[] = ['', 'DME R$'];
 
       for (let m = 1; m <= 12; m++) {
         const key = `${year}-${m}`;
@@ -1178,18 +1180,25 @@ app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
           const item = monthlyDataMap.get(key)!;
           const profit = item.endBalanceProfit - item.startBalanceProfit;
           const pct = pf.capital > 0 ? profit / pf.capital : 0;
+          const dme = item.maxDD;
+
           monthRowPctValues.push(pct);
           monthRowProfitValues.push(profit);
+          monthRowDmeValues.push(dme);
+
           totalYearProfit += profit;
+          if (dme > maxYearDME) maxYearDME = dme;
         } else {
           monthRowPctValues.push('-');
           monthRowProfitValues.push('-');
+          monthRowDmeValues.push('-');
         }
       }
       monthRowPctValues.push(pf.capital > 0 ? totalYearProfit / pf.capital : 0);
       monthRowProfitValues.push(totalYearProfit);
+      monthRowDmeValues.push(maxYearDME);
 
-      // Row %
+      // Row 1: % Capital
       const rPct = wsSummary.getRow(currentBaseline);
       rPct.values = monthRowPctValues;
       rPct.font = { bold: true };
@@ -1201,7 +1210,7 @@ app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
       }
       currentBaseline++;
 
-      // Row Profit
+      // Row 2: Profit R$
       const rProf = wsSummary.getRow(currentBaseline);
       rProf.values = monthRowProfitValues;
       for (let c = 3; c <= 15; c++) {
@@ -1209,6 +1218,18 @@ app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
           rProf.getCell(c).numFmt = 'R$ #,##0.00';
         }
         rProf.getCell(c).alignment = { horizontal: 'center' };
+      }
+      currentBaseline++;
+
+      // Row 3: DME R$
+      const rDme = wsSummary.getRow(currentBaseline);
+      rDme.values = monthRowDmeValues;
+      rDme.font = { italic: true, color: { argb: 'FFC00000' } };
+      for (let c = 3; c <= 15; c++) {
+        if (typeof rDme.getCell(c).value === 'number') {
+          rDme.getCell(c).numFmt = 'R$ #,##0.00';
+        }
+        rDme.getCell(c).alignment = { horizontal: 'center' };
       }
       currentBaseline += 2;
     });
