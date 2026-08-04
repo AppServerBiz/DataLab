@@ -80,25 +80,25 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     const bcbStart = formatDateForBCB(startDate);
     const bcbEnd = formatDateForBCB(endDate);
 
-    // Fetch CDI (Série 12 - Taxa CDI de juros acumulada diária)
+    // Fetch CDI (Série 4391 - CDI acumulado no mês, % a.m.)
+    // Returns one point per month with the total CDI return for that month
     if (realCdi.length === 0) {
-      fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados?formato=json&dataInicial=${bcbStart}&dataFinal=${bcbEnd}`)
+      fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.4391/dados?formato=json&dataInicial=${bcbStart}&dataFinal=${bcbEnd}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
             const parsed = data.map(item => {
               const [d, m, y] = item.data.split('/');
               return {
-                date: `${y}-${m}-${d}`,
-                // Convert percentual rate to decimal fraction (e.g. 0.043512% -> 0.00043512)
-                value: parseFloat(item.valor) / 100
+                date: `${y}-${m}`, // Monthly key "YYYY-MM"
+                value: parseFloat(item.valor) / 100 // e.g. 1.01% -> 0.0101
               };
             });
             cachedCdiData = parsed;
             setRealCdi(parsed);
           }
         })
-        .catch(err => console.error('Erro ao buscar CDI real do Banco Central:', err));
+        .catch(err => console.error('Erro ao buscar CDI mensal do Banco Central:', err));
     }
 
     // Fetch IBOV
@@ -245,16 +245,26 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
       });
     }
 
-    // 3. REAL CDI Cumulative % Return compounding month-by-month
+    // 3. REAL CDI Cumulative % Return compounding month-by-month (série 4391)
     if (benchmarks.CDI && realCdi.length > 0) {
-      const firstDayStr = monthlySampled[0].day;
+      // realCdi items have date as "YYYY-MM" and value as monthly decimal rate
+      // monthlySampled items have day as "YYYY-MM-DD" — extract "YYYY-MM" to match
+      const firstMonthKey = monthlySampled[0].day.substring(0, 7);
 
-      const cdiSeries = monthlySampled.map(p => {
-        // Compound real daily interest rates up to current month's latest trading day
-        const windowRates = realCdi.filter(item => item.date >= firstDayStr && item.date <= p.day);
+      // Collect all month keys in the sampled range, sorted
+      const monthKeys = monthlySampled.map(p => p.day.substring(0, 7));
+
+      // Get all CDI months from firstMonthKey onwards, sorted
+      const cdiMonthsSorted = realCdi
+        .filter(item => item.date >= firstMonthKey)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      const cdiSeries = monthKeys.map(mk => {
+        // Compound all CDI monthly rates from firstMonthKey up to and including mk
         let compoundedFactor = 1;
-        for (const r of windowRates) {
-          compoundedFactor *= (1 + r.value);
+        for (const cdiItem of cdiMonthsSorted) {
+          if (cdiItem.date > mk) break;
+          compoundedFactor *= (1 + cdiItem.value);
         }
         return (compoundedFactor - 1) * 100;
       });
