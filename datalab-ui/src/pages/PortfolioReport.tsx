@@ -319,10 +319,11 @@ const PortfolioReport = () => {
         {/* Rentabilidade Histórica Table for Report */}
         {stats?.monthly_returns && stats.monthly_returns.length > 0 && (
           <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
-            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
               Rentabilidade Histórica Mês a Mês
             </h3>
+
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
               <thead>
                 <tr style={{ background: '#334155', color: '#fff', textAlign: 'center' }}>
@@ -336,7 +337,7 @@ const PortfolioReport = () => {
               <tbody>
                 {stats.monthly_returns.map((row: any) => (
                   <React.Fragment key={row.year}>
-                    {/* Row 1: Profit $ */}
+                    {/* Row 1: % Return (Amarelo/Gold, 5% maior, primeiro) */}
                     <tr style={{ background: '#fff', borderTop: '1px solid #cbd5e1' }}>
                       <td rowSpan={3} style={{ padding: '8px', fontWeight: '900', fontSize: '11px', verticalAlign: 'middle', borderRight: '1px solid #cbd5e1', background: '#f8fafc' }}>
                         {row.year}
@@ -345,49 +346,60 @@ const PortfolioReport = () => {
                         const cell = row.months[m];
                         if (!cell) return <td key={m} style={{ padding: '4px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
                         return (
-                          <td key={m} style={{ padding: '4px', textAlign: 'center', color: cell.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '700' }}>
-                            {fmtCurrency(cell.profit)}
+                          <td key={m} style={{ padding: '4px', textAlign: 'center', color: '#d97706', fontWeight: '800', fontSize: '10.5px' }}>
+                            {fmtPct(cell.pct)}
                           </td>
                         );
                       })}
-                      <td style={{ padding: '4px 6px', textAlign: 'center', color: row.yearTotal.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '900', borderLeft: '1px solid #cbd5e1', background: '#f8fafc' }}>
-                        {fmtCurrency(row.yearTotal.profit)}
+                      <td style={{ padding: '4px 6px', textAlign: 'center', color: '#d97706', fontWeight: '900', borderLeft: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '11px' }}>
+                        {fmtPct(row.yearTotal.pct)}
                       </td>
                     </tr>
-                    {/* Row 2: % Return */}
+
+                    {/* Row 2: Profit (Sem cifrão $) */}
                     <tr style={{ background: '#fff' }}>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
                         const cell = row.months[m];
                         if (!cell) return <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
                         return (
-                          <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: cell.pct >= 0 ? '#15803d' : '#b91c1c', fontWeight: '600', fontSize: '9px' }}>
-                            {fmtPct(cell.pct)}
+                          <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: cell.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '700', fontSize: '9px' }}>
+                            {fmt(cell.profit)}
                           </td>
                         );
                       })}
-                      <td style={{ padding: '3px 6px', textAlign: 'center', color: row.yearTotal.pct >= 0 ? '#15803d' : '#b91c1c', fontWeight: '800', borderLeft: '1px solid #cbd5e1', fontSize: '10px', background: '#f8fafc' }}>
-                        {fmtPct(row.yearTotal.pct)}
+                      <td style={{ padding: '3px 6px', textAlign: 'center', color: row.yearTotal.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '800', borderLeft: '1px solid #cbd5e1', fontSize: '9.5px', background: '#f8fafc' }}>
+                        {fmt(row.yearTotal.profit)}
                       </td>
                     </tr>
-                    {/* Row 3: DME */}
+
+                    {/* Row 3: DME (Sem cifrão $) */}
                     <tr style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
                         const cell = row.months[m];
                         if (!cell) return <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
                         return (
                           <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: '#b91c1c', fontSize: '8.5px' }}>
-                            DME: {fmtCurrency(cell.dme)}
+                            DME: {fmt(cell.dme)}
                           </td>
                         );
                       })}
                       <td style={{ padding: '3px 6px', textAlign: 'center', color: '#b91c1c', fontWeight: '700', borderLeft: '1px solid #cbd5e1', fontSize: '9px', background: '#f8fafc' }}>
-                        DME: {fmtCurrency(row.yearTotal.dme)}
+                        DME: {fmt(row.yearTotal.dme)}
                       </td>
                     </tr>
                   </React.Fragment>
                 ))}
               </tbody>
             </table>
+
+            {/* Rodapé explicativo abaixo da tabela */}
+            <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '8.5px', color: '#475569', lineHeight: '1.4' }}>
+              <div>💡 <strong>DME (Drawdown Máximo de Exposição):</strong> Representa o maior rebaixamento financeiro acumulado no mês.</div>
+              <div>ℹ️ <strong>Nota de Cálculo:</strong> Os percentuais não consideram juros compostos; o cálculo é realizado assumindo o saque total do lucro mês a mês sobre o capital inicial.</div>
+              {robots.some((r: any) => r.has_incomplete_data) && (
+                <div>* <strong>Aviso de Histórico Parcial:</strong> Os robôs sinalizados com asterisco (*) possuem dados históricos que não cobrem todo o período de análise do portfólio. Para os meses em que um robô não operou, sua contribuição é tratada como zero ou estimada via média móvel.</div>
+              )}
+            </div>
           </div>
         )}
 

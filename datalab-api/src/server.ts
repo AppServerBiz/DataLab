@@ -896,10 +896,11 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
     
     // Iterate over combinedCurve to group by year and month
     combinedCurve.forEach((pt, idx) => {
-      const parts = pt.day.split('-'); // YYYY-MM-DD
+      const parts = pt.day.split(/[-.]/); // YYYY-MM-DD or YYYY.MM.DD
       if (parts.length < 2) return;
       const yr = parseInt(parts[0], 10);
       const mo = parseInt(parts[1], 10);
+      if (isNaN(yr) || isNaN(mo)) return;
       const key = `${yr}-${mo}`;
 
       if (!monthlyDataMap.has(key)) {
@@ -954,13 +955,21 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       };
     });
 
+    const firstGlobalDay = sortedDays[0];
+    const lastGlobalDay = sortedDays[sortedDays.length - 1];
+
     res.json({
       portfolio: pf,
-      robots: robots.map(({ equity_curve: _e, ...rest }) => ({
-        ...rest,
-        monthly_drawdown: rest.monthly_drawdown ? JSON.parse(rest.monthly_drawdown) : [],
-        ll_dd_pct: Number(rest.max_dd_from_csv || rest.max_dd_equity || 0) > 0 ? (rest.avg_profit_per_month / (rest.max_dd_from_csv || rest.max_dd_equity)) * 100 : 0
-      })),
+      robots: robots.map(({ equity_curve: _e, ...rest }) => {
+        const avg = robotAverages.get(rest.name);
+        const isIncomplete = avg ? (avg.firstDay > firstGlobalDay || avg.lastDay < lastGlobalDay) : false;
+        return {
+          ...rest,
+          has_incomplete_data: isIncomplete,
+          monthly_drawdown: rest.monthly_drawdown ? JSON.parse(rest.monthly_drawdown) : [],
+          ll_dd_pct: Number(rest.max_dd_from_csv || rest.max_dd_equity || 0) > 0 ? (rest.avg_profit_per_month / (rest.max_dd_from_csv || rest.max_dd_equity)) * 100 : 0
+        };
+      }),
       totals: {
         lucroMes: totalProfitMes,
         roiMes,
