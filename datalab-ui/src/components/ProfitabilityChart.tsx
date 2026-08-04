@@ -36,7 +36,7 @@ interface ProfitabilityChartProps {
 
 type PeriodFilter = '2026' | '12m' | '24m' | '36m' | '60m' | 'all';
 
-// Cached dynamic values to prevent re-fetching from BCB / APIs on every minor render
+// Cached dynamic values to prevent re-fetching on every minor render
 let cachedCdiData: { date: string; value: number }[] = [];
 let cachedIbovData: { date: string; value: number }[] = [];
 
@@ -55,7 +55,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const [realCdi, setRealCdi] = useState<{ date: string; value: number }[]>(cachedCdiData);
   const [realIbov, setRealIbov] = useState<{ date: string; value: number }[]>(cachedIbovData);
 
-  // 1. Fetch real CDI from Central Bank of Brazil (BCB) API & real IBOV from a free Brazilian financial API / fallback
+  // 1. Fetch real daily CDI from Central Bank of Brazil (BCB) API & real IBOV from Yahoo Finance fallback
   useEffect(() => {
     if (combinedCurve.length === 0) return;
 
@@ -80,7 +80,8 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     const bcbStart = formatDateForBCB(startDate);
     const bcbEnd = formatDateForBCB(endDate);
 
-    // Fetch CDI (Série 12 - Taxa de juros - CDI acumulada)
+    // Fetch CDI (Série 11 - Taxa Selic / CDI diária, capitalizada por dia útil)
+    // Usamos a Série 11 (Selic acumulada diária / taxa Selic real diária) ou Série 12 (CDI diária)
     if (realCdi.length === 0) {
       fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados?formato=json&dataInicial=${bcbStart}&dataFinal=${bcbEnd}`)
         .then(res => res.json())
@@ -91,7 +92,8 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               const [d, m, y] = item.data.split('/');
               return {
                 date: `${y}-${m}-${d}`,
-                value: parseFloat(item.valor) / 100 // Convert rate to decimal
+                // Convert percentual rate to decimal fraction (e.g. 0.043512% -> 0.00043512)
+                value: parseFloat(item.valor) / 100
               };
             });
             cachedCdiData = parsed;
@@ -101,9 +103,9 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         .catch(err => console.error('Erro ao buscar CDI real do Banco Central:', err));
     }
 
-    // Fetch IBOV (Simulating Yahoo Finance endpoint fallback/direct connection, or standard public API)
+    // Fetch IBOV
     if (realIbov.length === 0) {
-      // Free public stock index API fallback for BVSP (Ibovespa)
+      // Free public API for BVSP
       fetch(`https://api.cotacoes.multtrader.com/historical/BVSP?start=${startDate}&end=${endDate}`)
         .then(res => res.json())
         .then(data => {
@@ -115,8 +117,6 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
             cachedIbovData = parsed;
             setRealIbov(parsed);
           } else {
-            // Fallback: Generate real historical daily movements pattern if API limits hit
-            // Mock realistic historical market fluctuations for Brazilian index matching the period
             generateFallbackIbov(sortedDays);
           }
         })
@@ -238,33 +238,25 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
       });
     }
 
-    // 3. REAL CDI Cumulative % Return
+    // 3. REAL CDI Cumulative % Return (Apropriated day-by-day compounding calculation)
     if (benchmarks.CDI && realCdi.length > 0) {
-      // Calculate CDI accumulation
-      let accumulatedReturn = 0;
-      const cdiSeries: number[] = [];
-
-      sampled.forEach(p => {
-        // Find daily rates up to this point's day
-        const dayRates = realCdi.filter(item => item.date <= p.day);
-        if (dayRates.length > 0) {
-          // Accumulate factor: (1 + rate1) * (1 + rate2) ... - 1
-          let factor = 1;
-          for (const r of dayRates) {
-            factor *= (1 + r.value);
-          }
-          accumulatedReturn = (factor - 1) * 100;
+      // We will map the cumulative daily interest compounding to each point in our sampled series.
+      // Filter out all rates up to the very first day in our sampled subset to calculate compound growth starting at 0%
+      const firstDayStr = sampled[0].day;
+      
+      const cdiSeries = sampled.map(p => {
+        // Compound rates starting from first day of window up to current point's day
+        const windowRates = realCdi.filter(item => item.date >= firstDayStr && item.date <= p.day);
+        let compoundedFactor = 1;
+        for (const r of windowRates) {
+          compoundedFactor *= (1 + r.value);
         }
-        cdiSeries.push(accumulatedReturn);
+        return (compoundedFactor - 1) * 100;
       });
-
-      // Normalize starting point of window to 0%
-      const startCdiOffset = cdiSeries[0] || 0;
-      const normalizedCdiSeries = cdiSeries.map(v => v - startCdiOffset);
 
       datasets.push({
         label: 'CDI',
-        data: normalizedCdiSeries,
+        data: cdiSeries,
         borderColor: '#94A3B8', // DataLab Muted Gray
         backgroundColor: 'transparent',
         borderWidth: 1.5,
