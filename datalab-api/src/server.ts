@@ -1237,16 +1237,8 @@ app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
 
     wsCurve.columns.forEach(col => { col.width = 24; });
 
-    // Inserir Gráfico nativo no Excel usando ExcelJS AddChart
-    (wsCurve as any).addChart({
-      type: 'line',
-      title: { text: `Evolução Patrimonial — ${pf.name}` },
-      range: `A1:C${combinedCurve.length + 1}`,
-      position: {
-        from: { col: 5, row: 1 },
-        to: { col: 18, row: 28 }
-      }
-    });
+    // Dados organizados para gráfico no Excel
+
 
     // ── SHEET 3: DADOS DIÁRIOS ROBÔS (Nautilus Export) ───────────────
     const wsDaily = workbook.addWorksheet('Dados Diários Robôs');
