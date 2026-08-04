@@ -1290,23 +1290,79 @@ app.post('/api/ia/chat', async (req, res) => {
 // BENCHMARK PROXY ENDPOINTS (bypass CORS from BCB / IBOV APIs)
 // ══════════════════════════════════════════════════════════
 
+// Internal helper to fetch from BCB and populate SQLite benchmark_cdi
+async function fetchAndSaveBcbCdi() {
+  const db = await getDb();
+  const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.4391/dados?formato=json&dataInicial=01/01/2020&dataFinal=31/12/2030`;
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+  });
+  const data = await response.json();
+  if (Array.isArray(data)) {
+    const stmt = await db.prepare(
+      'INSERT OR REPLACE INTO benchmark_cdi (date, valor, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)'
+    );
+    for (const item of data) {
+      if (item && item.data && item.valor !== undefined) {
+        const parts = item.data.split('/');
+        if (parts.length === 3) {
+          const [d, m, y] = parts;
+          const monthKey = `${y}-${m.padStart(2, '0')}`;
+          const valNum = parseFloat(String(item.valor).replace(',', '.'));
+          if (!isNaN(valNum)) {
+            await stmt.run(monthKey, valNum);
+          }
+        }
+      }
+    }
+    await stmt.finalize();
+  }
+}
+
 // GET /api/benchmarks/cdi?start=dd/MM/yyyy&end=dd/MM/yyyy
-// Proxies BCB série 4391 (CDI acumulado no mês)
+// Serves CDI series from local SQLite database (fast & offline-ready)
 app.get('/api/benchmarks/cdi', async (req, res) => {
   try {
-    let start = (req.query.start as string) || '01/01/2020';
-    let end = (req.query.end as string) || '31/12/2030';
-    const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.4391/dados?formato=json&dataInicial=${encodeURIComponent(start)}&dataFinal=${encodeURIComponent(end)}`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+    const db = await getDb();
+    let rows = await db.all('SELECT date, valor FROM benchmark_cdi ORDER BY date ASC');
+    
+    // Auto-seed if SQLite is empty
+    if (rows.length === 0) {
+      try {
+        await fetchAndSaveBcbCdi();
+        rows = await db.all('SELECT date, valor FROM benchmark_cdi ORDER BY date ASC');
+      } catch (e) {
+        console.error('Failed auto-seeding BCB CDI:', e);
       }
+    }
+
+    // Convert to format expected by frontend: [{ data: "DD/MM/YYYY", valor: "0.97" }]
+    const result = rows.map(r => {
+      const [y, m] = r.date.split('-');
+      return {
+        data: `01/${m}/${y}`,
+        valor: String(r.valor)
+      };
     });
-    const data = await response.json();
-    res.json(data);
+
+    res.json(result);
   } catch (err) {
-    console.error('BCB CDI proxy error:', err);
+    console.error('BCB CDI get error:', err);
     res.status(500).json({ error: String(err) });
+  }
+});
+
+// POST /api/benchmarks/cdi/sync
+// Manually trigger sync with BCB API to update local database
+app.post('/api/benchmarks/cdi/sync', async (req, res) => {
+  try {
+    await fetchAndSaveBcbCdi();
+    const db = await getDb();
+    const count = await db.get('SELECT COUNT(*) as cnt FROM benchmark_cdi');
+    res.json({ success: true, count: count?.cnt || 0, message: 'CDI sincronizado com sucesso com o BCB!' });
+  } catch (err) {
+    console.error('BCB CDI sync error:', err);
+    res.status(500).json({ success: false, error: String(err) });
   }
 });
 

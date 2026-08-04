@@ -32,6 +32,7 @@ interface ProfitabilityChartProps {
     balanceProfit: number;
     dd: number;
   }>;
+  printMode?: boolean;
 }
 
 type PeriodFilter = '2026' | '12m' | '24m' | '36m' | '60m' | 'all';
@@ -59,9 +60,11 @@ const getMonthKey = (dayStr: string): string => {
 export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   portfolioName,
   capital,
-  combinedCurve = []
+  combinedCurve = [],
+  printMode = false
 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>('12m');
+  const [syncingCdi, setSyncingCdi] = useState(false);
   const [benchmarks, setBenchmarks] = useState<{ [key: string]: boolean }>({
     PORTFOLIO: true,
     IBOV: true,
@@ -70,6 +73,42 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
   const [realCdi, setRealCdi] = useState<{ date: string; value: number }[]>(cachedCdiData);
   const [realIbov, setRealIbov] = useState<{ date: string; value: number }[]>(cachedIbovData);
+
+  const handleSyncCdi = async () => {
+    try {
+      setSyncingCdi(true);
+      const res = await fetch('/api/benchmarks/cdi/sync', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        const r = await fetch('/api/benchmarks/cdi');
+        const cdiRes = await r.json();
+        if (Array.isArray(cdiRes) && cdiRes.length > 0) {
+          const parsed = cdiRes
+            .filter((item: any) => item && item.data && item.valor !== undefined)
+            .map((item: any) => {
+              const parts = item.data.split('/');
+              if (parts.length === 3) {
+                const [d, m, y] = parts;
+                const valStr = String(item.valor).replace(',', '.');
+                return {
+                  date: `${y}-${m.padStart(2, '0')}`,
+                  value: parseFloat(valStr) / 100
+                };
+              }
+              return null;
+            })
+            .filter((item): item is { date: string; value: number } => item !== null);
+
+          cachedCdiData = parsed;
+          setRealCdi(parsed);
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao sincronizar CDI:', e);
+    } finally {
+      setSyncingCdi(false);
+    }
+  };
 
   // 1. Fetch CDI and IBOV via backend proxy (bypasses CORS)
   useEffect(() => {
@@ -344,13 +383,13 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   return (
     <div
       style={{
-        background: '#13171F',
+        background: printMode ? '#FFFFFF' : '#13171F',
         borderRadius: '12px',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
+        border: printMode ? '1px solid #E2E8F0' : '1px solid rgba(255, 255, 255, 0.05)',
         padding: '1.5rem',
         marginTop: '1.5rem',
-        color: '#E2E8F0',
-        fontFamily: 'JetBrains Mono, monospace'
+        color: printMode ? '#0F172A' : '#E2E8F0',
+        fontFamily: 'Inter, sans-serif'
       }}
     >
       {/* Header Bar */}
@@ -370,7 +409,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               margin: 0,
               fontSize: '0.8rem',
               fontWeight: '700',
-              color: '#fff',
+              color: printMode ? '#0F172A' : '#fff',
               textTransform: 'uppercase',
               letterSpacing: '1px'
             }}
@@ -379,39 +418,65 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           </h3>
         </div>
 
-        {/* Period Selector Buttons */}
-        <div
-          style={{
-            display: 'flex',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '6px',
-            overflow: 'hidden',
-            background: 'rgba(255, 255, 255, 0.01)'
-          }}
-        >
-          {periodOptions.map(p => {
-            const active = selectedPeriod === p;
-            return (
-              <button
-                key={p}
-                onClick={() => setSelectedPeriod(p)}
-                style={{
-                  background: active ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                  color: active ? '#38BDF8' : '#64748B',
-                  border: 'none',
-                  borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.75rem',
-                  fontWeight: active ? '700' : '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                {p}
-              </button>
-            );
-          })}
-        </div>
+        {!printMode && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {/* Sync Button */}
+            <button
+              onClick={handleSyncCdi}
+              disabled={syncingCdi}
+              title="Sincronizar histórico do CDI no Banco Central"
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: syncingCdi ? '#64748B' : '#E2E8F0',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '6px',
+                padding: '0.35rem 0.65rem',
+                fontSize: '0.7rem',
+                cursor: syncingCdi ? 'wait' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {syncingCdi ? '🔄 Sincronizando...' : '🔄 Sincronizar BCB'}
+            </button>
+
+            {/* Period Selector Buttons */}
+            <div
+              style={{
+                display: 'flex',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                background: 'rgba(255, 255, 255, 0.01)'
+              }}
+            >
+              {periodOptions.map(p => {
+                const active = selectedPeriod === p;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setSelectedPeriod(p)}
+                    style={{
+                      background: active ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                      color: active ? '#38BDF8' : '#64748B',
+                      border: 'none',
+                      borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.75rem',
+                      fontWeight: active ? '700' : '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Chart Canvas Area */}
@@ -425,14 +490,14 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               plugins: {
                 legend: { display: false },
                 tooltip: {
-                  backgroundColor: '#1E232F',
+                  backgroundColor: printMode ? '#0F172A' : '#1E232F',
                   titleColor: '#fff',
                   bodyColor: '#E2E8F0',
                   padding: 10,
                   borderColor: 'rgba(255, 255, 255, 0.1)',
                   borderWidth: 1,
-                  bodyFont: { family: 'JetBrains Mono, monospace', size: 10 },
-                  titleFont: { family: 'JetBrains Mono, monospace', size: 10 },
+                  bodyFont: { family: 'Inter, sans-serif', size: 10 },
+                  titleFont: { family: 'Inter, sans-serif', size: 10 },
                   callbacks: {
                     label: (context: any) => {
                       const label = context.dataset.label || '';
@@ -446,16 +511,16 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
                 x: {
                   grid: { display: false },
                   ticks: {
-                    color: '#64748B',
-                    font: { size: 9, family: 'JetBrains Mono' }
+                    color: printMode ? '#475569' : '#64748B',
+                    font: { size: 9, family: 'Inter, sans-serif' }
                   }
                 },
                 y: {
                   position: 'left',
-                  grid: { color: 'rgba(255, 255, 255, 0.03)' },
+                  grid: { color: printMode ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.03)' },
                   ticks: {
-                    color: '#64748B',
-                    font: { size: 9, family: 'JetBrains Mono' },
+                    color: printMode ? '#475569' : '#64748B',
+                    font: { size: 9, family: 'Inter, sans-serif' },
                     callback: (v: any) => `${v}%`
                   }
                 }

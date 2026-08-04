@@ -95,6 +95,12 @@ export async function getDb(): Promise<Database<sqlite3.Database, sqlite3.Statem
       FOREIGN KEY (robot_id) REFERENCES robots(id) ON DELETE CASCADE,
       UNIQUE(portfolio_id, robot_id)
     );
+
+    CREATE TABLE IF NOT EXISTS benchmark_cdi (
+      date TEXT PRIMARY KEY,
+      valor REAL NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Proper JS migrations outside the SQL string

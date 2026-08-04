@@ -5,6 +5,7 @@ import {
   LineElement, Title, Tooltip, Legend, Filler, BarElement, ArcElement
 } from 'chart.js';
 import { Printer, Download, X } from 'lucide-react';
+import { ProfitabilityChart } from '../components/ProfitabilityChart';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
 
@@ -315,6 +316,18 @@ const PortfolioReport = () => {
             />
           </div>
         </div>
+
+        {/* Benchmark Profitability Chart (CDI / IBOV) */}
+        {stats?.combined_curve && stats.combined_curve.length > 0 && (
+          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+            <ProfitabilityChart
+              portfolioName={portfolio?.name || 'ALPHA1 GOLD'}
+              capital={Number(portfolio?.capital || 30000)}
+              combinedCurve={stats?.combined_curve || []}
+              printMode={true}
+            />
+          </div>
+        )}
 
         {/* Rentabilidade Histórica Table for Report */}
         {stats?.monthly_returns && stats.monthly_returns.length > 0 && (
