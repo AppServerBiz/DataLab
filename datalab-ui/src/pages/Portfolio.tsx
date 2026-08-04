@@ -13,6 +13,7 @@ import {
   Lock, Unlock, Download, Printer, Copy
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { ProfitabilityChart } from '../components/ProfitabilityChart';
 import { Line, Bar, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -766,6 +767,13 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         <div>* <strong>Aviso de Histórico Parcial:</strong> Os robôs sinalizados com asterisco (*) possuem dados históricos que não cobrem todo o período de análise do portfólio. Para os meses em que um robô não operou, sua contribuição é tratada como zero ou estimada via média móvel.</div>
                       )}
                     </div>
+
+                    {/* Gráfico de Rentabilidade (Estilo AlphaOne Advisors) */}
+                    <ProfitabilityChart
+                      portfolioName={localPortfolio?.name || portfolio?.name || 'ALPHA1 GOLD'}
+                      capital={Number(localPortfolio?.capital || portfolio?.capital || 30000)}
+                      combinedCurve={stats?.combined_curve || []}
+                    />
                   </div>
                 )}
                 <div className="print-spacer" style={{ height: '3rem', display: 'none' }}></div>
