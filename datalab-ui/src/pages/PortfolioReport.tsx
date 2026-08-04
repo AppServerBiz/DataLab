@@ -319,20 +319,20 @@ const PortfolioReport = () => {
 
         {/* Rentabilidade Histórica Table for Report */}
         {stats?.monthly_returns && stats.monthly_returns.length > 0 && (
-          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+          <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
             <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
               Rentabilidade Histórica Mês a Mês
             </h3>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
               <thead>
                 <tr style={{ background: '#334155', color: '#fff', textAlign: 'center' }}>
-                  <th style={{ padding: '8px', textAlign: 'left', fontWeight: '900' }}>ANO</th>
+                  <th style={{ padding: '6px 4px', textAlign: 'left', fontWeight: '900' }}>ANO</th>
                   {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map(m => (
-                    <th key={m} style={{ padding: '8px 4px', fontWeight: '800' }}>{m}</th>
+                    <th key={m} style={{ padding: '6px 2px', fontWeight: '800' }}>{m}</th>
                   ))}
-                  <th style={{ padding: '8px', fontWeight: '900', borderLeft: '1px solid #475569' }}>No ano</th>
+                  <th style={{ padding: '6px 4px', fontWeight: '900', borderLeft: '1px solid #475569' }}>No ano</th>
                 </tr>
               </thead>
               <tbody>
@@ -340,19 +340,19 @@ const PortfolioReport = () => {
                   <React.Fragment key={row.year}>
                     {/* Row 1: % Return (Amarelo/Gold, 5% maior, primeiro) */}
                     <tr style={{ background: '#fff', borderTop: '1px solid #cbd5e1' }}>
-                      <td rowSpan={3} style={{ padding: '8px', fontWeight: '900', fontSize: '11px', verticalAlign: 'middle', borderRight: '1px solid #cbd5e1', background: '#f8fafc' }}>
+                      <td rowSpan={3} style={{ padding: '4px 6px', fontWeight: '900', fontSize: '10px', verticalAlign: 'middle', borderRight: '1px solid #cbd5e1', background: '#f8fafc' }}>
                         {row.year}
                       </td>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
                         const cell = row.months[m];
-                        if (!cell) return <td key={m} style={{ padding: '4px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
+                        if (!cell) return <td key={m} style={{ padding: '3px 2px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
                         return (
-                          <td key={m} style={{ padding: '4px', textAlign: 'center', color: '#d97706', fontWeight: '800', fontSize: '10.5px' }}>
+                          <td key={m} style={{ padding: '3px 2px', textAlign: 'center', color: '#d97706', fontWeight: '800', fontSize: '9px' }}>
                             {fmtPct(cell.pct)}
                           </td>
                         );
                       })}
-                      <td style={{ padding: '4px 6px', textAlign: 'center', color: '#d97706', fontWeight: '900', borderLeft: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '11px' }}>
+                      <td style={{ padding: '3px 4px', textAlign: 'center', color: '#d97706', fontWeight: '900', borderLeft: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '9.5px' }}>
                         {fmtPct(row.yearTotal.pct)}
                       </td>
                     </tr>
@@ -361,14 +361,14 @@ const PortfolioReport = () => {
                     <tr style={{ background: '#fff' }}>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
                         const cell = row.months[m];
-                        if (!cell) return <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
+                        if (!cell) return <td key={m} style={{ padding: '2px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
                         return (
-                          <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: cell.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '700', fontSize: '9px' }}>
+                          <td key={m} style={{ padding: '2px', textAlign: 'center', color: cell.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '700', fontSize: '8px' }}>
                             {fmt(cell.profit)}
                           </td>
                         );
                       })}
-                      <td style={{ padding: '3px 6px', textAlign: 'center', color: row.yearTotal.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '800', borderLeft: '1px solid #cbd5e1', fontSize: '9.5px', background: '#f8fafc' }}>
+                      <td style={{ padding: '2px 4px', textAlign: 'center', color: row.yearTotal.profit >= 0 ? '#166534' : '#991b1b', fontWeight: '800', borderLeft: '1px solid #cbd5e1', fontSize: '8.5px', background: '#f8fafc' }}>
                         {fmt(row.yearTotal.profit)}
                       </td>
                     </tr>
@@ -377,14 +377,14 @@ const PortfolioReport = () => {
                     <tr style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
                         const cell = row.months[m];
-                        if (!cell) return <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
+                        if (!cell) return <td key={m} style={{ padding: '2px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
                         return (
-                          <td key={m} style={{ padding: '3px 4px', textAlign: 'center', color: '#b91c1c', fontSize: '8.5px' }}>
+                          <td key={m} style={{ padding: '2px', textAlign: 'center', color: '#b91c1c', fontSize: '7.5px' }}>
                             DME: {fmt(cell.dme)}
                           </td>
                         );
                       })}
-                      <td style={{ padding: '3px 6px', textAlign: 'center', color: '#b91c1c', fontWeight: '700', borderLeft: '1px solid #cbd5e1', fontSize: '9px', background: '#f8fafc' }}>
+                      <td style={{ padding: '2px 4px', textAlign: 'center', color: '#b91c1c', fontWeight: '700', borderLeft: '1px solid #cbd5e1', fontSize: '8px', background: '#f8fafc' }}>
                         DME: {fmt(row.yearTotal.dme)}
                       </td>
                     </tr>
@@ -406,8 +406,8 @@ const PortfolioReport = () => {
 
         {/* Benchmark Profitability Chart (CDI / IBOV) */}
         {stats?.combined_curve && stats.combined_curve.length > 0 && (
-          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
-            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
               Evolução de Rentabilidade Mensal vs Benchmarks
             </h3>
@@ -423,9 +423,9 @@ const PortfolioReport = () => {
         <div style={{ pageBreakAfter: 'always' }}></div>
 
         {/* Charts - Page 2: Profit Analysis */}
-        <div style={{ paddingTop: '20px' }}>
-          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
-            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ paddingTop: '10px' }}>
+          <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
               Lucro Acumulado por Robô (Top 10)
             </h3>
