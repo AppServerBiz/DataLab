@@ -29,7 +29,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   // Check if already logged in on mount
   useEffect(() => {
     const saved = localStorage.getItem('investhub_user');
-    if (saved && saved.trim().toUpperCase() === 'MOJOROVA') {
+    if (saved && saved.trim().toUpperCase() === '579524') {
       onLoginSuccess();
     }
   }, [onLoginSuccess]);
@@ -129,9 +129,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     setLoading(true);
 
     try {
-      // Replicating only 1 admin user allowed: MOJOROVA (case-insensitive for safety, saved as uppercase)
-      if (uName.toUpperCase() === 'MOJOROVA') {
-        localStorage.setItem('investhub_user', 'MOJOROVA');
+      // Admin user credential: 579524
+      if (uName.toUpperCase() === '579524') {
+        localStorage.setItem('investhub_user', '579524');
         onLoginSuccess();
       } else {
         setError('Usuário não encontrado. Verifique sua credencial.');

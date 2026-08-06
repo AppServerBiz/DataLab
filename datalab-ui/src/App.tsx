@@ -28,7 +28,7 @@ function App() {
 function AppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const saved = localStorage.getItem('investhub_user');
-    return saved?.trim().toUpperCase() === 'MOJOROVA';
+    return saved?.trim().toUpperCase() === '579524';
   });
 
   const location = useLocation();
