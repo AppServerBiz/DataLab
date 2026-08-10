@@ -1035,8 +1035,9 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
       });
     }
 
-    // 1. Build daily DD data for correlation (same logic as stats endpoint)
+    // 1. Build daily DD and profit data for correlation + combined curve
     const robotDailyDD: Map<string, Map<string, number>> = new Map();
+    const robotDailyProfit: Map<string, Map<string, number>> = new Map();
     const allGlobalDays: Set<string> = new Set();
 
     for (const r of robots) {
@@ -1045,17 +1046,21 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
       const effectiveInitial = curve[0].equity;
       let robotPeak = effectiveInitial;
       const ddMap: Map<string, number> = new Map();
+      const profitMap: Map<string, number> = new Map();
       curve.forEach((pt: any) => {
         const day = pt.date ? pt.date.split(' ')[0] : (pt.timestamp ? pt.timestamp.split(' ')[0] : '2020-01-01');
         if (pt.equity > robotPeak) robotPeak = pt.equity;
         const curDD = robotPeak - pt.equity;
+        const profit = pt.equity - effectiveInitial;
         allGlobalDays.add(day);
-        // Keep max DD of the day
+        // Keep max DD and latest profit of the day
         if (!ddMap.has(day) || curDD > ddMap.get(day)!) {
           ddMap.set(day, curDD);
         }
+        profitMap.set(day, profit); // latest profit of the day
       });
       robotDailyDD.set(r.name, ddMap);
+      robotDailyProfit.set(r.name, profitMap);
     }
 
     const sortedDays = Array.from(allGlobalDays).sort();
@@ -1106,8 +1111,6 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
       const avgCorr = otherCorrs.length > 0 ? otherCorrs.reduce((s, v) => s + v, 0) / otherCorrs.length : 0;
 
       // Penalize high correlation: score × (1 - avgCorr × 0.5)
-      // A robot with avg correlation 1.0 loses 50% of its score
-      // A robot with avg correlation 0.0 keeps 100%
       const corrPenalty = 1 - avgCorr * 0.5;
       const finalScore = Math.max(0, baseScore * corrPenalty);
 
@@ -1125,7 +1128,6 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
     // 4. Normalize scores into weights
     const totalScore = scores.reduce((s, sc) => s + sc.score, 0);
     if (totalScore === 0) {
-      // Fallback: equal weights
       const equalWeight = 1;
       return res.json({
         suggestions: scores.map(sc => ({
@@ -1145,8 +1147,6 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
     }
 
     // Scale: The robot with highest score gets the highest weight
-    // First, calculate proportional weights relative to the lowest scorer
-    const sortedScores = [...scores].sort((a, b) => b.score - a.score);
     const minScore = Math.min(...scores.filter(s => s.score > 0).map(s => s.score));
 
     // Raw proportional weights (minimum 1)
@@ -1155,17 +1155,50 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
       rawWeight: sc.score > 0 ? Math.max(1, sc.score / minScore) : 1
     }));
 
-    // Apply DD target constraint: sum(dd_i × w_i) <= target_dd
-    const targetDD = Number(pf.target_dd) || 5000;
-    const currentSumDD = rawWeights.reduce((s, rw) => {
-      const dd = Number(rw.robot.max_dd_from_csv || rw.robot.max_dd_equity || 0);
-      return s + dd * rw.rawWeight;
-    }, 0);
+    // Helper: Calculate DD Max Portf. (combined equity curve peak-to-trough) for given weights
+    const calcDDMaxPortf = (weightMap: Map<string, number>): number => {
+      const lastKnown = new Map<string, number>();
+      for (const r of robots) lastKnown.set(r.name, 0);
 
-    // Scale factor to fit within target DD
+      let globalPeak = pf.capital;
+      let maxDD = 0;
+
+      for (const day of sortedDays) {
+        let totalProfit = 0;
+        for (const r of robots) {
+          const weight = weightMap.get(r.robot_id) || 1;
+          const profitMap = robotDailyProfit.get(r.name);
+          const dayProfit = profitMap?.get(day);
+          if (dayProfit !== undefined) {
+            lastKnown.set(r.name, dayProfit);
+          }
+          totalProfit += (lastKnown.get(r.name) || 0) * weight;
+        }
+
+        const currentEquity = pf.capital + totalProfit;
+        if (currentEquity > globalPeak) globalPeak = currentEquity;
+        const dd = globalPeak - currentEquity;
+        if (dd > maxDD) maxDD = dd;
+      }
+      return maxDD;
+    };
+
+    // Calculate DD Max Portf. with current weights
+    const currentWeightMap = new Map<string, number>();
+    robots.forEach(r => currentWeightMap.set(r.robot_id, r.weight));
+    const currentDDMaxPortf = calcDDMaxPortf(currentWeightMap);
+
+    // Apply DD target constraint using DD Max Portf.
+    const targetDD = Number(pf.target_dd) || 5000;
+
+    // First pass: compute DD with raw weights to check if we need to scale down
+    const rawWeightMap = new Map<string, number>();
+    rawWeights.forEach(rw => rawWeightMap.set(rw.robot.robot_id, Math.max(1, Math.round(rw.rawWeight))));
+    const rawDDMaxPortf = calcDDMaxPortf(rawWeightMap);
+
     let scaleFactor = 1;
-    if (currentSumDD > targetDD && currentSumDD > 0) {
-      scaleFactor = targetDD / currentSumDD;
+    if (rawDDMaxPortf > targetDD && rawDDMaxPortf > 0) {
+      scaleFactor = targetDD / rawDDMaxPortf;
     }
 
     // Apply scale and round to integers (min 1)
@@ -1185,35 +1218,34 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
       };
     });
 
-    // 5. Calculate comparison metrics (current vs optimized)
+    // 5. Calculate comparison metrics using DD Max Portf. (combined curve)
     const currentLucroMes = robots.reduce((s, r) => s + r.avg_profit_per_month * r.weight, 0);
-    const currentDDMax = robots.reduce((s, r) => s + (r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0);
-    const currentLLDD = currentDDMax > 0 ? (currentLucroMes / currentDDMax) * 100 : 0;
+    const currentLLDD = currentDDMaxPortf > 0 ? (currentLucroMes / currentDDMaxPortf) * 100 : 0;
+    const currentROI = pf.capital > 0 ? (currentLucroMes / pf.capital) * 100 : 0;
+
+    const optimizedWeightMap = new Map<string, number>();
+    suggestions.forEach(sg => optimizedWeightMap.set(sg.robot_id, sg.suggested_weight));
+    const optimizedDDMaxPortf = calcDDMaxPortf(optimizedWeightMap);
 
     const optimizedLucroMes = suggestions.reduce((s, sg) => {
       const r = robots.find(r => r.robot_id === sg.robot_id)!;
       return s + r.avg_profit_per_month * sg.suggested_weight;
     }, 0);
-    const optimizedDDMax = suggestions.reduce((s, sg) => {
-      const r = robots.find(r => r.robot_id === sg.robot_id)!;
-      return s + (r.max_dd_from_csv || r.max_dd_equity || 0) * sg.suggested_weight;
-    }, 0);
-    const optimizedLLDD = optimizedDDMax > 0 ? (optimizedLucroMes / optimizedDDMax) * 100 : 0;
+    const optimizedLLDD = optimizedDDMaxPortf > 0 ? (optimizedLucroMes / optimizedDDMaxPortf) * 100 : 0;
     const optimizedROI = pf.capital > 0 ? (optimizedLucroMes / pf.capital) * 100 : 0;
-    const currentROI = pf.capital > 0 ? (currentLucroMes / pf.capital) * 100 : 0;
 
     res.json({
       suggestions,
       comparison: {
         current: {
           lucroMes: parseFloat(currentLucroMes.toFixed(2)),
-          ddMax: parseFloat(currentDDMax.toFixed(2)),
+          ddMaxPortf: parseFloat(currentDDMaxPortf.toFixed(2)),
           llDd: parseFloat(currentLLDD.toFixed(2)),
           roi: parseFloat(currentROI.toFixed(2))
         },
         optimized: {
           lucroMes: parseFloat(optimizedLucroMes.toFixed(2)),
-          ddMax: parseFloat(optimizedDDMax.toFixed(2)),
+          ddMaxPortf: parseFloat(optimizedDDMaxPortf.toFixed(2)),
           llDd: parseFloat(optimizedLLDD.toFixed(2)),
           roi: parseFloat(optimizedROI.toFixed(2))
         }

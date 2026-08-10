@@ -1258,8 +1258,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: '700' }}>${fmt(optimizeData.comparison.current.lucroMes)}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>DD Max Soma</span>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--accent-red)', fontWeight: '700' }}>${fmt(optimizeData.comparison.current.ddMax)}</span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>DD Max Portf.</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--accent-red)', fontWeight: '700' }}>${fmt(optimizeData.comparison.current.ddMaxPortf)}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>LL/DD %</span>
@@ -1279,11 +1279,11 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   <div style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '12px', padding: '1rem 1.2rem' }}>
                     <div style={{ fontSize: '0.65rem', color: '#A855F7', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.8rem', fontWeight: '700' }}>⚡ Pesos Otimizados</div>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      {[{ label: 'Lucro/Mês', key: 'lucroMes', prefix: '$', color: '#fff' }, { label: 'DD Max Soma', key: 'ddMax', prefix: '$', color: 'var(--accent-red)' }, { label: 'LL/DD %', key: 'llDd', prefix: '', suffix: '%', color: 'var(--accent-blue)' }, { label: 'ROI Mês', key: 'roi', prefix: '', suffix: '%', color: '#fff' }].map(m => {
+                      {[{ label: 'Lucro/Mês', key: 'lucroMes', prefix: '$', color: '#fff' }, { label: 'DD Max Portf.', key: 'ddMaxPortf', prefix: '$', color: 'var(--accent-red)' }, { label: 'LL/DD %', key: 'llDd', prefix: '', suffix: '%', color: 'var(--accent-blue)' }, { label: 'ROI Mês', key: 'roi', prefix: '', suffix: '%', color: '#fff' }].map(m => {
                         const cur = optimizeData.comparison.current[m.key];
                         const opt = optimizeData.comparison.optimized[m.key];
                         const diff = opt - cur;
-                        const isDD = m.key === 'ddMax';
+                        const isDD = m.key === 'ddMaxPortf';
                         const improved = isDD ? diff <= 0 : diff >= 0;
                         return (
                           <div key={m.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
