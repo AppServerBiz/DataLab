@@ -1035,7 +1035,8 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
       });
     }
 
-    // 1. Build daily DD and profit data for correlation + combined curve
+    // 1. Build daily DD, profit and combined data for correlation + combined curve
+    const robotDailyData: Map<string, Map<string, { profit: number, dd: number }>> = new Map();
     const robotDailyDD: Map<string, Map<string, number>> = new Map();
     const robotDailyProfit: Map<string, Map<string, number>> = new Map();
     const allGlobalDays: Set<string> = new Set();
@@ -1047,6 +1048,7 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
       let robotPeak = effectiveInitial;
       const ddMap: Map<string, number> = new Map();
       const profitMap: Map<string, number> = new Map();
+      const dailyMap: Map<string, { profit: number, dd: number }> = new Map();
       curve.forEach((pt: any) => {
         const day = pt.date ? pt.date.split(' ')[0] : (pt.timestamp ? pt.timestamp.split(' ')[0] : '2020-01-01');
         if (pt.equity > robotPeak) robotPeak = pt.equity;
@@ -1057,8 +1059,16 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
         if (!ddMap.has(day) || curDD > ddMap.get(day)!) {
           ddMap.set(day, curDD);
         }
-        profitMap.set(day, profit); // latest profit of the day
+        profitMap.set(day, profit);
+        if (!dailyMap.has(day)) {
+          dailyMap.set(day, { profit, dd: curDD });
+        } else {
+          const g = dailyMap.get(day)!;
+          g.profit = profit;
+          if (curDD > g.dd) g.dd = curDD;
+        }
       });
+      robotDailyData.set(r.name, dailyMap);
       robotDailyDD.set(r.name, ddMap);
       robotDailyProfit.set(r.name, profitMap);
     }
