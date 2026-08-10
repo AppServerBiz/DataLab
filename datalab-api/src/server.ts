@@ -998,6 +998,233 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
   }
 });
 
+// POST /api/portfolios/:id/optimize-weights — Auto-optimize robot weights using LL/DD maximization with correlation penalization
+app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
+  try {
+    const db = await getDb();
+    const pf = await db.get(`SELECT * FROM portfolios WHERE id = ?`, [req.params.id]);
+    if (!pf) return res.status(404).json({ error: 'Portfolio not found' });
+
+    const robots = await db.all(`
+      SELECT pr.weight, pr.robot_id,
+        r.name, r.asset, r.timeframe, r.avg_profit_per_month,
+        r.max_dd_from_csv, r.max_dd_equity, r.profit_factor, r.sharpe_ratio,
+        r.total_months, r.equity_curve, r.total_trades,
+        r.total_lots, r.lots_per_month, r.var_95_dd_cap, r.initial_deposit
+      FROM portfolio_robots pr
+      JOIN robots r ON r.id = pr.robot_id
+      WHERE pr.portfolio_id = ?
+    `, [req.params.id]);
+
+    if (robots.length === 0) {
+      return res.json({ suggestions: [], comparison: null, message: 'Nenhum robô no portfólio.' });
+    }
+    if (robots.length === 1) {
+      return res.json({
+        suggestions: [{
+          robot_id: robots[0].robot_id,
+          name: robots[0].name,
+          asset: robots[0].asset,
+          current_weight: robots[0].weight,
+          suggested_weight: robots[0].weight,
+          score: 1,
+          reason: 'Único robô — peso mantido'
+        }],
+        comparison: null,
+        message: 'Apenas 1 robô, otimização requer 2+.'
+      });
+    }
+
+    // 1. Build daily DD data for correlation (same logic as stats endpoint)
+    const robotDailyDD: Map<string, Map<string, number>> = new Map();
+    const allGlobalDays: Set<string> = new Set();
+
+    for (const r of robots) {
+      const curve = JSON.parse(r.equity_curve || '[]');
+      if (curve.length === 0) continue;
+      const effectiveInitial = curve[0].equity;
+      let robotPeak = effectiveInitial;
+      const ddMap: Map<string, number> = new Map();
+      curve.forEach((pt: any) => {
+        const day = pt.date ? pt.date.split(' ')[0] : (pt.timestamp ? pt.timestamp.split(' ')[0] : '2020-01-01');
+        if (pt.equity > robotPeak) robotPeak = pt.equity;
+        const curDD = robotPeak - pt.equity;
+        allGlobalDays.add(day);
+        // Keep max DD of the day
+        if (!ddMap.has(day) || curDD > ddMap.get(day)!) {
+          ddMap.set(day, curDD);
+        }
+      });
+      robotDailyDD.set(r.name, ddMap);
+    }
+
+    const sortedDays = Array.from(allGlobalDays).sort();
+
+    // 2. Calculate Pearson correlation between robots (on DD series)
+    const calculatePearson = (serA: number[], serB: number[]) => {
+      const n = serA.length;
+      if (n < 2) return 0;
+      const meanA = serA.reduce((s, v) => s + v, 0) / n;
+      const meanB = serB.reduce((s, v) => s + v, 0) / n;
+      let num = 0, denA = 0, denB = 0;
+      for (let i = 0; i < n; i++) {
+        num += (serA[i] - meanA) * (serB[i] - meanB);
+        denA += (serA[i] - meanA) ** 2;
+        denB += (serB[i] - meanB) ** 2;
+      }
+      return denA && denB ? num / Math.sqrt(denA * denB) : 0;
+    };
+
+    const rNames = robots.map(r => r.name);
+    const corrMatrix: { [a: string]: { [b: string]: number } } = {};
+    for (const nA of rNames) {
+      corrMatrix[nA] = {};
+      const mapA = robotDailyDD.get(nA);
+      for (const nB of rNames) {
+        if (nA === nB) { corrMatrix[nA][nB] = 1; continue; }
+        const mapB = robotDailyDD.get(nB);
+        if (!mapA || !mapB) { corrMatrix[nA][nB] = 0; continue; }
+        const common = sortedDays.filter(d => mapA.has(d) && mapB.has(d));
+        const vA = common.map(d => mapA.get(d)!);
+        const vB = common.map(d => mapB.get(d)!);
+        corrMatrix[nA][nB] = calculatePearson(vA, vB);
+      }
+    }
+
+    // 3. Score each robot: LL/DD efficiency × correlation penalty
+    const scores: { robot: any, score: number, baseScore: number, avgCorr: number, reason: string }[] = [];
+
+    for (const r of robots) {
+      const dd = Number(r.max_dd_from_csv || r.max_dd_equity || 1);
+      const profit = Number(r.avg_profit_per_month || 0);
+      const baseScore = dd > 0 ? profit / dd : 0;
+
+      // Average absolute correlation with other robots
+      const otherCorrs = rNames
+        .filter(n => n !== r.name)
+        .map(n => Math.abs(corrMatrix[r.name]?.[n] || 0));
+      const avgCorr = otherCorrs.length > 0 ? otherCorrs.reduce((s, v) => s + v, 0) / otherCorrs.length : 0;
+
+      // Penalize high correlation: score × (1 - avgCorr × 0.5)
+      // A robot with avg correlation 1.0 loses 50% of its score
+      // A robot with avg correlation 0.0 keeps 100%
+      const corrPenalty = 1 - avgCorr * 0.5;
+      const finalScore = Math.max(0, baseScore * corrPenalty);
+
+      let reason = '';
+      if (baseScore > 0.5 && avgCorr < 0.3) reason = 'Alto LL/DD, baixa correlação ✓';
+      else if (baseScore > 0.5 && avgCorr >= 0.3) reason = 'Alto LL/DD, correlação moderada';
+      else if (baseScore > 0.2 && avgCorr < 0.3) reason = 'LL/DD médio, boa diversificação';
+      else if (baseScore > 0.2) reason = 'LL/DD médio, correlação alta';
+      else if (avgCorr < 0.3) reason = 'LL/DD baixo, boa diversificação';
+      else reason = 'LL/DD baixo, alta correlação ⚠';
+
+      scores.push({ robot: r, score: finalScore, baseScore, avgCorr, reason });
+    }
+
+    // 4. Normalize scores into weights
+    const totalScore = scores.reduce((s, sc) => s + sc.score, 0);
+    if (totalScore === 0) {
+      // Fallback: equal weights
+      const equalWeight = 1;
+      return res.json({
+        suggestions: scores.map(sc => ({
+          robot_id: sc.robot.robot_id,
+          name: sc.robot.name,
+          asset: sc.robot.asset,
+          current_weight: sc.robot.weight,
+          suggested_weight: equalWeight,
+          score: 0,
+          baseScore: sc.baseScore,
+          avgCorr: sc.avgCorr,
+          reason: 'Score zero — pesos iguais'
+        })),
+        comparison: null,
+        message: 'Todos os robôs têm score 0. Sugeridos pesos iguais.'
+      });
+    }
+
+    // Scale: The robot with highest score gets the highest weight
+    // First, calculate proportional weights relative to the lowest scorer
+    const sortedScores = [...scores].sort((a, b) => b.score - a.score);
+    const minScore = Math.min(...scores.filter(s => s.score > 0).map(s => s.score));
+
+    // Raw proportional weights (minimum 1)
+    let rawWeights = scores.map(sc => ({
+      ...sc,
+      rawWeight: sc.score > 0 ? Math.max(1, sc.score / minScore) : 1
+    }));
+
+    // Apply DD target constraint: sum(dd_i × w_i) <= target_dd
+    const targetDD = Number(pf.target_dd) || 5000;
+    const currentSumDD = rawWeights.reduce((s, rw) => {
+      const dd = Number(rw.robot.max_dd_from_csv || rw.robot.max_dd_equity || 0);
+      return s + dd * rw.rawWeight;
+    }, 0);
+
+    // Scale factor to fit within target DD
+    let scaleFactor = 1;
+    if (currentSumDD > targetDD && currentSumDD > 0) {
+      scaleFactor = targetDD / currentSumDD;
+    }
+
+    // Apply scale and round to integers (min 1)
+    const suggestions = rawWeights.map(rw => {
+      const scaled = rw.rawWeight * scaleFactor;
+      const rounded = Math.max(1, Math.round(scaled));
+      return {
+        robot_id: rw.robot.robot_id,
+        name: rw.robot.name,
+        asset: rw.robot.asset,
+        current_weight: rw.robot.weight,
+        suggested_weight: rounded,
+        score: parseFloat(rw.score.toFixed(3)),
+        baseScore: parseFloat(rw.baseScore.toFixed(3)),
+        avgCorr: parseFloat(rw.avgCorr.toFixed(3)),
+        reason: rw.reason
+      };
+    });
+
+    // 5. Calculate comparison metrics (current vs optimized)
+    const currentLucroMes = robots.reduce((s, r) => s + r.avg_profit_per_month * r.weight, 0);
+    const currentDDMax = robots.reduce((s, r) => s + (r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0);
+    const currentLLDD = currentDDMax > 0 ? (currentLucroMes / currentDDMax) * 100 : 0;
+
+    const optimizedLucroMes = suggestions.reduce((s, sg) => {
+      const r = robots.find(r => r.robot_id === sg.robot_id)!;
+      return s + r.avg_profit_per_month * sg.suggested_weight;
+    }, 0);
+    const optimizedDDMax = suggestions.reduce((s, sg) => {
+      const r = robots.find(r => r.robot_id === sg.robot_id)!;
+      return s + (r.max_dd_from_csv || r.max_dd_equity || 0) * sg.suggested_weight;
+    }, 0);
+    const optimizedLLDD = optimizedDDMax > 0 ? (optimizedLucroMes / optimizedDDMax) * 100 : 0;
+    const optimizedROI = pf.capital > 0 ? (optimizedLucroMes / pf.capital) * 100 : 0;
+    const currentROI = pf.capital > 0 ? (currentLucroMes / pf.capital) * 100 : 0;
+
+    res.json({
+      suggestions,
+      comparison: {
+        current: {
+          lucroMes: parseFloat(currentLucroMes.toFixed(2)),
+          ddMax: parseFloat(currentDDMax.toFixed(2)),
+          llDd: parseFloat(currentLLDD.toFixed(2)),
+          roi: parseFloat(currentROI.toFixed(2))
+        },
+        optimized: {
+          lucroMes: parseFloat(optimizedLucroMes.toFixed(2)),
+          ddMax: parseFloat(optimizedDDMax.toFixed(2)),
+          llDd: parseFloat(optimizedLLDD.toFixed(2)),
+          roi: parseFloat(optimizedROI.toFixed(2))
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Error optimizing weights:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 // GET /api/portfolios/:id/export-nautilus - Export Excel (.xlsx) for Portfolio with native tables and charts
 app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
   try {

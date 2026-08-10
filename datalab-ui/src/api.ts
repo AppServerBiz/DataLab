@@ -67,6 +67,16 @@ export const removeRobotFromPortfolio = async (portfolioId: string, robotId: str
 export const fetchPortfolioStats = async (id: string) => (await api.get(`/portfolios/${id}/stats`)).data;
 export const getExportPortfolioUrl = (id: string) => `${API_URL}/portfolios/${id}/export-nautilus`;
 
+// ── Portfolio Optimization API ─────────────────────────────
+export const optimizePortfolioWeights = async (portfolioId: string) =>
+  (await api.post(`/portfolios/${portfolioId}/optimize-weights`)).data;
+export const applyOptimizedWeights = async (portfolioId: string, weights: { robot_id: string, weight: number }[]) => {
+  for (const w of weights) {
+    await api.put(`/portfolios/${portfolioId}/robots/${w.robot_id}`, { weight: w.weight });
+  }
+  return { success: true };
+};
+
 // ── IA API ────────────────────────────────────────────────
 export const fetchIAInfo = async (type: 'robot' | 'portfolio', id: string) =>
   (await api.get(`/ia/info/${type}/${id}`)).data;

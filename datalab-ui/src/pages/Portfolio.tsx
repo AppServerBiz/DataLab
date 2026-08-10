@@ -5,12 +5,13 @@ import html2pdf from 'html2pdf.js';
 import {
   fetchPortfolios, createPortfolio, updatePortfolio, deletePortfolio, copyPortfolio,
   fetchRobots, addRobotToPortfolio, updateRobotWeight, removeRobotFromPortfolio,
-  fetchPortfolioStats, getExportPortfolioUrl
+  fetchPortfolioStats, getExportPortfolioUrl,
+  optimizePortfolioWeights, applyOptimizedWeights
 } from '../api';
 import {
   TrendingUp, TrendingDown, Activity, DollarSign,
   RefreshCw, Edit2, Trash2, Check, X, FolderOpen, Plus, Loader, BarChart2,
-  Lock, Unlock, Download, Printer, Copy
+  Lock, Unlock, Download, Printer, Copy, Zap
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ProfitabilityChart } from '../components/ProfitabilityChart';
@@ -225,6 +226,10 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
   const [confirmDeleteRobot, setConfirmDeleteRobot] = useState<{ id: string, name: string } | null>(null);
   const [locking, setLocking] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [showOptimizeModal, setShowOptimizeModal] = useState(false);
+  const [optimizeData, setOptimizeData] = useState<any>(null);
+  const [optimizing, setOptimizing] = useState(false);
+  const [applyingWeights, setApplyingWeights] = useState(false);
   const navigate = useNavigate();
 
   const handleCopyPortfolio = async () => {
@@ -401,6 +406,38 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
     }
   });
 
+  const handleOptimizeWeights = async () => {
+    setOptimizing(true);
+    try {
+      const data = await optimizePortfolioWeights(portfolio.id);
+      setOptimizeData(data);
+      setShowOptimizeModal(true);
+    } catch (err: any) {
+      alert('Erro ao otimizar pesos: ' + (err.response?.data?.error || String(err)));
+    } finally {
+      setOptimizing(false);
+    }
+  };
+
+  const handleApplyOptimizedWeights = async () => {
+    if (!optimizeData?.suggestions) return;
+    setApplyingWeights(true);
+    try {
+      const weights = optimizeData.suggestions.map((s: any) => ({
+        robot_id: s.robot_id,
+        weight: s.suggested_weight
+      }));
+      await applyOptimizedWeights(portfolio.id, weights);
+      setShowOptimizeModal(false);
+      setOptimizeData(null);
+      loadStats();
+    } catch (err: any) {
+      alert('Erro ao aplicar pesos: ' + (err.response?.data?.error || String(err)));
+    } finally {
+      setApplyingWeights(false);
+    }
+  };
+
   const handleDownloadPDF = async () => {
     // Salvar dados no localStorage para a nova aba
     const reportData = {
@@ -486,6 +523,21 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               onClick={handleDownloadPDF}
             >
               <BarChart2 size={13} /> Relatório
+            </button>
+            <button 
+              className="btn" 
+              style={{ 
+                ...btnCommonStyle,
+                background: optimizing ? 'rgba(168,85,247,0.2)' : 'rgba(168,85,247,0.1)', 
+                color: '#A855F7', 
+                border: '1px solid rgba(168,85,247,0.3)',
+                animation: optimizing ? 'pulse 1.5s ease-in-out infinite' : 'none'
+              }} 
+              onClick={handleOptimizeWeights}
+              disabled={optimizing || loading || robots.length < 2}
+              title={robots.length < 2 ? 'Necessário 2+ robôs para otimizar' : 'Calcular pesos ótimos'}
+            >
+              {optimizing ? <Loader size={13} className="spin" /> : <Zap size={13} />} OTIMIZAR
             </button>
           </div>
         </div>
@@ -1171,9 +1223,188 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
         confirmLabel="Remover"
       />
 
+      {/* Optimize Weights Modal */}
+      {showOptimizeModal && optimizeData && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'linear-gradient(145deg, #13171F 0%, #1a1e2e 100%)', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '16px', width: '100%', maxWidth: '900px', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.5), 0 0 40px rgba(168,85,247,0.08)' }}>
+            {/* Modal Header */}
+            <div style={{ padding: '1.5rem 1.8rem', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ margin: 0, color: '#fff', fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Zap size={18} style={{ color: '#A855F7' }} /> Otimização de Pesos
+                </h2>
+                <p style={{ margin: '0.3rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>Maximização LL/DD com penalização por correlação</p>
+              </div>
+              <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', padding: '0.3rem 0.6rem' }} onClick={() => { setShowOptimizeModal(false); setOptimizeData(null); }}><X size={16} /></button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 1.8rem' }}>
+              {optimizeData.message && (
+                <div style={{ padding: '0.8rem 1rem', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '8px', color: '#F59E0B', fontSize: '0.78rem', marginBottom: '1.2rem' }}>
+                  ⚠ {optimizeData.message}
+                </div>
+              )}
+
+              {/* Comparison Cards */}
+              {optimizeData.comparison && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.8rem', marginBottom: '1.5rem', alignItems: 'center' }}>
+                  {/* Current */}
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1rem 1.2rem' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.8rem', fontWeight: '700' }}>📊 Pesos Atuais</div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Lucro/Mês</span>
+                        <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: '700' }}>${fmt(optimizeData.comparison.current.lucroMes)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>DD Max Soma</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--accent-red)', fontWeight: '700' }}>${fmt(optimizeData.comparison.current.ddMax)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>LL/DD %</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--accent-blue)', fontWeight: '700' }}>{fmt(optimizeData.comparison.current.llDd)}%</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>ROI Mês</span>
+                        <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: '700' }}>{fmt(optimizeData.comparison.current.roi)}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Arrow */}
+                  <div style={{ fontSize: '1.5rem', color: '#A855F7', textAlign: 'center' }}>→</div>
+
+                  {/* Optimized */}
+                  <div style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '12px', padding: '1rem 1.2rem' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#A855F7', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.8rem', fontWeight: '700' }}>⚡ Pesos Otimizados</div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {[{ label: 'Lucro/Mês', key: 'lucroMes', prefix: '$', color: '#fff' }, { label: 'DD Max Soma', key: 'ddMax', prefix: '$', color: 'var(--accent-red)' }, { label: 'LL/DD %', key: 'llDd', prefix: '', suffix: '%', color: 'var(--accent-blue)' }, { label: 'ROI Mês', key: 'roi', prefix: '', suffix: '%', color: '#fff' }].map(m => {
+                        const cur = optimizeData.comparison.current[m.key];
+                        const opt = optimizeData.comparison.optimized[m.key];
+                        const diff = opt - cur;
+                        const isDD = m.key === 'ddMax';
+                        const improved = isDD ? diff <= 0 : diff >= 0;
+                        return (
+                          <div key={m.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{m.label}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '0.85rem', color: m.color, fontWeight: '700' }}>{m.prefix || ''}{fmt(opt)}{m.suffix || ''}</span>
+                              {diff !== 0 && (
+                                <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: '700', background: improved ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: improved ? '#22C55E' : '#EF4444' }}>
+                                  {diff > 0 ? '+' : ''}{isDD ? fmt(diff) : fmt(diff)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Suggestions Table */}
+              {optimizeData.suggestions && optimizeData.suggestions.length > 0 && (
+                <div style={{ overflow: 'hidden', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
+                        <th style={{ padding: '0.7rem 0.8rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ROBÔ</th>
+                        <th style={{ padding: '0.7rem 0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.68rem' }}>ATIVO</th>
+                        <th style={{ padding: '0.7rem 0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.68rem' }}>ATUAL</th>
+                        <th style={{ padding: '0.7rem 0.5rem', textAlign: 'center', color: '#A855F7', fontWeight: '700', fontSize: '0.68rem' }}>SUGERIDO</th>
+                        <th style={{ padding: '0.7rem 0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.68rem' }}>SCORE</th>
+                        <th style={{ padding: '0.7rem 0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.68rem' }}>CORREL.</th>
+                        <th style={{ padding: '0.7rem 0.8rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.68rem' }}>MOTIVO</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {optimizeData.suggestions.map((s: any, idx: number) => {
+                        const changed = s.suggested_weight !== s.current_weight;
+                        const increased = s.suggested_weight > s.current_weight;
+                        return (
+                          <tr key={idx} style={{ borderTop: '1px solid rgba(255,255,255,0.04)', background: changed ? 'rgba(168,85,247,0.03)' : 'transparent' }}>
+                            <td style={{ padding: '0.6rem 0.8rem', color: 'var(--accent-blue)', fontWeight: '700', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</td>
+                            <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.7rem' }}>{s.asset}</td>
+                            <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center', color: '#fff', fontWeight: '700' }}>{s.current_weight}×</td>
+                            <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center' }}>
+                              <span style={{
+                                fontWeight: '800',
+                                fontSize: '0.9rem',
+                                color: changed ? '#A855F7' : '#fff',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem'
+                              }}>
+                                {s.suggested_weight}×
+                                {changed && (
+                                  <span style={{
+                                    fontSize: '0.6rem',
+                                    padding: '0.05rem 0.3rem',
+                                    borderRadius: '4px',
+                                    fontWeight: '700',
+                                    background: increased ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                                    color: increased ? '#22C55E' : '#EF4444'
+                                  }}>
+                                    {increased ? '↑' : '↓'}{Math.abs(s.suggested_weight - s.current_weight)}
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center', color: s.score > 0.4 ? 'var(--accent-green)' : s.score > 0.15 ? '#F59E0B' : 'var(--text-muted)', fontWeight: '700' }}>{fmt(s.score, 3)}</td>
+                            <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center' }}>
+                              <span style={{
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                fontWeight: '700',
+                                background: s.avgCorr >= 0.5 ? 'rgba(239,68,68,0.15)' : s.avgCorr >= 0.3 ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.12)',
+                                color: s.avgCorr >= 0.5 ? '#EF4444' : s.avgCorr >= 0.3 ? '#F59E0B' : '#22C55E'
+                              }}>
+                                {fmt(s.avgCorr * 100, 0)}%
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.6rem 0.8rem', color: 'var(--text-muted)', fontSize: '0.68rem', whiteSpace: 'nowrap' }}>{s.reason}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '1.2rem 1.8rem', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', maxWidth: '50%' }}>
+                💡 O algoritmo maximiza LL/DD (lucro/drawdown) e penaliza robôs com alta correlação para diversificar o portfólio.
+              </div>
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', padding: '0.5rem 1.2rem', fontSize: '0.78rem' }} onClick={() => { setShowOptimizeModal(false); setOptimizeData(null); }}>Cancelar</button>
+                <button className="btn" style={{
+                  background: 'linear-gradient(135deg, #A855F7, #7C3AED)',
+                  color: '#fff',
+                  padding: '0.5rem 1.5rem',
+                  fontSize: '0.78rem',
+                  fontWeight: '700',
+                  borderRadius: '8px',
+                  border: 'none',
+                  boxShadow: '0 4px 15px rgba(168,85,247,0.3)',
+                  opacity: applyingWeights ? 0.7 : 1
+                }} onClick={handleApplyOptimizedWeights} disabled={applyingWeights}>
+                  {applyingWeights ? <><Loader size={13} className="spin" /> Aplicando...</> : <><Check size={13} /> Aplicar Pesos Otimizados</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       `}</style>
     </div>
   );
