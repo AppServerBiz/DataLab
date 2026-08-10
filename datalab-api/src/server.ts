@@ -1155,30 +1155,31 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
       rawWeight: sc.score > 0 ? Math.max(1, sc.score / minScore) : 1
     }));
 
-    // Helper: Calculate DD Max Portf. (combined equity curve peak-to-trough) for given weights
+    // Helper: Calculate DD Max Portf. (exactly matching stats endpoint ddMaxPortfolio)
     const calcDDMaxPortf = (weightMap: Map<string, number>): number => {
-      const lastKnown = new Map<string, number>();
-      for (const r of robots) lastKnown.set(r.name, 0);
+      const lastKnown = new Map<string, { profit: number, dd: number }>();
+      for (const r of robots) lastKnown.set(r.name, { profit: 0, dd: 0 });
 
-      let globalPeak = pf.capital;
       let maxDD = 0;
 
       for (const day of sortedDays) {
-        let totalProfit = 0;
+        let totalSumDD = 0;
+
         for (const r of robots) {
-          const weight = weightMap.get(r.robot_id) || 1;
-          const profitMap = robotDailyProfit.get(r.name);
-          const dayProfit = profitMap?.get(day);
-          if (dayProfit !== undefined) {
-            lastKnown.set(r.name, dayProfit);
+          const weight = weightMap.get(r.robot_id) ?? (r.weight || 1);
+          const lk = lastKnown.get(r.name)!;
+          let dd = lk.dd;
+
+          const dayData = robotDailyData.get(r.name)?.get(day);
+          if (dayData) {
+            dd = dayData.dd;
+            lastKnown.set(r.name, { profit: dayData.profit, dd });
           }
-          totalProfit += (lastKnown.get(r.name) || 0) * weight;
+
+          totalSumDD += dd * weight;
         }
 
-        const currentEquity = pf.capital + totalProfit;
-        if (currentEquity > globalPeak) globalPeak = currentEquity;
-        const dd = globalPeak - currentEquity;
-        if (dd > maxDD) maxDD = dd;
+        if (totalSumDD > maxDD) maxDD = totalSumDD;
       }
       return maxDD;
     };
