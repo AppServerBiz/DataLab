@@ -784,7 +784,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                     <div style={{ height: '320px' }}>
                       <Bar 
                         data={{
-                          labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => (r.name || '').length > 15 ? (r.name || '').slice(0,13)+'..' : (r.name || '')),
+                          labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name || ''),
                           datasets: [{
                             label: 'Lucro Total Estimado',
                             data: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.avg_profit_per_month * r.weight),
@@ -796,9 +796,27 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         options={{
                           maintainAspectRatio: false,
                           indexAxis: 'x', /* Vertical Bars */
-                          plugins: { legend: { display: false } },
+                          plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                              callbacks: {
+                                title: (items: any) => items[0]?.label || '',
+                                label: (context: any) => ` Lucro: ${fmtCurrency(context.raw)}`
+                              }
+                            }
+                          },
                           scales: {
-                            x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 9 } } },
+                            x: {
+                              grid: { display: false },
+                              ticks: {
+                                color: '#64748B',
+                                font: { size: 9 },
+                                callback: function(value: any, index: number) {
+                                  const label = this.getLabelForValue(value as number) || '';
+                                  return label.length > 15 ? label.slice(0, 13) + '..' : label;
+                                }
+                              }
+                            },
                             y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748B', font: { size: 9 } } }
                           }
                         }}
@@ -835,7 +853,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                      <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Exposição (Drawdown) em Tempo Real ($)</h3>
                      <div style={{ display: 'flex', gap: '0.8rem' }}>
-                       <span title="Cálculo Consolidado: Soma aritmética direta dos drawdowns máximos diários individuais de cada robô no portfólio. Representa uma visão conservadora de pior cenário." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculado?</span>
+                       <span title="Cálculo Consolidado: Soma aritmética direta dos drawdowns máximos diários individuais de cada robô no portfólio. Representa uma visão conservadora de pior cenário." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculated?</span>
                        <span title="Diferença: Séries mensais usam apenas fechamentos de mês. O Real-time captura todas as oscilações intra-dia do histórico do relatório." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Diferença entre Real-time e Mensal</span>
                      </div>
                    </div>
@@ -851,17 +869,17 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 </div>
                 <div className="print-spacer" style={{ height: '3rem', display: 'none' }}></div>
 
-                <div className="card chart-row" style={{ padding: '1.2rem', height: '320px' }}>
+                <div className="card chart-row" style={{ padding: '1.2rem', height: '340px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Drawdown Individual por Robô ($)</h3>
                     <span title="Cálculo Individual: Plota o rebaixamento diário máximo de cada robô isoladamente, multiplicado por seu respectivo peso no portfólio." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculado?</span>
                   </div>
-                  <div style={{ height: '240px' }}>
+                  <div style={{ height: '260px' }}>
                     <Line 
                       data={{
                         labels: (stats?.combined_curve || []).map((c: any) => c.day),
                         datasets: Object.entries(stats?.robot_curves || {}).map(([name, curve]: any, idx: number) => ({
-                          label: (name || 'Robô').length > 15 ? (name || 'Robô').slice(0, 13) + '..' : (name || 'Robô'),
+                          label: name || 'Robô',
                           data: Array.isArray(curve) ? curve.map((pt: any) => -(pt.dd || 0)) : [],
                           borderColor: ROBOT_COLORS[idx % ROBOT_COLORS.length],
                           borderWidth: 1.2,
@@ -869,7 +887,26 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                           fill: false
                         }))
                       }}
-                       options={{ maintainAspectRatio: false, plugins: { legend: { display: (robots?.length || 0) <= 10, position: 'right' as any, labels: { color: '#64748B', font: { size: 8 }, boxWidth: 10 } } }, scales: { x: { ticks: { maxTicksLimit: 12, color: '#64748B', font: { size: 9 } }, grid: { display: false } }, y: { max: 0, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748B', font: { size: 9 }, callback: (v: any) => fmtCurrency(v as number) } } } }}
+                       options={{
+                         maintainAspectRatio: false,
+                         plugins: {
+                           legend: {
+                             display: true,
+                             position: 'bottom' as any,
+                             labels: { color: '#64748B', font: { size: 9 }, boxWidth: 10 }
+                           },
+                           tooltip: {
+                             callbacks: {
+                               title: (items: any) => items[0]?.label || '',
+                               label: (context: any) => ` ${context.dataset.label}: ${fmtCurrency(context.raw)}`
+                             }
+                           }
+                         },
+                         scales: {
+                           x: { ticks: { maxTicksLimit: 12, color: '#64748B', font: { size: 9 } }, grid: { display: false } },
+                           y: { max: 0, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748B', font: { size: 9 }, callback: (v: any) => fmtCurrency(v as number) } }
+                         }
+                       }}
                     />
                   </div>
                 </div>
@@ -880,12 +917,12 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                     <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Top 10 maiores drawdowns (dia)</h3>
                     <span title="Cálculo Diário: Identifica e ordena os maiores períodos de rebaixamento consolidado da curva diária do portfólio, e não por trade isolado." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculado?</span>
                   </div>
-                  <div style={{ height: '320px' }}>
+                  <div style={{ height: '360px' }}>
                     <Bar 
                       data={{
                         labels: (stats?.top10DD || []).map((d: any) => d.day),
                         datasets: (robots || []).map((r: any, idx: number) => ({
-                          label: (r.name || 'Robô').length > 15 ? (r.name || 'Robô').slice(0, 13) + '..' : (r.name || 'Robô'),
+                          label: r.name || 'Robô',
                           data: (stats.top10DD || []).map((d: any) => d[r.name] || 0),
                           backgroundColor: ROBOT_COLORS[idx % ROBOT_COLORS.length] + '99',
                           borderColor: ROBOT_COLORS[idx % ROBOT_COLORS.length],
@@ -897,13 +934,11 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         maintainAspectRatio: false,
                         indexAxis: 'y',
                         plugins: {
-                          legend: { position: 'bottom' as any, labels: { color: '#64748B', font: { size: 8 }, boxWidth: 10 } },
+                          legend: { position: 'bottom' as any, labels: { color: '#64748B', font: { size: 9 }, boxWidth: 10 } },
                           tooltip: {
                             callbacks: {
-                              label: (context: any) => {
-                                const val = context.raw;
-                                return ` ${context.dataset.label}: ${fmtCurrency(val)}`;
-                              }
+                              title: (items: any) => items[0]?.label || '',
+                              label: (context: any) => ` ${context.dataset.label}: ${fmtCurrency(context.raw)}`
                             }
                           }
                         },

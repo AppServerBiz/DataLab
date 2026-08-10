@@ -422,20 +422,44 @@ const PortfolioReport = () => {
 
         <div style={{ pageBreakAfter: 'always' }}></div>
 
-        {/* Charts - Page 2: Profit Analysis */}
-        <div style={{ paddingTop: '10px' }}>
-          <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
-            <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-              Lucro Acumulado por Robô (Top 10)
-            </h3>
+        {/* Charts - Page 2:          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
+                Lucro Acumulado por Robô (Top 10)
+              </h3>
+            </div>
             <div style={{ height: '300px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
               <Bar 
                 data={{
-                  labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name.slice(0,12)),
+                  labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name),
                   datasets: [{ label: 'Lucro ($)', data: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.avg_profit_per_month * r.weight), backgroundColor: ROBOT_COLORS, borderWidth: 1 }]
                 }}
-                options={getPrintChartOptions({ plugins: { legend: { display: false } } })}
+                options={getPrintChartOptions({
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        title: (items: any) => items[0]?.label || '',
+                        label: (context: any) => ` Lucro: ${fmtCurrency(context.raw)}`
+                      }
+                    }
+                  },
+                  scales: {
+                    x: {
+                      border: { display: true, color: '#000', width: 1.5 },
+                      grid: { color: '#f0f0f0' },
+                      ticks: {
+                        color: '#000',
+                        font: { size: 9, weight: '600' },
+                        callback: function(value: any) {
+                          const label = this.getLabelForValue(value as number) || '';
+                          return label.length > 15 ? label.slice(0, 13) + '..' : label;
+                        }
+                      }
+                    }
+                  }
+                })}
               />
             </div>
           </div>
@@ -467,7 +491,7 @@ const PortfolioReport = () => {
                 <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
                 Exposição ao Risco Consolidada (Drawdown Intra-day)
               </h3>
-              <span title="Cálculo Consolidado: Soma aritmética direta dos drawdowns máximos diários individuais de cada robô no portfólio. Representa uma visão conservadora de pior cenário." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">Como é calculado?</span>
+              <span title="Cálculo Consolidado: Soma aritmética direta dos drawdowns máximos diários individuais de cada robô no portfólio. Representa uma visão conservadora de pior cenário." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">Como é calculated?</span>
             </div>
             <div style={{ height: '300px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
               <Line 
@@ -501,7 +525,18 @@ const PortfolioReport = () => {
                     fill: false
                   }))
                 }}
-                options={getPrintChartOptions({ plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 8 } } } }, scales: { y: { max: 0 } } })}
+                options={getPrintChartOptions({
+                  plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 8 } } },
+                    tooltip: {
+                      callbacks: {
+                        title: (items: any) => items[0]?.label || '',
+                        label: (context: any) => ` ${context.dataset.label}: ${fmtCurrency(context.raw)}`
+                      }
+                    }
+                  },
+                  scales: { y: { max: 0 } }
+                })}
               />
             </div>
           </div>
@@ -527,7 +562,15 @@ const PortfolioReport = () => {
                 }}
                 options={getPrintChartOptions({
                   indexAxis: 'y',
-                  plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 7 } } } },
+                  plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 8 } } },
+                    tooltip: {
+                      callbacks: {
+                        title: (items: any) => items[0]?.label || '',
+                        label: (context: any) => ` ${context.dataset.label}: ${fmtCurrency(context.raw)}`
+                      }
+                    }
+                  },
                   scales: { x: { stacked: true }, y: { stacked: true } }
                 })}
               />
