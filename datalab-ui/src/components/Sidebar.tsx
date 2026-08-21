@@ -66,7 +66,7 @@ export const Sidebar = () => {
 
         <NavLink to="/strategy-studio" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
           <Cpu size={20} />
-          {!collapsed && <span>Strategy Studio</span>}
+          {!collapsed && <span>AI Studio</span>}
         </NavLink>
 
         <NavLink to="/repositorio" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
@@ -147,7 +147,7 @@ export const Sidebar = () => {
 
         <NavLink to="/ia" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
           <Sparkles size={20} />
-          {!collapsed && <span>Nautilus AI</span>}
+          {!collapsed && <span>AI Analytics</span>}
         </NavLink>
       </nav>
 

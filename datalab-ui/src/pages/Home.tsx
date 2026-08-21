@@ -480,7 +480,7 @@ const Home = () => {
               onClick={() => navigate('/ia')}
               style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#A855F7', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '0.6rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
-              <Sparkles size={16} /> NAUTILUS AI EXPERT
+              <Sparkles size={16} /> AI ANALYTICS
             </button>
           </div>
         </div>

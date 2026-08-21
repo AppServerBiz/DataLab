@@ -227,7 +227,7 @@ export const StrategyStudio: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <Cpu size={22} style={{ color: 'var(--accent-blue)' }} />
-            <h1 className="section-title" style={{ margin: 0, fontSize: '1.4rem' }}>Strategy AI Studio</h1>
+            <h1 className="section-title" style={{ margin: 0, fontSize: '1.4rem' }}>AI Studio</h1>
             <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: 'var(--accent-blue)', border: '1px solid rgba(59, 130, 246, 0.3)', fontSize: '0.7rem' }}>
               Quant Copilot & Reverse-Engineering
             </span>

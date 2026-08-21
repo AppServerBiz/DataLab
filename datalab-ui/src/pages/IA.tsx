@@ -86,7 +86,7 @@ const IA = () => {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 4rem)' }}>
       <div className="flex-between mb-4">
         <div>
-          <h1 className="section-title" style={{ marginBottom: '0.2rem' }}>Nautilus AI Expert</h1>
+          <h1 className="section-title" style={{ marginBottom: '0.2rem' }}>AI Analytics</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Analista quantitativo focado em seus dados históricos</p>
         </div>
         {messages.length > 1 && (
