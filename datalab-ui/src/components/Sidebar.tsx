@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, BarChart2, Database, Briefcase, Menu, ChevronDown, ChevronRight, FolderOpen, Sparkles, Lock, Unlock, Network } from 'lucide-react';
+import { Home, BarChart2, Database, Briefcase, Menu, ChevronDown, ChevronRight, FolderOpen, Sparkles, Lock, Unlock, Network, Cpu } from 'lucide-react';
 import { fetchPortfolios } from '../api';
 
 export const Sidebar = () => {
@@ -143,6 +143,11 @@ export const Sidebar = () => {
         <NavLink to="/ia" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
           <Sparkles size={20} />
           {!collapsed && <span>Nautilus AI</span>}
+        </NavLink>
+
+        <NavLink to="/strategy-studio" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+          <Cpu size={20} />
+          {!collapsed && <span>Strategy Studio</span>}
         </NavLink>
       </nav>
 

@@ -605,3 +605,98 @@ select.login-input option {
 .password-toggle-btn:hover {
   color: var(--accent-blue);
 }
+
+/* ── STRATEGY STUDIO MARKDOWN STYLES ────────────────── */
+.strategy-markdown-content h1,
+.strategy-markdown-content h2,
+.strategy-markdown-content h3 {
+  color: #fff;
+  margin-top: 1.2rem;
+  margin-bottom: 0.6rem;
+  font-weight: 700;
+}
+
+.strategy-markdown-content h1 { font-size: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.4rem; }
+.strategy-markdown-content h2 { font-size: 1.1rem; }
+.strategy-markdown-content h3 { font-size: 0.95rem; }
+
+.strategy-markdown-content p {
+  margin-bottom: 0.8rem;
+}
+
+.strategy-markdown-content ul,
+.strategy-markdown-content ol {
+  padding-left: 1.4rem;
+  margin-bottom: 0.8rem;
+}
+
+.strategy-markdown-content li {
+  margin-bottom: 0.3rem;
+}
+
+.strategy-markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.strategy-markdown-content th {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-blue);
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+}
+
+.strategy-markdown-content td {
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
+}
+
+.strategy-markdown-content tr:last-child td {
+  border-bottom: none;
+}
+
+.strategy-markdown-content pre {
+  background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 0.8rem;
+  color: #58a6ff;
+}
+
+.strategy-markdown-content code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.82rem;
+  color: #38bdf8;
+}
+
+.strategy-markdown-content pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.strategy-markdown-content blockquote {
+  border-left: 3px solid var(--accent-blue);
+  background: rgba(59, 130, 246, 0.05);
+  margin: 0.8rem 0;
+  padding: 0.6rem 1rem;
+  border-radius: 0 6px 6px 0;
+  font-style: italic;
+}
+

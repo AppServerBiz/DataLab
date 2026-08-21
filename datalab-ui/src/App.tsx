@@ -7,6 +7,7 @@ import Repositorio from './pages/Repositorio';
 import Portfolio from './pages/Portfolio';
 import Transmitir from './pages/Transmitir';
 import IA from './pages/IA';
+import StrategyStudio from './pages/StrategyStudio';
 import PortfolioReport from './pages/PortfolioReport';
 import Login from './pages/Login';
 import './index.css';
@@ -51,6 +52,7 @@ function AppContent() {
           <Route path="/portfolio-report" element={<PortfolioReport />} />
           <Route path="/transmitir" element={<Transmitir />} />
           <Route path="/ia" element={<IA />} />
+          <Route path="/strategy-studio" element={<StrategyStudio />} />
         </Routes>
       </main>
     </div>

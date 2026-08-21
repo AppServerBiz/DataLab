@@ -83,3 +83,17 @@ export const fetchIAInfo = async (type: 'robot' | 'portfolio', id: string) =>
 
 export const chatWithIA = async (messages: any[], context: string) =>
   (await api.post('/ia/chat', { messages, context })).data;
+
+// ── Strategy AI Studio API ────────────────────────────────
+export const analyzeStrategyFiles = async (payload: {
+  robotName?: string;
+  setContent?: string;
+  htmlContent?: string;
+  mqlCode?: string;
+  docText?: string;
+  userRational?: string;
+}) => (await api.post('/ia/strategy-analyze', payload)).data;
+
+export const chatStrategyLab = async (messages: any[], context: string) =>
+  (await api.post('/ia/strategy-chat', { messages, context })).data;
+

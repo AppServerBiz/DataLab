@@ -1764,6 +1764,98 @@ ${dailyText}
   } catch (err) { res.status(500).send(String(err)); }
 });
 
+// Import strategy parser helpers
+import { parseSetContent, parseHtmlBacktest, buildStrategyPromptContext } from './strategy_parser';
+
+// ── STRATEGY AI STUDIO ENDPOINTS ─────────────────────────────
+app.post('/api/ia/strategy-analyze', async (req, res) => {
+  try {
+    const { robotName, setContent, htmlContent, mqlCode, docText, userRational } = req.body;
+
+    let parsedSet = undefined;
+    if (setContent) {
+      parsedSet = parseSetContent(setContent);
+    }
+
+    let backtestMetrics = undefined;
+    if (htmlContent) {
+      backtestMetrics = parseHtmlBacktest(htmlContent);
+    }
+
+    const context = buildStrategyPromptContext({
+      robotName,
+      parsedSet,
+      backtestMetrics,
+      mqlCode,
+      docText,
+      userRational
+    });
+
+    res.json({
+      success: true,
+      context,
+      parsedSet,
+      backtestMetrics
+    });
+  } catch (err: any) {
+    console.error('Error analyzing strategy:', err);
+    res.status(500).json({ error: 'Erro ao processar arquivos da estratégia', details: err?.message || String(err) });
+  }
+});
+
+app.post('/api/ia/strategy-chat', async (req, res) => {
+  try {
+    const { messages, context } = req.body;
+
+    if (!process.env.GROQ_API_KEY) {
+      return res.status(400).json({ error: 'A chave Groq (GROQ_API_KEY) não foi configurada no servidor.' });
+    }
+
+    const groqMessages = messages.map((m: any) => ({
+      role: m.role === 'model' ? 'assistant' : 'user',
+      content: m.parts[0].text
+    }));
+
+    const systemPrompt = `Você é o Nautilus Quant Architect & Strategy Engineer de elite.
+Sua especialidade é engenharia reversa de estratégias de trading algorítmico, análise de código MQL5 / Python, cálculo de risco/drawdown e desenho de hedges e transposições de ativos.
+
+ESTRUTURA OBRIGATÓRIA DE TRABALHO:
+1. Quando solicitado a analisar uma estratégia pela primeira vez, forneça:
+   - Raio-X Técnico (Ativo, Timeframe, Direção, Gatilhos de Entrada, Manejo de Stop/Take Profit, Grid/Lotes).
+   - Racional Operacional Completo (A tese de mercado por trás da estratégia e por que ela funciona).
+   - Ponto Cego / Vetores de Risco de Drawdown.
+   - Solicitação de Validação / Ajuste com o Usuário.
+2. Quando solicitado a criar um HEDGE:
+   - Explique o modelo de contra-posição (ex: Breakout reverso, Mean Reversion em baixa volatilidade, correlação cambial/índice).
+   - Defina gatilhos matemáticos exatos de ativação e saída.
+3. Quando solicitado a TRANSPOR O ATIVO (ex: Nasdaq -> EURUSD ou WIN -> WDO):
+   - Mapeie cada parâmetro do .set explicando o ajuste de volatilidade (pips/ticks), horários de liquidez e direção.
+4. Quando solicitado a GERAR A DEVOLUTIVA TÉCNICA / MARKDOWN:
+   - Gere um documento Markdown completo, estruturado e auto-suficiente com inputs em MQL5/Python, máquina de estados e regras operacionais para ser construído diretamente no Antigravity.
+
+CONTEXTO DA ESTRATÉGIA CARREGADA:
+${context}`;
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...groqMessages
+      ],
+      model: model,
+      temperature: 0.2,
+      max_tokens: 3500,
+    });
+
+    res.json({ text: completion.choices[0]?.message?.content || "" });
+  } catch (err: any) {
+    console.error('Groq Strategy Chat Error:', err?.message || err);
+    res.status(500).json({ 
+      error: 'Erro na comunicação com a IA', 
+      details: err?.message || String(err) 
+    });
+  }
+});
+
 app.post('/api/ia/chat', async (req, res) => {
   try {
     const { messages, context } = req.body; 
