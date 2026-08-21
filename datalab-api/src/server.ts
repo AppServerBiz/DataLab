@@ -3,7 +3,7 @@ import cors from 'cors';
 import multer from 'multer';
 import { parseMT5BacktestHTML, parseCSVEquity, decodeBuffer, getRobotNameFromFilename, normalizeRobotName, makeRobotId, ParsedBacktestData, ParsedCSVData } from './parser';
 import { getDb } from './database';
-import Groq from 'groq-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import ExcelJS from 'exceljs';
 import 'dotenv/config';
 
@@ -1587,11 +1587,11 @@ app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
   }
 });
 
-// Groq Support
-const API_KEY = process.env.GROQ_API_KEY || '';
-console.log('Groq API Key detected:', API_KEY ? `${API_KEY.substring(0, 8)}...` : 'NONE');
-const groq = new Groq({ apiKey: API_KEY });
-const model = "llama-3.3-70b-versatile";
+// Gemini AI Support
+const API_KEY = process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY || '';
+console.log('Gemini API Key detected:', API_KEY ? `${API_KEY.substring(0, 8)}...` : 'NONE');
+const genAI = new GoogleGenerativeAI(API_KEY);
+const GEMINI_MODEL = "gemini-1.5-flash";
 
 function formatDailyPerformance(equityCurve: any[]) {
   if (!equityCurve || equityCurve.length === 0) return "Nenhum dado diário disponível.";
