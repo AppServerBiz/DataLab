@@ -64,6 +64,11 @@ export const Sidebar = () => {
           {!collapsed && <span>Diagnóstico</span>}
         </NavLink>
 
+        <NavLink to="/strategy-studio" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+          <Cpu size={20} />
+          {!collapsed && <span>Strategy Studio</span>}
+        </NavLink>
+
         <NavLink to="/repositorio" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
           <Database size={20} />
           {!collapsed && <span>Repositório</span>}
@@ -143,11 +148,6 @@ export const Sidebar = () => {
         <NavLink to="/ia" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
           <Sparkles size={20} />
           {!collapsed && <span>Nautilus AI</span>}
-        </NavLink>
-
-        <NavLink to="/strategy-studio" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-          <Cpu size={20} />
-          {!collapsed && <span>Strategy Studio</span>}
         </NavLink>
       </nav>
 

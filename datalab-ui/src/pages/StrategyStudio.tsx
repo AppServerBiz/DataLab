@@ -32,7 +32,8 @@ interface Message {
 export const StrategyStudio: React.FC = () => {
   const [robotName, setRobotName] = useState('');
   const [userRational, setUserRational] = useState('');
-  const [docText, setDocText] = useState('');
+  const [isCPower, setIsCPower] = useState(true);
+  const [docText, setDocText] = useState('https://communitypowerea.com/docs/');
   const [setFileName, setSetFileName] = useState<string | null>(null);
   const [setContent, setSetContent] = useState<string>('');
   const [htmlFileName, setHtmlFileName] = useState<string | null>(null);
@@ -109,6 +110,13 @@ export const StrategyStudio: React.FC = () => {
     }
   };
 
+  const handleCPowerToggle = (checked: boolean) => {
+    setIsCPower(checked);
+    if (checked && !docText) {
+      setDocText('https://communitypowerea.com/docs/');
+    }
+  };
+
   const handleAnalyze = async () => {
     if (!setContent && !htmlContent && !mqlContent && !userRational) {
       alert('Por favor, faça upload de pelo menos um arquivo (.set, .html ou .mq5) ou descreva a estratégia.');
@@ -117,12 +125,16 @@ export const StrategyStudio: React.FC = () => {
 
     setAnalyzing(true);
     try {
+      const documentationEffective = isCPower 
+        ? `${docText || 'https://communitypowerea.com/docs/'}\n(Motor Base: EA CommunityPower 3.01 - Lógica de Grid, Martingale Fibonacci, Filtros de Média, Horários e Fechamento Parcial)`
+        : docText;
+
       const res = await analyzeStrategyFiles({
         robotName: robotName || 'Nova Estratégia',
         setContent,
         htmlContent,
         mqlCode: mqlContent,
-        docText,
+        docText: documentationEffective,
         userRational
       });
 
@@ -194,7 +206,8 @@ export const StrategyStudio: React.FC = () => {
     if (confirm('Deseja limpar todo o espaço de trabalho da estratégia?')) {
       setRobotName('');
       setUserRational('');
-      setDocText('');
+      setIsCPower(true);
+      setDocText('https://communitypowerea.com/docs/');
       setSetFileName(null);
       setSetContent('');
       setHtmlFileName(null);
@@ -208,41 +221,38 @@ export const StrategyStudio: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 4rem)', gap: '1rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 4rem)', gap: '0.8rem' }}>
       {/* Header */}
       <div className="flex-between">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <Cpu size={24} style={{ color: 'var(--accent-blue)' }} />
-            <h1 className="section-title" style={{ margin: 0, fontSize: '1.5rem' }}>Strategy AI Studio</h1>
-            <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: 'var(--accent-blue)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+            <Cpu size={22} style={{ color: 'var(--accent-blue)' }} />
+            <h1 className="section-title" style={{ margin: 0, fontSize: '1.4rem' }}>Strategy AI Studio</h1>
+            <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: 'var(--accent-blue)', border: '1px solid rgba(59, 130, 246, 0.3)', fontSize: '0.7rem' }}>
               Quant Copilot & Reverse-Engineering
             </span>
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
-            Engenharia reversa, análise de risco, criação de hedge e transposição de ativos com geração de blueprint Markdown para Antigravity.
-          </p>
         </div>
         {messages.length > 0 && (
-          <button className="btn btn-danger" onClick={clearAll} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-            <Trash2 size={14} /> Novo Estudo
+          <button className="btn btn-danger" onClick={clearAll} style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}>
+            <Trash2 size={13} /> Novo Estudo
           </button>
         )}
       </div>
 
-      {/* Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '1.2rem', flex: 1, overflow: 'hidden' }}>
+      {/* Main Grid - Optimized Left Column (300px) giving maximum space to Chat */}
+      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1rem', flex: 1, overflow: 'hidden' }}>
         
-        {/* Left Panel: Strategy Ingestion Hub */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', padding: '1.2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.6rem' }}>
-            <Sliders size={16} style={{ color: 'var(--accent-blue)' }} />
-            <h2 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Dossiê da Estratégia</h2>
+        {/* Left Panel: Compact Strategy Ingestion Hub */}
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', padding: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.4rem' }}>
+            <Sliders size={15} style={{ color: 'var(--accent-blue)' }} />
+            <h2 style={{ fontSize: '0.88rem', fontWeight: 600, margin: 0 }}>Dossiê da Estratégia</h2>
           </div>
 
           {/* Robot Name */}
           <div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Identificador do Robô
             </label>
             <input 
@@ -251,34 +261,34 @@ export const StrategyStudio: React.FC = () => {
               placeholder="Ex: Obi-wan Kenobi Nasdaq H1" 
               value={robotName}
               onChange={e => setRobotName(e.target.value)}
-              style={{ width: '100%', fontSize: '0.85rem', padding: '0.5rem 0.8rem' }}
+              style={{ width: '100%', fontSize: '0.82rem', padding: '0.4rem 0.6rem' }}
             />
           </div>
 
           {/* Upload Files Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Arquivos de Entrada
             </label>
 
             {/* .SET File Upload */}
             <div style={{ 
               border: '1px dashed rgba(255,255,255,0.15)', 
-              borderRadius: '8px', 
-              padding: '0.6rem', 
+              borderRadius: '6px', 
+              padding: '0.45rem 0.6rem', 
               background: setFileName ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                <FileCode size={16} style={{ color: setFileName ? 'var(--accent-green)' : 'var(--text-muted)' }} />
-                <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
-                  {setFileName || 'Upload .SET (Parâmetros)'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                <FileCode size={14} style={{ color: setFileName ? 'var(--accent-green)' : 'var(--text-muted)' }} />
+                <span style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '170px' }}>
+                  {setFileName || '.SET (Parâmetros)'}
                 </span>
               </div>
-              <label className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                {setFileName ? 'Alterar' : 'Subir'}
+              <label className="btn btn-secondary" style={{ padding: '0.15rem 0.45rem', fontSize: '0.7rem', cursor: 'pointer' }}>
+                {setFileName ? 'Trocar' : 'Subir'}
                 <input type="file" accept=".set,.txt" onChange={handleSetUpload} style={{ display: 'none' }} />
               </label>
             </div>
@@ -286,21 +296,21 @@ export const StrategyStudio: React.FC = () => {
             {/* Backtest HTML File Upload */}
             <div style={{ 
               border: '1px dashed rgba(255,255,255,0.15)', 
-              borderRadius: '8px', 
-              padding: '0.6rem', 
+              borderRadius: '6px', 
+              padding: '0.45rem 0.6rem', 
               background: htmlFileName ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255,255,255,0.02)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                <FileSpreadsheet size={16} style={{ color: htmlFileName ? 'var(--accent-blue)' : 'var(--text-muted)' }} />
-                <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
-                  {htmlFileName || 'Upload Backtest (.HTML)'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                <FileSpreadsheet size={14} style={{ color: htmlFileName ? 'var(--accent-blue)' : 'var(--text-muted)' }} />
+                <span style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '170px' }}>
+                  {htmlFileName || 'Backtest (.HTML)'}
                 </span>
               </div>
-              <label className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                {htmlFileName ? 'Alterar' : 'Subir'}
+              <label className="btn btn-secondary" style={{ padding: '0.15rem 0.45rem', fontSize: '0.7rem', cursor: 'pointer' }}>
+                {htmlFileName ? 'Trocar' : 'Subir'}
                 <input type="file" accept=".html,.htm" onChange={handleHtmlUpload} style={{ display: 'none' }} />
               </label>
             </div>
@@ -308,21 +318,21 @@ export const StrategyStudio: React.FC = () => {
             {/* MQL5 / Code Upload */}
             <div style={{ 
               border: '1px dashed rgba(255,255,255,0.15)', 
-              borderRadius: '8px', 
-              padding: '0.6rem', 
+              borderRadius: '6px', 
+              padding: '0.45rem 0.6rem', 
               background: mqlFileName ? 'rgba(168, 85, 247, 0.08)' : 'rgba(255,255,255,0.02)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                <Code2 size={16} style={{ color: mqlFileName ? '#a855f7' : 'var(--text-muted)' }} />
-                <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
-                  {mqlFileName || 'Código MQL5 (.mq5 / .mqh)'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                <Code2 size={14} style={{ color: mqlFileName ? '#a855f7' : 'var(--text-muted)' }} />
+                <span style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '170px' }}>
+                  {mqlFileName || 'MQL5 (.mq5 / .mqh)'}
                 </span>
               </div>
-              <label className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                {mqlFileName ? 'Alterar' : 'Subir'}
+              <label className="btn btn-secondary" style={{ padding: '0.15rem 0.45rem', fontSize: '0.7rem', cursor: 'pointer' }}>
+                {mqlFileName ? 'Trocar' : 'Subir'}
                 <input type="file" accept=".mq5,.mqh,.cpp,.py,.txt" onChange={handleMqlUpload} style={{ display: 'none' }} />
               </label>
             </div>
@@ -330,31 +340,42 @@ export const StrategyStudio: React.FC = () => {
 
           {/* User Rational Input */}
           <div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              🧠 Racional Operacional (Opcional)
+            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              🧠 Racional Operacional
             </label>
             <textarea 
               className="input-field" 
-              placeholder="Descreva a tese do robô (ex: Seguidor de tendência no Nasdaq, entradas na média 3, grid defensivo com recuperação suave...)"
+              placeholder="Tese do robô (ex: Seguidor de tendência no Nasdaq, média 3, grid suave...)"
               value={userRational}
               onChange={e => setUserRational(e.target.value)}
-              rows={3}
-              style={{ width: '100%', fontSize: '0.8rem', resize: 'vertical' }}
+              rows={2}
+              style={{ width: '100%', fontSize: '0.78rem', resize: 'none', padding: '0.4rem 0.6rem' }}
             />
           </div>
 
-          {/* Documentation / Links */}
+          {/* Documentation / Links with CPower default tick */}
           <div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              📖 Documentação / Link / Regras
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+              <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                📖 Documentação
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontSize: '0.72rem', color: 'var(--accent-blue)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={isCPower} 
+                  onChange={e => handleCPowerToggle(e.target.checked)} 
+                  style={{ cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
+                />
+                <span style={{ fontWeight: 600 }}>CPower (Padrão)</span>
+              </label>
+            </div>
             <textarea 
               className="input-field" 
-              placeholder="Cole links ou textos de documentação de referência (ex: https://communitypowerea.com/docs/)"
+              placeholder="Link da documentação ou regras"
               value={docText}
               onChange={e => setDocText(e.target.value)}
               rows={2}
-              style={{ width: '100%', fontSize: '0.8rem', resize: 'vertical' }}
+              style={{ width: '100%', fontSize: '0.75rem', resize: 'none', padding: '0.4rem 0.6rem' }}
             />
           </div>
 
@@ -365,23 +386,23 @@ export const StrategyStudio: React.FC = () => {
             disabled={analyzing || (!setContent && !htmlContent && !mqlContent && !userRational)}
             style={{ 
               marginTop: 'auto', 
-              padding: '0.75rem', 
-              fontSize: '0.9rem', 
+              padding: '0.6rem', 
+              fontSize: '0.85rem', 
               fontWeight: 600, 
               display: 'flex', 
               justifyContent: 'center', 
               alignItems: 'center', 
-              gap: '0.5rem',
+              gap: '0.4rem',
               background: 'linear-gradient(135deg, #2563eb, #7c3aed)'
             }}
           >
             {analyzing ? (
               <>
-                <RefreshCw size={16} className="spin" /> Processando Dossiê...
+                <RefreshCw size={14} className="spin" /> Processando...
               </>
             ) : (
               <>
-                <Sparkles size={16} /> Processar e Analisar Estratégia
+                <Sparkles size={14} /> Processar Estratégia
               </>
             )}
           </button>
