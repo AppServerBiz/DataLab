@@ -340,42 +340,42 @@ export const StrategyStudio: React.FC = () => {
 
           {/* User Rational Input */}
           <div>
-            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               🧠 Racional Operacional
             </label>
             <textarea 
               className="input-field" 
-              placeholder="Tese do robô (ex: Seguidor de tendência no Nasdaq, média 3, grid suave...)"
+              placeholder="Descreva a tese do robô (ex: Seguidor de tendência no Nasdaq, entradas na média 3, grid defensivo com recuperação suave...)"
               value={userRational}
               onChange={e => setUserRational(e.target.value)}
-              rows={2}
-              style={{ width: '100%', fontSize: '0.78rem', resize: 'none', padding: '0.4rem 0.6rem' }}
+              rows={4}
+              style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', minHeight: '80px', padding: '0.5rem 0.7rem', lineHeight: '1.4' }}
             />
           </div>
 
           {/* Documentation / Links with CPower default tick */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
-              <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                📖 Documentação
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                📖 Documentação / Regras
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', fontSize: '0.72rem', color: 'var(--accent-blue)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--accent-blue)' }}>
                 <input 
                   type="checkbox" 
                   checked={isCPower} 
                   onChange={e => handleCPowerToggle(e.target.checked)} 
                   style={{ cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
                 />
-                <span style={{ fontWeight: 600 }}>CPower (Padrão)</span>
+                <span style={{ fontWeight: 600 }}>CPower</span>
               </label>
             </div>
             <textarea 
               className="input-field" 
-              placeholder="Link da documentação ou regras"
+              placeholder={isCPower ? "Regras ou referências CPower..." : "Cole links ou regras da documentação..."}
               value={docText}
               onChange={e => setDocText(e.target.value)}
-              rows={2}
-              style={{ width: '100%', fontSize: '0.75rem', resize: 'none', padding: '0.4rem 0.6rem' }}
+              rows={3}
+              style={{ width: '100%', fontSize: '0.8rem', resize: 'vertical', minHeight: '65px', padding: '0.5rem 0.7rem', lineHeight: '1.4' }}
             />
           </div>
 
@@ -386,8 +386,8 @@ export const StrategyStudio: React.FC = () => {
             disabled={analyzing || (!setContent && !htmlContent && !mqlContent && !userRational)}
             style={{ 
               marginTop: 'auto', 
-              padding: '0.6rem', 
-              fontSize: '0.85rem', 
+              padding: '0.7rem', 
+              fontSize: '0.88rem', 
               fontWeight: 600, 
               display: 'flex', 
               justifyContent: 'center', 
@@ -398,11 +398,11 @@ export const StrategyStudio: React.FC = () => {
           >
             {analyzing ? (
               <>
-                <RefreshCw size={14} className="spin" /> Processando...
+                <RefreshCw size={15} className="spin" /> Processando...
               </>
             ) : (
               <>
-                <Sparkles size={14} /> Processar Estratégia
+                <Sparkles size={15} /> Processar Estratégia
               </>
             )}
           </button>
@@ -472,7 +472,7 @@ export const StrategyStudio: React.FC = () => {
                 <Cpu size={48} style={{ color: 'var(--accent-blue)', opacity: 0.5 }} />
                 <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Laboratório de Estratégias & Hedge</h3>
                 <p style={{ fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>
-                  Faça o upload do arquivo <code>.set</code>, relatório de backtest ou código MQL5 no painel lateral e clique em <strong>Processar e Analisar</strong> para iniciar a engenharia reversa.
+                  Faça o upload do arquivo <code>.set</code>, relatório de backtest ou código MQL5 no painel lateral e clique em <strong>Processar Estratégia</strong> para iniciar a engenharia reversa.
                 </p>
               </div>
             ) : (
@@ -538,26 +538,32 @@ export const StrategyStudio: React.FC = () => {
             <div ref={chatEndRef} />
           </div>
 
-          {/* Chat Input Bar */}
-          <div style={{ padding: '0.8rem 1.2rem', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          {/* Chat Input Bar - Generous and Comfortable */}
+          <div style={{ padding: '0.9rem 1.2rem', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <form 
               onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
-              style={{ display: 'flex', gap: '0.6rem' }}
+              style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}
             >
-              <input 
-                type="text" 
+              <textarea 
                 className="input-field" 
-                placeholder={strategyContext ? "Faça perguntas sobre o trade, peça correções ou solicite a geração de código..." : "Processe uma estratégia primeiro para habilitar o chat quantitativo."}
+                placeholder={strategyContext ? "Faça perguntas sobre o trade, solicite ajustes no racional, peça um hedge ou gere código..." : "Processe uma estratégia primeiro para habilitar o chat quantitativo."}
                 value={input}
                 onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
                 disabled={!strategyContext || loadingChat}
-                style={{ flex: 1, fontSize: '0.88rem', padding: '0.65rem 1rem' }}
+                rows={2}
+                style={{ flex: 1, fontSize: '0.9rem', padding: '0.65rem 1rem', resize: 'none', lineHeight: '1.4' }}
               />
               <button 
                 type="submit" 
                 className="btn btn-primary" 
                 disabled={!input.trim() || !strategyContext || loadingChat}
-                style={{ padding: '0 1.2rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                style={{ padding: '0.8rem 1.4rem', height: '100%', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
               >
                 <Send size={16} /> Enviar
               </button>
