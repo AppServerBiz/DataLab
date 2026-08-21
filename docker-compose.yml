@@ -8,7 +8,7 @@ services:
     image: registry.nautilusinvesting.com/datalab-api:v13
     environment:
       - PORT=3001
-      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DATABASE_PATH=/app/data/nautilus.db
     volumes:
       - nautilus_db:/app/data

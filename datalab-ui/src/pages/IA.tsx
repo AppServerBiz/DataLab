@@ -67,7 +67,7 @@ const IA = () => {
       
       setMessages([...newMessages, { 
         role: 'model', 
-        parts: [{ text: `❌ ${errorMsg}${details}\n\nVerifique se o servidor está rodando e se a GROQ_API_KEY está configurada corretamente no ambiente de produção.` }] 
+        parts: [{ text: `❌ ${errorMsg}${details}\n\nVerifique se o servidor está rodando e se a GEMINI_API_KEY está configurada corretamente no ambiente.` }] 
       }]);
     } finally {
       setLoading(false);
@@ -227,7 +227,7 @@ const IA = () => {
                   </button>
                 </div>
                 <div style={{ fontSize: '0.65rem', textAlign: 'center', color: 'var(--text-muted)', marginTop: '0.8rem' }}>
-                  Groq Llama 3.3 • Nautilus DataLab Assistant
+                  Google Gemini 1.5 Flash • Nautilus DataLab Assistant
                 </div>
               </div>
             </>

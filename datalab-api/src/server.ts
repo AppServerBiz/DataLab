@@ -1591,7 +1591,7 @@ app.get('/api/portfolios/:id/export-nautilus', async (req, res) => {
 const API_KEY = process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY || '';
 console.log('Gemini API Key detected:', API_KEY ? `${API_KEY.substring(0, 8)}...` : 'NONE');
 const genAI = new GoogleGenerativeAI(API_KEY);
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = "gemini-3.6-flash";
 
 function formatDailyPerformance(equityCurve: any[]) {
   if (!equityCurve || equityCurve.length === 0) return "Nenhum dado diário disponível.";
@@ -1807,14 +1807,10 @@ app.post('/api/ia/strategy-chat', async (req, res) => {
   try {
     const { messages, context } = req.body;
 
-    if (!process.env.GROQ_API_KEY) {
-      return res.status(400).json({ error: 'A chave Groq (GROQ_API_KEY) não foi configurada no servidor.' });
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      return res.status(400).json({ error: 'A chave Gemini (GEMINI_API_KEY) não foi configurada no servidor.' });
     }
-
-    const groqMessages = messages.map((m: any) => ({
-      role: m.role === 'model' ? 'assistant' : 'user',
-      content: m.parts[0].text
-    }));
 
     const systemPrompt = `Você é o Nautilus Quant Architect & Strategy Engineer de elite.
 Sua especialidade é engenharia reversa de estratégias de trading algorítmico, análise de código MQL5 / Python, cálculo de risco/drawdown e desenho de hedges e transposições de ativos.
@@ -1836,21 +1832,32 @@ ESTRUTURA OBRIGATÓRIA DE TRABALHO:
 CONTEXTO DA ESTRATÉGIA CARREGADA:
 ${context}`;
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...groqMessages
-      ],
-      model: model,
-      temperature: 0.2,
-      max_tokens: 3500,
+    const geminiInstance = new GoogleGenerativeAI(apiKey);
+    const geminiModel = geminiInstance.getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 4096,
+      }
     });
 
-    res.json({ text: completion.choices[0]?.message?.content || "" });
+    // Format history for Gemini SDK: role 'user' | 'model'
+    const contents = messages.map((m: any) => ({
+      role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
+      parts: Array.isArray(m.parts) 
+        ? m.parts 
+        : [{ text: typeof m.content === 'string' ? m.content : (m.parts?.[0]?.text || '') }]
+    }));
+
+    const result = await geminiModel.generateContent({ contents });
+    const responseText = result.response.text();
+
+    res.json({ text: responseText });
   } catch (err: any) {
-    console.error('Groq Strategy Chat Error:', err?.message || err);
+    console.error('Gemini Strategy Chat Error:', err?.message || err);
     res.status(500).json({ 
-      error: 'Erro na comunicação com a IA', 
+      error: 'Erro na comunicação com a IA (Gemini)', 
       details: err?.message || String(err) 
     });
   }
@@ -1860,16 +1867,11 @@ app.post('/api/ia/chat', async (req, res) => {
   try {
     const { messages, context } = req.body; 
     
-    if (!process.env.GROQ_API_KEY) {
-      console.error('ERRO: GROQ_API_KEY não encontrada no ambiente.');
-      return res.status(400).json({ error: 'A chave Groq (GROQ_API_KEY) não foi configurada no servidor. Por favor, verifique as variáveis de ambiente.' });
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      console.error('ERRO: GEMINI_API_KEY não encontrada no ambiente.');
+      return res.status(400).json({ error: 'A chave Gemini (GEMINI_API_KEY) não foi configurada no servidor. Por favor, verifique as variáveis de ambiente.' });
     }
-
-    // Convert frontend messages to OpenAI/Groq format
-    const groqMessages = messages.map((m: any) => ({
-      role: m.role === 'model' ? 'assistant' : 'user',
-      content: m.parts[0].text
-    }));
 
     const systemPrompt = `Você é o Nautilus AI Expert, um analista de trading quantitativo de elite. 
     Analise os dados históricos fornecidos (formato CSV) de robôs ou portfólios.
@@ -1879,21 +1881,31 @@ app.post('/api/ia/chat', async (req, res) => {
     CONTEXTO DA ESTRATÉGIA:
     ${context}`;
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...groqMessages
-      ],
-      model: model,
-      temperature: 0.1,
-      max_tokens: 2048,
+    const geminiInstance = new GoogleGenerativeAI(apiKey);
+    const geminiModel = geminiInstance.getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 3000,
+      }
     });
 
-    res.json({ text: completion.choices[0]?.message?.content || "" });
+    const contents = messages.map((m: any) => ({
+      role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
+      parts: Array.isArray(m.parts) 
+        ? m.parts 
+        : [{ text: typeof m.content === 'string' ? m.content : (m.parts?.[0]?.text || '') }]
+    }));
+
+    const result = await geminiModel.generateContent({ contents });
+    const responseText = result.response.text();
+
+    res.json({ text: responseText });
   } catch (err: any) {
-    console.error('Groq API Error:', err?.message || err);
+    console.error('Gemini API Error:', err?.message || err);
     res.status(500).json({ 
-      error: 'Erro na comunicação com a IA', 
+      error: 'Erro na comunicação com a IA (Gemini)', 
       details: err?.message || String(err) 
     });
   }
