@@ -33,7 +33,7 @@ export const StrategyStudio: React.FC = () => {
   const [robotName, setRobotName] = useState('');
   const [userRational, setUserRational] = useState('');
   const [isCPower, setIsCPower] = useState(true);
-  const [docText, setDocText] = useState('https://communitypowerea.com/docs/');
+  const [docText, setDocText] = useState('');
   const [setFileName, setSetFileName] = useState<string | null>(null);
   const [setContent, setSetContent] = useState<string>('');
   const [htmlFileName, setHtmlFileName] = useState<string | null>(null);
@@ -348,8 +348,8 @@ export const StrategyStudio: React.FC = () => {
               placeholder="Descreva a tese do robô (ex: Seguidor de tendência no Nasdaq, entradas na média 3, grid defensivo com recuperação suave...)"
               value={userRational}
               onChange={e => setUserRational(e.target.value)}
-              rows={4}
-              style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', minHeight: '80px', padding: '0.5rem 0.7rem', lineHeight: '1.4' }}
+              rows={6}
+              style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', minHeight: '150px', padding: '0.6rem 0.8rem', lineHeight: '1.4' }}
             />
           </div>
 
@@ -371,11 +371,11 @@ export const StrategyStudio: React.FC = () => {
             </div>
             <textarea 
               className="input-field" 
-              placeholder={isCPower ? "Regras ou referências CPower..." : "Cole links ou regras da documentação..."}
+              placeholder="Cole links de documentação, manuais, especificações técnicas ou anotações de regras operacionais de referência..."
               value={docText}
               onChange={e => setDocText(e.target.value)}
-              rows={3}
-              style={{ width: '100%', fontSize: '0.8rem', resize: 'vertical', minHeight: '65px', padding: '0.5rem 0.7rem', lineHeight: '1.4' }}
+              rows={6}
+              style={{ width: '100%', fontSize: '0.8rem', resize: 'vertical', minHeight: '150px', padding: '0.6rem 0.8rem', lineHeight: '1.4' }}
             />
           </div>
 
