@@ -1199,6 +1199,133 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   )}
                 </div>
 
+                {/* Guia Metodológico: 6 Métodos de Cálculo & Composição de Portfólio */}
+                <div className="card" style={{ padding: '1.4rem', marginTop: '1.5rem', background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '1.1rem' }}>📐</span>
+                        <h3 style={{ margin: 0, fontSize: '0.85rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
+                          Guia de Métodos: Cálculo, Drawdown e Composição de Portfólio
+                        </h3>
+                      </div>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Como interpretar as diferentes abordagens de mercado para balanceamento, controle de risco e eficiência.
+                      </p>
+                    </div>
+                    <span style={{ fontSize: '0.65rem', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-blue)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '3px 8px', borderRadius: '12px', fontWeight: '600' }}>
+                      6 Modelos Comparados
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+                    
+                    {/* 1. Método Atual (Nautilus Quant) */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '8px', padding: '1rem', position: 'relative' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.8rem', color: 'var(--accent-blue)' }}>1. Nautilus Quant (Método Atual)</strong>
+                        <span style={{ fontSize: '0.6rem', background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Em Uso</span>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Agrega as curvas diárias reais de equity de cada robô escaladas por lotes inteiros (pesos) e calcula o DD máximo da série combinada.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Avaliado dia a dia no flutuante consolidado + VaR 95% empírico da série de perdas diárias.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Otimização por Score = <code>(Lucro / DD) × (1 - Corr_Média × 0.5)</code> com teto em <em>Target DD</em>.</p>
+                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                          🔍 <strong>Como ler o dado:</strong> Excelente pragmatismo operacional por usar a equity real do MT5. Atenção para a soma linear conservadora que tende a prever um DD um pouco maior que o real.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Hierarchical Risk Parity (HRP) */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', padding: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.8rem', color: '#34d399' }}>2. Hierarchical Risk Parity (HRP)</strong>
+                        <span style={{ fontSize: '0.6rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥇 Top Eficiência</span>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Agrupa estratégias em árvore/clusters (ex: robôs de índices vs moedas) via dendrograma e aloca risco de cima para baixo.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Aloca menor capital aos clusters mais voláteis e correlated, amortecendo picos de rebaixamento conjunto.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Bisseção recursiva por variância inversa entre grupos. Dispensa inversão de matrizes.</p>
+                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                          🔍 <strong>Como ler o dado:</strong> Evita sobrecarregar ativos correlacionados. Se 3 robôs operam NASDAQ, o HRP trata o grupo NASDAQ como um único bloco de risco.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Risk Parity */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.8rem', color: '#fbbf24' }}>3. Risk Parity (Paridade de Risco)</strong>
+                        <span style={{ fontSize: '0.6rem', background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥈 Hedge Funds</span>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Equaliza a contribuição marginal de risco de cada robô para que nenhum domine as perdas da carteira.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Pesos inversamente proporcionais ao Drawdown/Volatilidade: <code>Peso ∝ 1 / DD_Max</code>.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Robô de DD baixo ($500) recebe mais lote que um robô de DD alto ($5.000), equilibrando o impacto financeiro.</p>
+                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                          🔍 <strong>Como ler o dado:</strong> Modelo ultraconservador e balanceado. Garante que se o pior robô estopar, a perda em $ será idêntica à perda do menor robô.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4. CVaR / Expected Shortfall */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.8rem', color: '#f87171' }}>4. CVaR Optimization (Expected Shortfall)</strong>
+                        <span style={{ fontSize: '0.6rem', background: 'rgba(248, 113, 113, 0.15)', color: '#f87171', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥉 Controle de Cauda</span>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Foca exclusivamente nos piores 5% de dias históricos de mercado (Tail Risk / Cisnes Negros).</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Ao contrário do VaR (que só olha a linha de corte), o CVaR calcula a <em>média exata da perda quando o corte é rompido</em>.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Otimiza os pesos para minimizar o rebaixamento médio nos dias de estresse extremo.</p>
+                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                          🔍 <strong>Como ler o dado:</strong> Responde: "Nos 5% piores dias do ano, quanto o portfólio perde em média?". Evita quebras por caudas grossas.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 5. Kelly Criterion */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.8rem', color: '#c084fc' }}>5. Kelly Criterion (Fractional Kelly)</strong>
+                        <span style={{ fontSize: '0.6rem', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Crescimento Ótimo</span>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Maximiza a taxa de crescimento geométrico do capital baseando-se em Win Rate (p) e Payoff (b).</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Alocação agressiva no Kelly pleno (~50% DD); usa-se <em>Half-Kelly (50%)</em> para manter o DD sob controle.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> <code>f* = (p × b - q) / b</code>. Define a fração exata do capital total a ser exposta em cada robô.</p>
+                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                          🔍 <strong>Como ler o dado:</strong> Ideal para dimensionamento de lote e alavancagem ótima, evitando ruína matemática enquanto maximiza juros compostos.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 6. Markowitz (MVO) */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.8rem', color: '#94a3b8' }}>6. Markowitz MVO (Média-Variância)</strong>
+                        <span style={{ fontSize: '0.6rem', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Clássico</span>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Constrói a Fronteira Eficiente minimizando a covariância global dos retornos para um retorno desejado.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Indireto — modela o risco pela volatilidade (desvio padrão anualizado σ) em vez do DD da equity.</p>
+                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Otimização quadrática contínua dos pesos: <code>min w'Σw</code> sujeito a retorno alvo.</p>
+                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                          🔍 <strong>Como ler o dado:</strong> Padrão acadêmico clássico, porém sensível a ruídos em robôs quant (pode superestimar robôs com bom histórico recente).
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Resumo prático de interpretação */}
+                  <div style={{ marginTop: '1rem', padding: '0.8rem 1rem', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.15)', borderRadius: '6px', fontSize: '0.68rem', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div>
+                      💡 <strong>Síntese de Tomada de Decisão:</strong> Use o <strong>Nautilus Quant</strong> para visualização da execução real, <strong>HRP / Risk Parity</strong> para balancear pesos sem concentração e <strong>CVaR</strong> para estipular seu colchão de segurança contra crises.
+                    </div>
+                  </div>
+                </div>
+
               </>
             )}
           </div>
