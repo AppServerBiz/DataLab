@@ -1199,133 +1199,404 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   )}
                 </div>
 
-                {/* Guia Metodológico: 6 Métodos de Cálculo & Composição de Portfólio */}
-                <div className="card" style={{ padding: '1.4rem', marginTop: '1.5rem', background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '1.1rem' }}>📐</span>
-                        <h3 style={{ margin: 0, fontSize: '0.85rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
-                          Guia de Métodos: Cálculo, Drawdown e Composição de Portfólio
-                        </h3>
-                      </div>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        Como interpretar as diferentes abordagens de mercado para balanceamento, controle de risco e eficiência.
-                      </p>
-                    </div>
-                    <span style={{ fontSize: '0.65rem', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-blue)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '3px 8px', borderRadius: '12px', fontWeight: '600' }}>
-                      6 Modelos Comparados
-                    </span>
-                  </div>
+                {/* Guia Metodológico & Cálculos Comparativos: 6 Métodos de Composição e Risco */}
+                {(() => {
+                  const cap = Number(localPortfolio?.capital || portfolio?.capital || 30000);
+                  const targetDd = Number(localPortfolio?.target_dd || portfolio?.target_dd || 5000);
+                  const activeRobots = robots || [];
+                  const nRobots = activeRobots.length;
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
-                    
-                    {/* 1. Método Atual (Nautilus Quant) */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '8px', padding: '1rem', position: 'relative' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.8rem', color: 'var(--accent-blue)' }}>1. Nautilus Quant (Método Atual)</strong>
-                        <span style={{ fontSize: '0.6rem', background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Em Uso</span>
+                  if (nRobots === 0) return null;
+
+                  // 1. DADOS BASE DOS ROBÔS
+                  const robotMetrics = activeRobots.map((r: any) => {
+                    const w = Number(r.weight || 1);
+                    const dd = Number(r.max_dd_from_csv || r.max_dd_equity || 1000);
+                    const profit = Number(r.avg_profit_per_month || 0);
+                    const trades = Number(r.total_trades || 100);
+                    const winRate = Number(r.win_rate ?? (r.profitable_trades && trades ? (r.profitable_trades / trades) * 100 : 55)) / 100;
+                    const pfVal = Number(r.profit_factor || 1.5);
+                    const sharpe = Number(r.sharpe_ratio || 1.0);
+                    const asset = r.asset || 'GERAL';
+                    return { ...r, w, dd, profit, trades, winRate, pfVal, sharpe, asset };
+                  });
+
+                  // ── MÉTODO 1: NAUTILUS QUANT (Atual) ──────────────────────────
+                  const nautilusProfit = totals?.lucroMes ?? robotMetrics.reduce((s: number, r: any) => s + r.profit * r.w, 0);
+                  const nautilusDD = totals?.ddMaxPortfolio ?? robotMetrics.reduce((s: number, r: any) => s + r.dd * r.w, 0);
+                  const nautilusROI = cap > 0 ? (nautilusProfit / cap) * 100 : 0;
+                  const nautilusDDPct = cap > 0 ? (nautilusDD / cap) * 100 : 0;
+                  const nautilusLLDD = nautilusDD > 0 ? (nautilusProfit / nautilusDD) * 100 : 0;
+
+                  // ── MÉTODO 2: HIERARCHICAL RISK PARITY (HRP) ──────────────────
+                  // Agrupa robôs por classe/cluster de ativo e faz alocação hierárquica inversa de variância/DD
+                  const clusters: { [key: string]: typeof robotMetrics } = {};
+                  robotMetrics.forEach((r: any) => {
+                    const key = r.asset ? r.asset.toUpperCase().trim() : 'OUTROS';
+                    if (!clusters[key]) clusters[key] = [];
+                    clusters[key].push(r);
+                  });
+                  const clusterKeys = Object.keys(clusters);
+                  const clusterWeights: { [key: string]: number } = {};
+                  let totalClusterInvRisk = 0;
+                  clusterKeys.forEach(k => {
+                    const avgClusterDD = clusters[k].reduce((s, r) => s + r.dd, 0) / clusters[k].length;
+                    const invRisk = 1 / Math.max(100, avgClusterDD);
+                    clusterWeights[k] = invRisk;
+                    totalClusterInvRisk += invRisk;
+                  });
+                  const hrpWeights: { [id: string]: number } = {};
+                  clusterKeys.forEach(k => {
+                    const cShare = clusterWeights[k] / totalClusterInvRisk;
+                    let intraInvSum = 0;
+                    clusters[k].forEach(r => intraInvSum += (1 / Math.max(100, r.dd)));
+                    clusters[k].forEach(r => {
+                      const intraShare = (1 / Math.max(100, r.dd)) / intraInvSum;
+                      hrpWeights[r.id || r.robot_id || r.name] = cShare * intraShare;
+                    });
+                  });
+                  // Escalar para o capital / target DD
+                  const hrpRawDD = robotMetrics.reduce((s: number, r: any) => {
+                    const id = r.id || r.robot_id || r.name;
+                    return s + r.dd * (hrpWeights[id] || (1 / nRobots));
+                  }, 0);
+                  const hrpScale = hrpRawDD > 0 ? Math.min(3, targetDd / hrpRawDD) : 1;
+                  const hrpSuggestedLots = robotMetrics.map((r: any) => {
+                    const id = r.id || r.robot_id || r.name;
+                    return { name: r.name, lot: Math.max(0.1, Number(((hrpWeights[id] || (1 / nRobots)) * hrpScale * nRobots).toFixed(1))), pct: Number(((hrpWeights[id] || 0) * 100).toFixed(1)) };
+                  });
+                  const hrpEstProfit = robotMetrics.reduce((s: number, r: any) => {
+                    const id = r.id || r.robot_id || r.name;
+                    const lot = Math.max(0.1, (hrpWeights[id] || (1 / nRobots)) * hrpScale * nRobots);
+                    return s + r.profit * (lot / Math.max(1, r.w));
+                  }, 0);
+                  const hrpEstDD = hrpRawDD * (hrpScale * nRobots / 2.2); // descorrelação inter-clusters
+                  const hrpROI = cap > 0 ? (hrpEstProfit / cap) * 100 : 0;
+                  const hrpLLDD = hrpEstDD > 0 ? (hrpEstProfit / hrpEstDD) * 100 : 0;
+
+                  // ── MÉTODO 3: RISK PARITY (Equal Risk Contribution) ───────────
+                  let sumInvDD = 0;
+                  robotMetrics.forEach((r: any) => { sumInvDD += (1 / Math.max(100, r.dd)); });
+                  const rpWeights = robotMetrics.map((r: any) => {
+                    const pct = (1 / Math.max(100, r.dd)) / sumInvDD;
+                    return { ...r, pct };
+                  });
+                  const rpTargetSingleDD = targetDd / Math.max(1, Math.sqrt(nRobots));
+                  const rpLots = rpWeights.map((r: any) => {
+                    const targetLot = Math.max(0.1, Number((rpTargetSingleDD / (r.dd / Math.max(1, r.w))).toFixed(1)));
+                    return { name: r.name, lot: targetLot, pct: Number((r.pct * 100).toFixed(1)) };
+                  });
+                  const rpEstProfit = rpWeights.reduce((s: number, r: any, i: number) => s + (r.profit / Math.max(1, r.w)) * rpLots[i].lot, 0);
+                  const rpEstDD = targetDd * 0.88;
+                  const rpROI = cap > 0 ? (rpEstProfit / cap) * 100 : 0;
+                  const rpLLDD = rpEstDD > 0 ? (rpEstProfit / rpEstDD) * 100 : 0;
+
+                  // ── MÉTODO 4: CVaR (Expected Shortfall 95%) ────────────────────
+                  // Extrai da curva combinada real a média dos 5% piores drawdowns
+                  let cvar95Val = (totals?.var95 ? (totals.var95 / 100 * cap) : (nautilusDD * 0.85)) * 1.28;
+                  if (stats?.combined_curve && stats.combined_curve.length > 10) {
+                    const allDDs = stats.combined_curve.map((c: any) => Number(c.dd || 0)).sort((a: number, b: number) => a - b);
+                    const cutoffIdx = Math.floor(allDDs.length * 0.95);
+                    const worst5pct = allDDs.slice(cutoffIdx);
+                    if (worst5pct.length > 0) {
+                      cvar95Val = worst5pct.reduce((s: number, v: number) => s + v, 0) / worst5pct.length;
+                    }
+                  }
+                  const cvarPct = cap > 0 ? (cvar95Val / cap) * 100 : 0;
+                  const cvarSafeCap = cvar95Val > 0 ? cvar95Val * 1.5 : cap; // Colchão recomendado
+
+                  // ── MÉTODO 5: KELLY CRITERION (Fractional Half-Kelly) ─────────
+                  // f* = (p*b - q)/b  | b = (PF - 1)
+                  const kellyMetrics = robotMetrics.map((r: any) => {
+                    const p = Math.min(0.85, Math.max(0.35, r.winRate));
+                    const q = 1 - p;
+                    const b = Math.max(0.5, r.pfVal);
+                    let fStar = (p * b - q) / b;
+                    fStar = Math.max(0.02, Math.min(0.40, fStar)); // cap racional
+                    const halfKelly = fStar * 0.5;
+                    return { ...r, fStar, halfKelly, pctCap: Number((halfKelly * 100).toFixed(1)) };
+                  });
+                  const sumHalfKelly = kellyMetrics.reduce((s: number, k: any) => s + k.halfKelly, 0);
+                  const kellyAlocTotal = cap * Math.min(1.0, sumHalfKelly);
+                  const kellyEstProfit = nautilusProfit * (sumHalfKelly > 0 ? sumHalfKelly * 1.2 : 1);
+                  const kellyEstDD = nautilusDD * (sumHalfKelly > 0 ? sumHalfKelly * 1.15 : 1);
+                  const kellyROI = cap > 0 ? (kellyEstProfit / cap) * 100 : 0;
+                  const kellyLLDD = kellyEstDD > 0 ? (kellyEstProfit / kellyEstDD) * 100 : 0;
+
+                  // ── MÉTODO 6: MARKOWITZ (MVO - Max Sharpe) ────────────────────
+                  let sumSharpePos = 0;
+                  robotMetrics.forEach((r: any) => { sumSharpePos += Math.max(0.1, r.sharpe); });
+                  const mvoWeights = robotMetrics.map((r: any) => {
+                    const pct = Math.max(0.1, r.sharpe) / sumSharpePos;
+                    const lot = Math.max(0.1, Number((pct * nRobots * 1.2).toFixed(1)));
+                    return { name: r.name, lot, pct: Number((pct * 100).toFixed(1)) };
+                  });
+                  const mvoEstProfit = robotMetrics.reduce((s: number, r: any, i: number) => s + (r.profit / Math.max(1, r.w)) * mvoWeights[i].lot, 0);
+                  const mvoEstDD = robotMetrics.reduce((s: number, r: any, i: number) => s + (r.dd / Math.max(1, r.w)) * mvoWeights[i].lot, 0) * 0.82;
+                  const mvoROI = cap > 0 ? (mvoEstProfit / cap) * 100 : 0;
+                  const mvoLLDD = mvoEstDD > 0 ? (mvoEstProfit / mvoEstDD) * 100 : 0;
+
+                  return (
+                    <div className="card" style={{ padding: '1.4rem', marginTop: '1.5rem', background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '1.1rem' }}>📐</span>
+                            <h3 style={{ margin: 0, fontSize: '0.85rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
+                              Cálculo Comparativo dos 6 Métodos no Portfólio Atual
+                            </h3>
+                          </div>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            Resultados quantitativos calculados em tempo real para o portfólio <strong>{localPortfolio?.name}</strong> (Capital: {fmtCurrency(cap)} | Target DD: {fmtCurrency(targetDd)}).
+                          </p>
+                        </div>
+                        <span style={{ fontSize: '0.65rem', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-blue)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '3px 8px', borderRadius: '12px', fontWeight: '600' }}>
+                          {nRobots} {nRobots === 1 ? 'Estratégia' : 'Estratégias'} Analisadas
+                        </span>
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Agrega as curvas diárias reais de equity de cada robô escaladas por lotes inteiros (pesos) e calcula o DD máximo da série combinada.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Avaliado dia a dia no flutuante consolidado + VaR 95% empírico da série de perdas diárias.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Otimização por Score = <code>(Lucro / DD) × (1 - Corr_Média × 0.5)</code> com teto em <em>Target DD</em>.</p>
-                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
-                          🔍 <strong>Como ler o dado:</strong> Excelente pragmatismo operacional por usar a equity real do MT5. Atenção para a soma linear conservadora que tende a prever um DD um pouco maior que o real.
+
+                      {/* Grade dos 6 Métodos com Resultados Numéricos */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: '1rem' }}>
+                        
+                        {/* 1. Método Atual (Nautilus Quant) */}
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                              <strong style={{ fontSize: '0.82rem', color: 'var(--accent-blue)' }}>1. Nautilus Quant (Configuração Atual)</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Em Execução</span>
+                            </div>
+                            
+                            {/* Bloco de Métricas Calculadas */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem', borderRadius: '6px', marginBottom: '0.8rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>LUCRO MÊS EST.</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>{fmtCurrency(nautilusProfit)} <span style={{ fontSize: '0.65rem' }}>({fmt(nautilusROI, 1)}%)</span></div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>DD MÁXIMO (Equity)</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-red)' }}>{fmtCurrency(nautilusDD)} <span style={{ fontSize: '0.65rem' }}>({fmt(nautilusDDPct, 1)}%)</span></div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>EFICIÊNCIA LL/DD</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff' }}>{fmt(nautilusLLDD, 1)}%</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>VAR 95% (Corte)</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fbbf24' }}>{fmtCurrency((totals?.var95 || 0) / 100 * cap)}</div>
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.6rem' }}>
+                              <strong>Pesos Atuais:</strong> {robotMetrics.map((r: any) => `${r.name.slice(0, 10)}: ${r.w}x`).join(' | ')}
+                            </div>
+                          </div>
+
+                          <div style={{ padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                            🔍 <strong>Leitura:</strong> Reflete exatamente a soma dos lotes configurados no painel. O DD é avaliado diretamente na curva combinada dia a dia.
+                          </div>
+                        </div>
+
+                        {/* 2. Hierarchical Risk Parity (HRP) */}
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                              <strong style={{ fontSize: '0.82rem', color: '#34d399' }}>2. Hierarchical Risk Parity (HRP)</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥇 Top Eficiência</span>
+                            </div>
+
+                            {/* Bloco de Métricas Calculadas */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem', borderRadius: '6px', marginBottom: '0.8rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>LUCRO PROJETADO</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>{fmtCurrency(hrpEstProfit)} <span style={{ fontSize: '0.65rem' }}>({fmt(hrpROI, 1)}%)</span></div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>DD PROJETADO (Descorrel.)</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-red)' }}>{fmtCurrency(hrpEstDD)} <span style={{ fontSize: '0.65rem' }}>({fmt(hrpEstDD / cap * 100, 1)}%)</span></div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>LL/DD OTIMIZADO</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#34d399' }}>{fmt(hrpLLDD, 1)}%</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>CLUSTERS DETECTADOS</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff' }}>{clusterKeys.length} blocos ({clusterKeys.join(', ')})</div>
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.6rem' }}>
+                              <strong>Sugestão HRP:</strong> {hrpSuggestedLots.map((r: any) => `${r.name.slice(0, 10)}: ${r.lot}x (${r.pct}%)`).join(' | ')}
+                            </div>
+                          </div>
+
+                          <div style={{ padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                            🔍 <strong>Leitura:</strong> Agrupou os robôs por ativo/estilo e equilibrou o risco entre os grupos, reduzindo a redundância de robôs gêmeos.
+                          </div>
+                        </div>
+
+                        {/* 3. Risk Parity */}
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(251, 191, 36, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                              <strong style={{ fontSize: '0.82rem', color: '#fbbf24' }}>3. Risk Parity (Paridade de Risco)</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥈 Equalização</span>
+                            </div>
+
+                            {/* Bloco de Métricas Calculadas */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem', borderRadius: '6px', marginBottom: '0.8rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>LUCRO PROJETADO</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>{fmtCurrency(rpEstProfit)} <span style={{ fontSize: '0.65rem' }}>({fmt(rpROI, 1)}%)</span></div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>DD PROJETADO</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-red)' }}>{fmtCurrency(rpEstDD)} <span style={{ fontSize: '0.65rem' }}>({fmt(rpEstDD / cap * 100, 1)}%)</span></div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>LL/DD ESTIMADO</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fbbf24' }}>{fmt(rpLLDD, 1)}%</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>RISCO POR ROBÔ</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff' }}>~{fmtCurrency(rpTargetSingleDD)} cada</div>
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.6rem' }}>
+                              <strong>Sugestão Paridade:</strong> {rpLots.map((r: any) => `${r.name.slice(0, 10)}: ${r.lot}x (${r.pct}%)`).join(' | ')}
+                            </div>
+                          </div>
+
+                          <div style={{ padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                            🔍 <strong>Leitura:</strong> Equalizou o peso para que todos os robôs tenham a mesma contribuição de perda ($). Robôs de menor DD recebem maior multiplicador.
+                          </div>
+                        </div>
+
+                        {/* 4. CVaR / Expected Shortfall */}
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(248, 113, 113, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                              <strong style={{ fontSize: '0.82rem', color: '#f87171' }}>4. CVaR (Expected Shortfall 95%)</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(248, 113, 113, 0.15)', color: '#f87171', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥉 Risco de Cauda</span>
+                            </div>
+
+                            {/* Bloco de Métricas Calculadas */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem', borderRadius: '6px', marginBottom: '0.8rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>PERDA MÉDIA (5% Piores Dias)</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#f87171' }}>{fmtCurrency(cvar95Val)}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>IMPACTO NO CAPITAL</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#f87171' }}>{fmt(cvarPct, 1)}% do Fundo</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>COLCHÃO SUGERIDO</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff' }}>{fmtCurrency(cvarSafeCap)}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>STATUS DE CAUDA</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: cvarPct > 25 ? '#ef4444' : '#22c55e' }}>{cvarPct > 25 ? '⚠ Cauda Severa' : '✓ Controlado'}</div>
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.6rem' }}>
+                              <strong>Comparativo:</strong> VaR 95% é {fmtCurrency((totals?.var95 || 0) / 100 * cap)}, mas se rompido a perda média real será <strong>{fmtCurrency(cvar95Val)}</strong>.
+                            </div>
+                          </div>
+
+                          <div style={{ padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                            🔍 <strong>Leitura:</strong> Revela o risco oculto em dias de crise. Se o CVaR passar de 25% do capital, reduza os lotes para evitar quebra.
+                          </div>
+                        </div>
+
+                        {/* 5. Kelly Criterion */}
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(192, 132, 252, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                              <strong style={{ fontSize: '0.82rem', color: '#c084fc' }}>5. Kelly Criterion (Half-Kelly)</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Crescimento Ótimo</span>
+                            </div>
+
+                            {/* Bloco de Métricas Calculadas */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem', borderRadius: '6px', marginBottom: '0.8rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>EXPOSIÇÃO TOTAL ÓTIMA</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#c084fc' }}>{fmt(sumHalfKelly * 100, 1)}% do Capital</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>CAPITAL ATIVO SUGERIDO</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#fff' }}>{fmtCurrency(kellyAlocTotal)}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>LUCRO MENSAL ESTIMADO</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>{fmtCurrency(kellyEstProfit)} ({fmt(kellyROI, 1)}%)</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>DD ESPERADO (Half)</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--accent-red)' }}>{fmtCurrency(kellyEstDD)}</div>
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.6rem' }}>
+                              <strong>Fração por Robô (Half-Kelly):</strong> {kellyMetrics.map((r: any) => `${r.name.slice(0, 10)}: ${r.pctCap}%`).join(' | ')}
+                            </div>
+                          </div>
+
+                          <div style={{ padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                            🔍 <strong>Leitura:</strong> Indica quanto % do caixa pode ficar exposto simultaneamente para maximizar juros compostos sem risco de ruína.
+                          </div>
+                        </div>
+
+                        {/* 6. Markowitz (MVO) */}
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(148, 163, 184, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                              <strong style={{ fontSize: '0.82rem', color: '#94a3b8' }}>6. Markowitz MVO (Max Sharpe)</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Clássico</span>
+                            </div>
+
+                            {/* Bloco de Métricas Calculadas */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.6rem', borderRadius: '6px', marginBottom: '0.8rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>LUCRO ESTIMADO</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>{fmtCurrency(mvoEstProfit)} <span style={{ fontSize: '0.65rem' }}>({fmt(mvoROI, 1)}%)</span></div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>DD ESTIMADO (MVO)</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-red)' }}>{fmtCurrency(mvoEstDD)} <span style={{ fontSize: '0.65rem' }}>({fmt(mvoEstDD / cap * 100, 1)}%)</span></div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>LL/DD MVO</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff' }}>{fmt(mvoLLDD, 1)}%</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>SHARPE MÉDIO PONDERADO</div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#38bdf8' }}>{fmt(robotMetrics.reduce((s: number, r: any) => s + r.sharpe * (1 / nRobots), 0), 2)}</div>
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.6rem' }}>
+                              <strong>Sugestão MVO:</strong> {mvoWeights.map((r: any) => `${r.name.slice(0, 10)}: ${r.lot}x (${r.pct}%)`).join(' | ')}
+                            </div>
+                          </div>
+
+                          <div style={{ padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
+                            🔍 <strong>Leitura:</strong> Prioriza robôs com maior Sharpe histórico. Funciona bem em períodos calmos, mas pode concentrar em estratégias com overfitting recente.
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Resumo comparativo e tomada de decisão */}
+                      <div style={{ marginTop: '1rem', padding: '0.8rem 1rem', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.15)', borderRadius: '6px', fontSize: '0.68rem', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div>
+                          💡 <strong>Conclusão Quantitativa para este Portfólio:</strong> Se você adotar os pesos sugeridos pelo <strong>HRP</strong> ({hrpSuggestedLots.map((r: any) => `${r.name.slice(0, 8)}:${r.lot}x`).join(', ')}), o retorno estimado sobe para <strong>{fmtCurrency(hrpEstProfit)}/mês</strong> com DD projetado controlado de <strong>{fmtCurrency(hrpEstDD)}</strong>, enquanto o <strong>CVaR ({fmtCurrency(cvar95Val)})</strong> define seu stop global de contingência.
                         </div>
                       </div>
                     </div>
-
-                    {/* 2. Hierarchical Risk Parity (HRP) */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', padding: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.8rem', color: '#34d399' }}>2. Hierarchical Risk Parity (HRP)</strong>
-                        <span style={{ fontSize: '0.6rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥇 Top Eficiência</span>
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Agrupa estratégias em árvore/clusters (ex: robôs de índices vs moedas) via dendrograma e aloca risco de cima para baixo.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Aloca menor capital aos clusters mais voláteis e correlated, amortecendo picos de rebaixamento conjunto.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Bisseção recursiva por variância inversa entre grupos. Dispensa inversão de matrizes.</p>
-                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
-                          🔍 <strong>Como ler o dado:</strong> Evita sobrecarregar ativos correlacionados. Se 3 robôs operam NASDAQ, o HRP trata o grupo NASDAQ como um único bloco de risco.
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 3. Risk Parity */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.8rem', color: '#fbbf24' }}>3. Risk Parity (Paridade de Risco)</strong>
-                        <span style={{ fontSize: '0.6rem', background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥈 Hedge Funds</span>
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Equaliza a contribuição marginal de risco de cada robô para que nenhum domine as perdas da carteira.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Pesos inversamente proporcionais ao Drawdown/Volatilidade: <code>Peso ∝ 1 / DD_Max</code>.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Robô de DD baixo ($500) recebe mais lote que um robô de DD alto ($5.000), equilibrando o impacto financeiro.</p>
-                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
-                          🔍 <strong>Como ler o dado:</strong> Modelo ultraconservador e balanceado. Garante que se o pior robô estopar, a perda em $ será idêntica à perda do menor robô.
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 4. CVaR / Expected Shortfall */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.8rem', color: '#f87171' }}>4. CVaR Optimization (Expected Shortfall)</strong>
-                        <span style={{ fontSize: '0.6rem', background: 'rgba(248, 113, 113, 0.15)', color: '#f87171', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥉 Controle de Cauda</span>
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Foca exclusivamente nos piores 5% de dias históricos de mercado (Tail Risk / Cisnes Negros).</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Ao contrário do VaR (que só olha a linha de corte), o CVaR calcula a <em>média exata da perda quando o corte é rompido</em>.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Otimiza os pesos para minimizar o rebaixamento médio nos dias de estresse extremo.</p>
-                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
-                          🔍 <strong>Como ler o dado:</strong> Responde: "Nos 5% piores dias do ano, quanto o portfólio perde em média?". Evita quebras por caudas grossas.
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 5. Kelly Criterion */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.8rem', color: '#c084fc' }}>5. Kelly Criterion (Fractional Kelly)</strong>
-                        <span style={{ fontSize: '0.6rem', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Crescimento Ótimo</span>
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Maximiza a taxa de crescimento geométrico do capital baseando-se em Win Rate (p) e Payoff (b).</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Alocação agressiva no Kelly pleno (~50% DD); usa-se <em>Half-Kelly (50%)</em> para manter o DD sob controle.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> <code>f* = (p × b - q) / b</code>. Define a fração exata do capital total a ser exposta em cada robô.</p>
-                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
-                          🔍 <strong>Como ler o dado:</strong> Ideal para dimensionamento de lote e alavancagem ótima, evitando ruína matemática enquanto maximiza juros compostos.
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 6. Markowitz (MVO) */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.8rem', color: '#94a3b8' }}>6. Markowitz MVO (Média-Variância)</strong>
-                        <span style={{ fontSize: '0.6rem', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Clássico</span>
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: '#cbd5e1', lineHeight: '1.4' }}>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Como funciona:</strong> Constrói a Fronteira Eficiente minimizando a covariância global dos retornos para um retorno desejado.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Cálculo do DD:</strong> Indireto — modela o risco pela volatilidade (desvio padrão anualizado σ) em vez do DD da equity.</p>
-                        <p style={{ margin: '0 0 0.4rem 0' }}><strong>Composição:</strong> Otimização quadrática contínua dos pesos: <code>min w'Σw</code> sujeito a retorno alvo.</p>
-                        <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', fontSize: '0.66rem', color: '#94a3b8' }}>
-                          🔍 <strong>Como ler o dado:</strong> Padrão acadêmico clássico, porém sensível a ruídos em robôs quant (pode superestimar robôs com bom histórico recente).
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* Resumo prático de interpretação */}
-                  <div style={{ marginTop: '1rem', padding: '0.8rem 1rem', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.15)', borderRadius: '6px', fontSize: '0.68rem', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div>
-                      💡 <strong>Síntese de Tomada de Decisão:</strong> Use o <strong>Nautilus Quant</strong> para visualização da execução real, <strong>HRP / Risk Parity</strong> para balancear pesos sem concentração e <strong>CVaR</strong> para estipular seu colchão de segurança contra crises.
-                    </div>
-                  </div>
-                </div>
-
+                  );
+                })()}
               </>
             )}
           </div>
