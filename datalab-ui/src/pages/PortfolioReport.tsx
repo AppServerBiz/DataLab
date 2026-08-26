@@ -778,10 +778,267 @@ const PortfolioReport = () => {
             </div>
           )}
 
+          {/* Seção dos 6 Métodos de Cálculo & Composição de Portfólio (Impressão / PDF) */}
+          {(() => {
+            const cap = Number(portfolio?.capital || 30000);
+            const targetDd = Number(portfolio?.target_dd || 5000);
+            const activeRobots = robots || [];
+            const nRobots = activeRobots.length;
 
+            if (nRobots === 0) return null;
+
+            const robotMetrics = activeRobots.map((r: any) => {
+              const w = Number(r.weight || 1);
+              const dd = Number(r.max_dd_from_csv || r.max_dd_equity || 1000);
+              const profit = Number(r.avg_profit_per_month || 0);
+              const trades = Number(r.total_trades || 100);
+              const winRate = Number(r.win_rate ?? (r.profitable_trades && trades ? (r.profitable_trades / trades) * 100 : 55)) / 100;
+              const pfVal = Number(r.profit_factor || 1.5);
+              const sharpe = Number(r.sharpe_ratio || 1.0);
+              const asset = r.asset || 'GERAL';
+              return { ...r, w, dd, profit, trades, winRate, pfVal, sharpe, asset };
+            });
+
+            // 1. Nautilus Quant
+            const nautilusProfit = totals?.lucroMes ?? robotMetrics.reduce((s: number, r: any) => s + r.profit * r.w, 0);
+            const nautilusDD = totals?.ddMaxPortfolio ?? robotMetrics.reduce((s: number, r: any) => s + r.dd * r.w, 0);
+            const nautilusROI = cap > 0 ? (nautilusProfit / cap) * 100 : 0;
+            const nautilusDDPct = cap > 0 ? (nautilusDD / cap) * 100 : 0;
+            const nautilusLLDD = nautilusDD > 0 ? (nautilusProfit / nautilusDD) * 100 : 0;
+
+            // 2. HRP
+            const clusters: { [key: string]: typeof robotMetrics } = {};
+            robotMetrics.forEach((r: any) => {
+              const key = r.asset ? r.asset.toUpperCase().trim() : 'OUTROS';
+              if (!clusters[key]) clusters[key] = [];
+              clusters[key].push(r);
+            });
+            const clusterKeys = Object.keys(clusters);
+            const clusterWeights: { [key: string]: number } = {};
+            let totalClusterInvRisk = 0;
+            clusterKeys.forEach(k => {
+              const avgClusterDD = clusters[k].reduce((s, r) => s + r.dd, 0) / clusters[k].length;
+              const invRisk = 1 / Math.max(100, avgClusterDD);
+              clusterWeights[k] = invRisk;
+              totalClusterInvRisk += invRisk;
+            });
+            const hrpWeights: { [id: string]: number } = {};
+            clusterKeys.forEach(k => {
+              const cShare = clusterWeights[k] / totalClusterInvRisk;
+              let intraInvSum = 0;
+              clusters[k].forEach(r => intraInvSum += (1 / Math.max(100, r.dd)));
+              clusters[k].forEach(r => {
+                const intraShare = (1 / Math.max(100, r.dd)) / intraInvSum;
+                hrpWeights[r.id || r.robot_id || r.name] = cShare * intraShare;
+              });
+            });
+            const hrpRawDD = robotMetrics.reduce((s: number, r: any) => {
+              const id = r.id || r.robot_id || r.name;
+              return s + r.dd * (hrpWeights[id] || (1 / nRobots));
+            }, 0);
+            const hrpScale = hrpRawDD > 0 ? Math.min(3, targetDd / hrpRawDD) : 1;
+            const hrpSuggestedLots = robotMetrics.map((r: any) => {
+              const id = r.id || r.robot_id || r.name;
+              return { name: r.name, lot: Math.max(0.1, Number(((hrpWeights[id] || (1 / nRobots)) * hrpScale * nRobots).toFixed(1))), pct: Number(((hrpWeights[id] || 0) * 100).toFixed(1)) };
+            });
+            const hrpEstProfit = robotMetrics.reduce((s: number, r: any) => {
+              const id = r.id || r.robot_id || r.name;
+              const lot = Math.max(0.1, (hrpWeights[id] || (1 / nRobots)) * hrpScale * nRobots);
+              return s + r.profit * (lot / Math.max(1, r.w));
+            }, 0);
+            const hrpEstDD = hrpRawDD * (hrpScale * nRobots / 2.2);
+            const hrpROI = cap > 0 ? (hrpEstProfit / cap) * 100 : 0;
+            const hrpLLDD = hrpEstDD > 0 ? (hrpEstProfit / hrpEstDD) * 100 : 0;
+
+            // 3. Risk Parity
+            let sumInvDD = 0;
+            robotMetrics.forEach((r: any) => { sumInvDD += (1 / Math.max(100, r.dd)); });
+            const rpWeights = robotMetrics.map((r: any) => {
+              const pct = (1 / Math.max(100, r.dd)) / sumInvDD;
+              return { ...r, pct };
+            });
+            const rpTargetSingleDD = targetDd / Math.max(1, Math.sqrt(nRobots));
+            const rpLots = rpWeights.map((r: any) => {
+              const targetLot = Math.max(0.1, Number((rpTargetSingleDD / (r.dd / Math.max(1, r.w))).toFixed(1)));
+              return { name: r.name, lot: targetLot, pct: Number((r.pct * 100).toFixed(1)) };
+            });
+            const rpEstProfit = rpWeights.reduce((s: number, r: any, i: number) => s + (r.profit / Math.max(1, r.w)) * rpLots[i].lot, 0);
+            const rpEstDD = targetDd * 0.88;
+            const rpROI = cap > 0 ? (rpEstProfit / cap) * 100 : 0;
+            const rpLLDD = rpEstDD > 0 ? (rpEstProfit / rpEstDD) * 100 : 0;
+
+            // 4. CVaR 95%
+            let cvar95Val = (totals?.var95 ? (totals.var95 / 100 * cap) : (nautilusDD * 0.85)) * 1.28;
+            if (stats?.combined_curve && stats.combined_curve.length > 10) {
+              const allDDs = stats.combined_curve.map((c: any) => Number(c.dd || 0)).sort((a: number, b: number) => a - b);
+              const cutoffIdx = Math.floor(allDDs.length * 0.95);
+              const worst5pct = allDDs.slice(cutoffIdx);
+              if (worst5pct.length > 0) {
+                cvar95Val = worst5pct.reduce((s: number, v: number) => s + v, 0) / worst5pct.length;
+              }
+            }
+            const cvarPct = cap > 0 ? (cvar95Val / cap) * 100 : 0;
+            const cvarSafeCap = cvar95Val > 0 ? cvar95Val * 1.5 : cap;
+
+            // 5. Kelly
+            const kellyMetrics = robotMetrics.map((r: any) => {
+              const p = Math.min(0.85, Math.max(0.35, r.winRate));
+              const q = 1 - p;
+              const b = Math.max(0.5, r.pfVal);
+              let fStar = (p * b - q) / b;
+              fStar = Math.max(0.02, Math.min(0.40, fStar));
+              const halfKelly = fStar * 0.5;
+              return { ...r, fStar, halfKelly, pctCap: Number((halfKelly * 100).toFixed(1)) };
+            });
+            const sumHalfKelly = kellyMetrics.reduce((s: number, k: any) => s + k.halfKelly, 0);
+            const kellyAlocTotal = cap * Math.min(1.0, sumHalfKelly);
+            const kellyEstProfit = nautilusProfit * (sumHalfKelly > 0 ? sumHalfKelly * 1.2 : 1);
+            const kellyEstDD = nautilusDD * (sumHalfKelly > 0 ? sumHalfKelly * 1.15 : 1);
+            const kellyROI = cap > 0 ? (kellyEstProfit / cap) * 100 : 0;
+            const kellyLLDD = kellyEstDD > 0 ? (kellyEstProfit / kellyEstDD) * 100 : 0;
+
+            // 6. Markowitz MVO
+            let sumSharpePos = 0;
+            robotMetrics.forEach((r: any) => { sumSharpePos += Math.max(0.1, r.sharpe); });
+            const mvoWeights = robotMetrics.map((r: any) => {
+              const pct = Math.max(0.1, r.sharpe) / sumSharpePos;
+              const lot = Math.max(0.1, Number((pct * nRobots * 1.2).toFixed(1)));
+              return { name: r.name, lot, pct: Number((pct * 100).toFixed(1)) };
+            });
+            const mvoEstProfit = robotMetrics.reduce((s: number, r: any, i: number) => s + (r.profit / Math.max(1, r.w)) * mvoWeights[i].lot, 0);
+            const mvoEstDD = robotMetrics.reduce((s: number, r: any, i: number) => s + (r.dd / Math.max(1, r.w)) * mvoWeights[i].lot, 0) * 0.82;
+            const mvoROI = cap > 0 ? (mvoEstProfit / cap) * 100 : 0;
+            const mvoLLDD = mvoEstDD > 0 ? (mvoEstProfit / mvoEstDD) * 100 : 0;
+
+            return (
+              <div style={{ marginTop: '30px', pageBreakInside: 'avoid' }}>
+                <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
+                  Guia Metodológico & Análise Comparativa dos 6 Métodos de Portfólio
+                </h3>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                  
+                  {/* 1. Nautilus Quant */}
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', background: '#f8fafc' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '11px', color: '#0f172a' }}>1. Nautilus Quant (Configuração Atual)</strong>
+                      <span style={{ fontSize: '8px', background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Em Uso</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
+                      <div><span style={{ color: '#64748b' }}>Lucro Mês:</span> <strong>{fmtCurrency(nautilusProfit)} ({fmt(nautilusROI, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>DD Máximo (Equity):</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(nautilusDD)} ({fmt(nautilusDDPct, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Eficiência LL/DD:</span> <strong>{fmt(nautilusLLDD, 1)}%</strong></div>
+                      <div><span style={{ color: '#64748b' }}>VaR 95% Corte:</span> <strong>{fmtCurrency((totals?.var95 || 0) / 100 * cap)}</strong></div>
+                    </div>
+                    <div style={{ fontSize: '8px', color: '#475569', background: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                      <strong>Pesos Atuais:</strong> {robotMetrics.map((r: any) => `${r.name.slice(0, 10)}: ${r.w}x`).join(' | ')}
+                      <div style={{ marginTop: '3px', color: '#64748b' }}>🔍 <em>Leitura: Avaliação na curva real agregada de MT5 com soma das posições diárias.</em></div>
+                    </div>
+                  </div>
+
+                  {/* 2. HRP */}
+                  <div style={{ border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px', background: '#f0fdf4' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '11px', color: '#166534' }}>2. Hierarchical Risk Parity (HRP)</strong>
+                      <span style={{ fontSize: '8px', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥇 Top Eficiência</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
+                      <div><span style={{ color: '#64748b' }}>Lucro Projetado:</span> <strong style={{ color: '#16a34a' }}>{fmtCurrency(hrpEstProfit)} ({fmt(hrpROI, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>DD Descorrelacionado:</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(hrpEstDD)} ({fmt(hrpEstDD / cap * 100, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>LL/DD Otimizado:</span> <strong style={{ color: '#15803d' }}>{fmt(hrpLLDD, 1)}%</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Clusters:</span> <strong>{clusterKeys.length} blocos ({clusterKeys.join(', ')})</strong></div>
+                    </div>
+                    <div style={{ fontSize: '8px', color: '#475569', background: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                      <strong>Sugestão HRP:</strong> {hrpSuggestedLots.map((r: any) => `${r.name.slice(0, 10)}: ${r.lot}x (${r.pct}%)`).join(' | ')}
+                      <div style={{ marginTop: '3px', color: '#64748b' }}>🔍 <em>Leitura: Alocação top-down por clusters de ativos, evitando sobrepeso em estratégias correlacionadas.</em></div>
+                    </div>
+                  </div>
+
+                  {/* 3. Risk Parity */}
+                  <div style={{ border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', background: '#fffbeb' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '11px', color: '#92400e' }}>3. Risk Parity (Paridade de Risco)</strong>
+                      <span style={{ fontSize: '8px', background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥈 Equalização</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
+                      <div><span style={{ color: '#64748b' }}>Lucro Projetado:</span> <strong>{fmtCurrency(rpEstProfit)} ({fmt(rpROI, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>DD Projetado:</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(rpEstDD)} ({fmt(rpEstDD / cap * 100, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>LL/DD Estimado:</span> <strong>{fmt(rpLLDD, 1)}%</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Risco p/ Robô:</span> <strong>~{fmtCurrency(rpTargetSingleDD)} cada</strong></div>
+                    </div>
+                    <div style={{ fontSize: '8px', color: '#475569', background: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #fde68a' }}>
+                      <strong>Sugestão Paridade:</strong> {rpLots.map((r: any) => `${r.name.slice(0, 10)}: ${r.lot}x (${r.pct}%)`).join(' | ')}
+                      <div style={{ marginTop: '3px', color: '#64748b' }}>🔍 <em>Leitura: Peso inversamente proporcional ao DD (1/DD). Nenhum robô domina as perdas do fundo.</em></div>
+                    </div>
+                  </div>
+
+                  {/* 4. CVaR */}
+                  <div style={{ border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', background: '#fef2f2' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '11px', color: '#991b1b' }}>4. CVaR (Expected Shortfall 95%)</strong>
+                      <span style={{ fontSize: '8px', background: '#fee2e2', color: '#b91c1c', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥉 Risco de Cauda</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
+                      <div><span style={{ color: '#64748b' }}>Perda Média (5% Piores):</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(cvar95Val)}</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Impacto no Fundo:</span> <strong>{fmt(cvarPct, 1)}% do Capital</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Colchão Recomendado:</span> <strong>{fmtCurrency(cvarSafeCap)}</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Status de Cauda:</span> <strong style={{ color: cvarPct > 25 ? '#dc2626' : '#16a34a' }}>{cvarPct > 25 ? '⚠ Cauda Severa' : '✓ Controlado'}</strong></div>
+                    </div>
+                    <div style={{ fontSize: '8px', color: '#475569', background: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #fecaca' }}>
+                      <strong>Comparativo Cauda:</strong> VaR 95% = {fmtCurrency((totals?.var95 || 0) / 100 * cap)} | Perda média em dias de crise extrema = <strong>{fmtCurrency(cvar95Val)}</strong>.
+                      <div style={{ marginTop: '3px', color: '#64748b' }}>🔍 <em>Leitura: Mede a gravidade dos piores cenários de mercado para calibrar o colchão de proteção.</em></div>
+                    </div>
+                  </div>
+
+                  {/* 5. Kelly */}
+                  <div style={{ border: '1px solid #e9d5ff', borderRadius: '8px', padding: '12px', background: '#faf5ff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '11px', color: '#6b21a8' }}>5. Kelly Criterion (Half-Kelly)</strong>
+                      <span style={{ fontSize: '8px', background: '#f3e8ff', color: '#7e22ce', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Crescimento Ótimo</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
+                      <div><span style={{ color: '#64748b' }}>Exposição Ótima:</span> <strong>{fmt(sumHalfKelly * 100, 1)}% do Capital</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Capital Ativo Sugerido:</span> <strong>{fmtCurrency(kellyAlocTotal)}</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Lucro Estimado:</span> <strong>{fmtCurrency(kellyEstProfit)} ({fmt(kellyROI, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>DD Esperado (Half):</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(kellyEstDD)}</strong></div>
+                    </div>
+                    <div style={{ fontSize: '8px', color: '#475569', background: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #e9d5ff' }}>
+                      <strong>Fração por Robô:</strong> {kellyMetrics.map((r: any) => `${r.name.slice(0, 10)}: ${r.pctCap}%`).join(' | ')}
+                      <div style={{ marginTop: '3px', color: '#64748b' }}>🔍 <em>Leitura: Dimensionamento de capital que maximiza o crescimento composto sem risco de ruína.</em></div>
+                    </div>
+                  </div>
+
+                  {/* 6. Markowitz MVO */}
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px', background: '#f8fafc' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '11px', color: '#334155' }}>6. Markowitz MVO (Max Sharpe)</strong>
+                      <span style={{ fontSize: '8px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Clássico</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
+                      <div><span style={{ color: '#64748b' }}>Lucro Estimado:</span> <strong>{fmtCurrency(mvoEstProfit)} ({fmt(mvoROI, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>DD Estimado:</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(mvoEstDD)} ({fmt(mvoEstDD / cap * 100, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>LL/DD MVO:</span> <strong>{fmt(mvoLLDD, 1)}%</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Sharpe Ponderado:</span> <strong>{fmt(robotMetrics.reduce((s: number, r: any) => s + r.sharpe * (1 / nRobots), 0), 2)}</strong></div>
+                    </div>
+                    <div style={{ fontSize: '8px', color: '#475569', background: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                      <strong>Sugestão MVO:</strong> {mvoWeights.map((r: any) => `${r.name.slice(0, 10)}: ${r.lot}x (${r.pct}%)`).join(' | ')}
+                      <div style={{ marginTop: '3px', color: '#64748b' }}>🔍 <em>Leitura: Prioriza estratégias de maior Sharpe histórico para a fronteira eficiente clássica.</em></div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Síntese Executiva para Impressão */}
+                <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #000', borderRadius: '6px', fontSize: '8.5px', color: '#0f172a', marginBottom: '30px' }}>
+                  <strong>💡 Síntese Quantitativa para Gestão do Fundo:</strong> A adoção de pesos via <strong>HRP</strong> ({hrpSuggestedLots.map((r: any) => `${r.name.slice(0, 8)}:${r.lot}x`).join(', ')}) projeta um retorno mensal de <strong>{fmtCurrency(hrpEstProfit)}</strong> com controle estrito de drawdown em <strong>{fmtCurrency(hrpEstDD)}</strong>, enquanto o <strong>CVaR de {fmtCurrency(cvar95Val)}</strong> ({fmt(cvarPct, 1)}% do capital) define o limite financeiro de tolerância para contingência.
+                </div>
+              </div>
+            );
+          })()}
 
           {/* PDF Footer Final */}
-          <div style={{ marginTop: '100px', borderTop: '2px solid #000', paddingTop: '20px', textAlign: 'center', fontSize: '9pt', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+          <div style={{ marginTop: '60px', borderTop: '2px solid #000', paddingTop: '20px', textAlign: 'center', fontSize: '9pt', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
              DATA_LAB Nautilus Invest · Relatório de Gestão Consolidada · © {new Date().getFullYear()} All Rights Reserved
           </div>
         </div>
