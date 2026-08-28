@@ -1160,6 +1160,24 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
       };
     });
 
+    // Calculate Lucro Médio Mês from monthly returns table (soma de todos os meses dividido pelo número de meses)
+    let totalMonthlyProfitSum = 0;
+    let totalMonthsCount = 0;
+    monthlyReturns.forEach(yr => {
+      Object.values(yr.months).forEach(m => {
+        if (m && typeof m.profit === 'number') {
+          totalMonthlyProfitSum += m.profit;
+          totalMonthsCount += 1;
+        }
+      });
+    });
+
+    const avgMonthlyProfit = totalMonthsCount > 0 ? (totalMonthlyProfitSum / totalMonthsCount) : totalProfitMes;
+    const totalProfitMesFinal = avgMonthlyProfit;
+    const roiMesFinal = pf.capital > 0 ? (totalProfitMesFinal / pf.capital) * 100 : 0;
+    const roiDiaCashFinal = totalProfitMesFinal / 22;
+    const llDdPctFinal = ddMaxPortfolio > 0 ? (totalProfitMesFinal / ddMaxPortfolio) * 100 : 0;
+
     const firstGlobalDay = sortedDays[0];
     const lastGlobalDay = sortedDays[sortedDays.length - 1];
 
@@ -1176,15 +1194,15 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
         };
       }),
       totals: {
-        lucroMes: totalProfitMes,
-        roiMes,
-        roiDiaCash,
+        lucroMes: totalProfitMesFinal,
+        roiMes: roiMesFinal,
+        roiDiaCash: roiDiaCashFinal,
         ddMaxPortfolio,
         ddMaxPct,
         dme: (pf.manual_dme !== null && pf.manual_dme !== undefined && pf.manual_dme !== 0) ? pf.manual_dme : ddMaxPortfolio,
         var95, 
         sharpe: avgSharpe,
-        llDdPct,
+        llDdPct: llDdPctFinal,
         somaIndividualDD,
         recent: recentStats,
         past: pastStats,

@@ -212,7 +212,7 @@ const PortfolioReport = () => {
         {/* Key Metrics Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: '#e2e8f0', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '45px' }}>
           {[
-            { label: 'Lucro Mês', value: fmtCurrency(totals?.lucroMes || 0), color: (totals?.lucroMes || 0) >= 0 ? '#10b981' : '#ef4444' },
+            { label: 'Lucro Méd. Mês', value: fmtCurrency(totals?.lucroMes || 0), color: (totals?.lucroMes || 0) >= 0 ? '#10b981' : '#ef4444' },
             { label: 'ROI Mês', value: fmtPct(totals?.roiMes || 0), color: (totals?.roiMes || 0) >= 0 ? '#10b981' : '#ef4444' },
             { label: 'DD Máx Portfólio', value: fmtCurrency(totals?.ddMaxPortfolio || 0), color: '#ef4444' },
             { label: 'DD Máx %', value: fmtPct(totals?.ddMaxPct || 0), color: '#ef4444' },
