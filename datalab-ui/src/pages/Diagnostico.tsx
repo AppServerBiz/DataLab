@@ -402,13 +402,24 @@ const Diagnostico = () => {
                 fontSize: '0.75rem',
                 fontWeight: '600'
               }} 
-              onClick={() => mergeFileInputRef.current?.click()} 
+              onClick={(e) => {
+                e.stopPropagation();
+                mergeFileInputRef.current?.click();
+              }} 
               disabled={uploading}
               title="Selecione múltiplos arquivos CSV (ex: partes A, B, C, D) para unir cronologicamente em um único robô contínuo"
             >
                {uploading ? 'Processando...' : <><GitMerge size={14} /> Arquivos Merge</>}
             </button>
-            <button className="btn btn-success" style={{ fontSize: '0.75rem' }} onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            <button 
+              className="btn btn-success" 
+              style={{ fontSize: '0.75rem' }} 
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }} 
+              disabled={uploading}
+            >
                {uploading ? 'Processando...' : <><UploadCloud size={14} /> Selecionar Arquivos</>}
             </button>
           </div>
@@ -441,9 +452,9 @@ const Diagnostico = () => {
               Arraste os arquivos aqui para iniciar a captura ou clique nos botões acima
             </p>
           )}
-          <input ref={fileInputRef} type="file" multiple accept=".html,.htm,.csv" onChange={handleFileChange} style={{ display: 'none' }} />
-          <input ref={mergeFileInputRef} type="file" multiple accept=".csv,.html,.htm" onChange={handleMergeFileChange} style={{ display: 'none' }} />
         </div>
+        <input ref={fileInputRef} type="file" multiple accept=".html,.htm,.csv" onChange={handleFileChange} style={{ display: 'none' }} />
+        <input ref={mergeFileInputRef} type="file" multiple accept=".csv,.html,.htm" onChange={handleMergeFileChange} style={{ display: 'none' }} />
       </div>
 
       {showMergeModal && (
