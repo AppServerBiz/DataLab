@@ -43,15 +43,18 @@ app.post('/api/upload-merge', upload.array('files'), async (req, res) => {
     }
 
     // Determine robot base name
-    // Strip trailing part letters/numbers like "- A", "_a", " v28 - a", etc.
-    let baseName = getRobotNameFromFilename(csvFiles[0].filename)
-      .replace(/\s*[-_]\s*[a-zA-Z0-9]$/i, '')
-      .replace(/\s*part[e]?\s*\d+$/i, '')
-      .trim();
+    const customNameReq = typeof req.body?.customName === 'string' ? req.body.customName.trim() : '';
+    let baseName = customNameReq;
+    if (!baseName) {
+      baseName = getRobotNameFromFilename(csvFiles[0].filename)
+        .replace(/\s*[-_]\s*[a-zA-Z0-9]$/i, '')
+        .replace(/\s*part[e]?\s*\d+$/i, '')
+        .trim();
+    }
 
     if (!baseName) baseName = 'Robô Unificado';
 
-    const mergedName = `${baseName} (Merged)`;
+    const mergedName = customNameReq ? customNameReq : `${baseName} (Merged)`;
     const robotId = makeRobotId(mergedName);
 
     // Run merge algorithm

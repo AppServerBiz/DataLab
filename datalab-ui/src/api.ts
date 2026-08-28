@@ -12,9 +12,12 @@ export const uploadFiles = async (files: File[]) => {
   return res.data;
 };
 
-export const uploadMergeFiles = async (files: File[]) => {
+export const uploadMergeFiles = async (files: File[], customName?: string) => {
   const formData = new FormData();
   files.forEach(f => formData.append('files', f));
+  if (customName && customName.trim()) {
+    formData.append('customName', customName.trim());
+  }
   const res = await api.post('/upload-merge', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });

@@ -10,7 +10,7 @@ import {
 } from '../api';
 import { 
   Check, X, TrendingDown, Info, Trash2, RefreshCw, 
-  FileText, Table, UploadCloud, Loader, CheckCircle, GitMerge, AlertTriangle
+  FileText, Table, UploadCloud, Loader, CheckCircle, GitMerge, AlertTriangle, Plus, Trash
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import axios from 'axios';
@@ -300,17 +300,25 @@ const Diagnostico = () => {
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [mergeFiles, setMergeFiles] = useState<File[]>([]);
   const [mergeCustomName, setMergeCustomName] = useState('');
+  const [mergeModalDragOver, setMergeModalDragOver] = useState(false);
+  const modalMergeFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleMergeSubmit = async () => {
     if (mergeFiles.length < 2) {
-      alert('Selecione pelo menos 2 arquivos para realizar o merge.');
+      alert('Selecione pelo menos 2 arquivos (.csv e/ou .html) para realizar o merge.');
       return;
     }
+    const hasCsv = mergeFiles.some(f => f.name.toLowerCase().endsWith('.csv'));
+    if (!hasCsv) {
+      alert('Selecione pelo menos 1 arquivo .csv com os dados de equity/balanço para gerar a curva contínua.');
+      return;
+    }
+
     setUploading(true);
     setUploadResult(null);
     setShowMergeModal(false);
     try {
-      const data = await uploadMergeFiles(mergeFiles);
+      const data = await uploadMergeFiles(mergeFiles, mergeCustomName);
       setUploadResult(data);
       setTimeout(() => {
         setUploadResult(null);
@@ -327,15 +335,24 @@ const Diagnostico = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) processFiles(Array.from(e.target.files));
+  const handleAddMergeFiles = (files: File[]) => {
+    const valid = files.filter(f =>
+      f.name.toLowerCase().endsWith('.csv') || f.name.toLowerCase().endsWith('.html') || f.name.toLowerCase().endsWith('.htm')
+    );
+    if (valid.length === 0) return;
+    setMergeFiles(prev => {
+      const existingNames = new Set(prev.map(f => f.name));
+      const newItems = valid.filter(f => !existingNames.has(f.name));
+      return [...prev, ...newItems];
+    });
   };
 
-  const handleMergeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      handleMergeFileSelection(Array.from(e.target.files));
-      e.target.value = '';
-    }
+  const handleRemoveMergeFile = (index: number) => {
+    setMergeFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) processFiles(Array.from(e.target.files));
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -390,7 +407,7 @@ const Diagnostico = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.8rem' }}>
           <div>
             <h2 className="card-title" style={{ fontSize: '0.9rem', marginBottom: '0.2rem' }}>Capturar Novos Dados MT5</h2>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Arraste arquivos HTML/CSV individuais ou clique em "Arquivos Merge" para unir períodos sequenciais</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Arraste arquivos HTML/CSV individuais ou clique em "Arquivos Merge" para unir períodos sequenciais em um popup dedicado</p>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem' }}>
             <button 
@@ -400,16 +417,17 @@ const Diagnostico = () => {
                 color: '#A855F7', 
                 border: '1px solid rgba(168,85,247,0.3)', 
                 fontSize: '0.75rem',
-                fontWeight: '600'
+                fontWeight: '600',
+                cursor: 'pointer'
               }} 
               onClick={(e) => {
                 e.stopPropagation();
-                mergeFileInputRef.current?.click();
+                setShowMergeModal(true);
               }} 
               disabled={uploading}
-              title="Selecione múltiplos arquivos CSV (ex: partes A, B, C, D) para unir cronologicamente em um único robô contínuo"
+              title="Abrir popup para selecionar e unir relatórios sequenciais"
             >
-               {uploading ? 'Processando...' : <><GitMerge size={14} /> Arquivos Merge</>}
+               <GitMerge size={14} /> Arquivos Merge
             </button>
             <button 
               className="btn btn-success" 
@@ -443,7 +461,7 @@ const Diagnostico = () => {
               <CheckCircle size={32} style={{ color: 'var(--accent-green)' }} />
               <p style={{ color: 'var(--accent-green)', fontSize: '0.85rem' }}>
                 {uploadResult.processed?.[0]?.merged 
-                  ? `Merge concluído com sucesso: "${uploadResult.processed?.[0]?.name}" adicionado à sessão!` 
+                  ? `Merge concluído com sucesso: "${uploadResult.processed?.[0]?.name}" adicionado ao diagnóstico!` 
                   : `${uploadResult.processed?.length} robô(s) capturado(s)!`}
               </p>
             </div>
@@ -454,44 +472,199 @@ const Diagnostico = () => {
           )}
         </div>
         <input ref={fileInputRef} type="file" multiple accept=".html,.htm,.csv" onChange={handleFileChange} style={{ display: 'none' }} />
-        <input ref={mergeFileInputRef} type="file" multiple accept=".csv,.html,.htm" onChange={handleMergeFileChange} style={{ display: 'none' }} />
       </div>
 
       {showMergeModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div style={{ background: '#13171F', border: '1px solid rgba(168,85,247,0.3)', borderRadius: '12px', width: '100%', maxWidth: '550px', padding: '1.5rem', boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+          <div style={{ background: '#13171F', border: '1px solid rgba(168,85,247,0.3)', borderRadius: '12px', width: '100%', maxWidth: '620px', padding: '1.5rem', boxShadow: '0 20px 40px rgba(0,0,0,0.7)', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+            
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <GitMerge size={20} color="#A855F7" />
-                <h2 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>Unificar Backtestes (Merge)</h2>
-              </div>
-              <button className="btn" style={{ background: 'transparent', color: 'var(--text-muted)', padding: '4px' }} onClick={() => setShowMergeModal(false)}><X size={16} /></button>
-            </div>
-
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '1rem' }}>
-              Os <strong>{mergeFiles.length} arquivos selecionados</strong> serão combinados em uma única curva contínua de saldo/equity, com validação de datas e recálculo de risco.
-            </p>
-
-            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.8rem', maxHeight: '180px', overflowY: 'auto', marginBottom: '1.2rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.5rem', fontWeight: '700' }}>Arquivos selecionados:</div>
-              {mergeFiles.map((f, i) => (
-                <div key={i} style={{ fontSize: '0.8rem', color: '#E2E8F0', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>📄 {f.name}</span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{(f.size / 1024).toFixed(1)} KB</span>
+                <div style={{ background: 'rgba(168,85,247,0.15)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <GitMerge size={20} color="#A855F7" />
                 </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem' }}>
-              <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', fontSize: '0.8rem' }} onClick={() => setShowMergeModal(false)}>Cancelar</button>
+                <div>
+                  <h2 style={{ margin: 0, color: '#fff', fontSize: '1.1rem', fontWeight: 600 }}>Unificar Arquivos (Merge MT5)</h2>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>Adicione os backtestes sequenciais para gerar um único robô contínuo</p>
+                </div>
+              </div>
               <button 
                 className="btn" 
-                style={{ background: '#A855F7', color: '#fff', fontSize: '0.8rem', fontWeight: '600' }} 
-                onClick={handleMergeSubmit}
+                style={{ background: 'transparent', color: 'var(--text-muted)', padding: '6px', cursor: 'pointer' }} 
+                onClick={() => {
+                  setShowMergeModal(false);
+                  setMergeFiles([]);
+                  setMergeCustomName('');
+                }}
               >
-                <GitMerge size={14} /> Confirmar e Realizar Merge
+                <X size={18} />
               </button>
             </div>
+
+            {/* Custom Robot Name Input */}
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#CBD5E1', marginBottom: '0.35rem', fontWeight: 600 }}>
+                Nome do Robô Unificado (Opcional)
+              </label>
+              <input 
+                type="text" 
+                placeholder="Ex: Scalper Pro - 2020 a 2024 (Merged)" 
+                value={mergeCustomName} 
+                onChange={(e) => setMergeCustomName(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: 'rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '6px',
+                  padding: '0.55rem 0.8rem',
+                  color: '#fff',
+                  fontSize: '0.82rem',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Add Files Drop Zone inside Popup */}
+            <div 
+              style={{
+                border: mergeModalDragOver ? '2px dashed #A855F7' : '1px dashed rgba(168,85,247,0.35)',
+                background: mergeModalDragOver ? 'rgba(168,85,247,0.08)' : 'rgba(168,85,247,0.03)',
+                borderRadius: '8px',
+                padding: '1.2rem 1rem',
+                textAlign: 'center',
+                cursor: 'pointer',
+                marginBottom: '1rem',
+                transition: 'all 0.2s'
+              }}
+              onDragOver={(e) => { e.preventDefault(); setMergeModalDragOver(true); }}
+              onDragLeave={() => setMergeModalDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setMergeModalDragOver(false);
+                handleAddMergeFiles(Array.from(e.dataTransfer.files));
+              }}
+              onClick={() => modalMergeFileInputRef.current?.click()}
+            >
+              <UploadCloud size={28} color="#A855F7" style={{ margin: '0 auto 0.4rem', display: 'block' }} />
+              <div style={{ fontSize: '0.85rem', color: '#F1F5F9', fontWeight: 500 }}>
+                Clique para adicionar arquivos ou arraste aqui
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Suporta arquivos <strong style={{ color: '#A855F7' }}>.CSV</strong> (curva tick-a-tick) e <strong style={{ color: 'var(--accent-blue)' }}>.HTML</strong> (métricas/parâmetros)
+              </div>
+              <input 
+                ref={modalMergeFileInputRef} 
+                type="file" 
+                multiple 
+                accept=".csv,.html,.htm" 
+                style={{ display: 'none' }} 
+                onChange={(e) => {
+                  if (e.target.files) {
+                    handleAddMergeFiles(Array.from(e.target.files));
+                    e.target.value = '';
+                  }
+                }} 
+              />
+            </div>
+
+            {/* List of Files in Merge */}
+            <div style={{ flex: 1, minHeight: '120px', maxHeight: '200px', overflowY: 'auto', background: 'rgba(0,0,0,0.25)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.6rem 0.8rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.3rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700 }}>
+                  Arquivos na fila ({mergeFiles.length})
+                </span>
+                {mergeFiles.length > 0 && (
+                  <button 
+                    onClick={() => setMergeFiles([])} 
+                    style={{ background: 'transparent', border: 'none', color: '#EF4444', fontSize: '0.7rem', cursor: 'pointer', padding: 0 }}
+                  >
+                    Limpar todos
+                  </button>
+                )}
+              </div>
+
+              {mergeFiles.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  Nenhum arquivo adicionado ainda. Adicione pelo menos 2 partes CSV para realizar o merge.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {mergeFiles.map((f, i) => {
+                    const isCsv = f.name.toLowerCase().endsWith('.csv');
+                    return (
+                      <div 
+                        key={i} 
+                        style={{ 
+                          fontSize: '0.78rem', 
+                          color: '#E2E8F0', 
+                          padding: '6px 8px', 
+                          borderRadius: '6px',
+                          background: 'rgba(255,255,255,0.02)', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between',
+                          border: '1px solid rgba(255,255,255,0.03)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', background: isCsv ? 'rgba(34,197,94,0.2)' : 'rgba(56,189,248,0.2)', color: isCsv ? '#4ADE80' : '#38BDF8', fontWeight: 700 }}>
+                            {isCsv ? 'CSV' : 'HTML'}
+                          </span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{(f.size / 1024).toFixed(1)} KB</span>
+                          <button 
+                            onClick={() => handleRemoveMergeFile(i)}
+                            style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                            title="Remover arquivo"
+                          >
+                            <Trash2 size={13} hover-color="#EF4444" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Actions / Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem' }}>
+              <button 
+                className="btn" 
+                style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer' }} 
+                onClick={() => {
+                  setShowMergeModal(false);
+                  setMergeFiles([]);
+                  setMergeCustomName('');
+                }}
+              >
+                Cancelar
+              </button>
+
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <button 
+                  className="btn" 
+                  style={{ 
+                    background: mergeFiles.length >= 2 ? 'linear-gradient(135deg, #9333EA, #6366F1)' : 'rgba(255,255,255,0.05)', 
+                    color: mergeFiles.length >= 2 ? '#fff' : 'var(--text-muted)', 
+                    fontSize: '0.82rem', 
+                    fontWeight: '600',
+                    cursor: mergeFiles.length >= 2 ? 'pointer' : 'not-allowed',
+                    padding: '0.6rem 1.2rem',
+                    boxShadow: mergeFiles.length >= 2 ? '0 4px 12px rgba(147,51,234,0.3)' : 'none'
+                  }} 
+                  disabled={mergeFiles.length < 2 || uploading}
+                  onClick={handleMergeSubmit}
+                >
+                  <GitMerge size={15} /> {uploading ? 'Enviando e Unificando...' : 'Enviar e Unificar Diagnóstico'}
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
