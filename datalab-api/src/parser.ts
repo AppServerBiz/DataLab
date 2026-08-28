@@ -697,6 +697,242 @@ export function parseCSVEquity(csvContent: string, robotName: string): ParsedCSV
   };
 }
 
+export interface MergeCSVResult {
+  mergedCSV: string;
+  equityCurve: EquityPoint[];
+  maxDrawdown: number;
+  maxDrawdownPct: number;
+  var95: number;
+  totalProfit: number;
+  totalMonths: number;
+  dateFrom: string;
+  dateTo: string;
+  initialDeposit: number;
+  finalBalance: number;
+  monthlyDrawdown: { month: string; maxDD: number; maxDDPct: number }[];
+}
+
+export function mergeBacktestCSVs(
+  csvFiles: { filename: string; content: string }[],
+  robotName: string
+): { success: boolean; error?: string; result?: MergeCSVResult } {
+  if (!csvFiles || csvFiles.length === 0) {
+    return { success: false, error: 'Nenhum arquivo CSV fornecido para merge.' };
+  }
+
+  // Parse each CSV segment
+  interface CSVSegment {
+    filename: string;
+    rows: { timestamp: string; balance: number; equity: number; depositLoad: number; rawLine: string }[];
+    startDate: Date;
+    endDate: Date;
+    startStr: string;
+    endStr: string;
+    initialBalance: number;
+    finalBalance: number;
+  }
+
+  const segments: CSVSegment[] = [];
+
+  for (const file of csvFiles) {
+    const lines = file.content.split(/\r?\n/).filter(l => l.trim() !== '');
+    const rows: { timestamp: string; balance: number; equity: number; depositLoad: number; rawLine: string }[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith('<') || line.startsWith('?<') || line.trim() === '') continue;
+      const parts = line.split('\t');
+      if (parts.length < 3) continue;
+
+      const timestamp = parts[0].trim();
+      const balance = parseFloat(parts[1].replace(',', '.').replace(/\s/g, ''));
+      const equity = parseFloat(parts[2].replace(',', '.').replace(/\s/g, ''));
+      const depositLoad = parts[3] ? parseFloat(parts[3].replace(',', '.').replace(/\s/g, '')) : 0;
+
+      if (isNaN(balance) || isNaN(equity)) continue;
+      rows.push({ timestamp, balance, equity, depositLoad, rawLine: line });
+    }
+
+    if (rows.length === 0) {
+      return { success: false, error: `Arquivo ${file.filename} está vazio ou com formato inválido.` };
+    }
+
+    const startStr = rows[0].timestamp;
+    const endStr = rows[rows.length - 1].timestamp;
+
+    // Parse dates (format YYYY.MM.DD HH:mm)
+    const parseTs = (s: string) => {
+      const parts = s.split(' ');
+      const dParts = parts[0].split('.');
+      const tParts = (parts[1] || '00:00').split(':');
+      return new Date(
+        parseInt(dParts[0], 10),
+        parseInt(dParts[1], 10) - 1,
+        parseInt(dParts[2], 10),
+        parseInt(tParts[0] || '0', 10),
+        parseInt(tParts[1] || '0', 10)
+      );
+    };
+
+    const startDate = parseTs(startStr);
+    const endDate = parseTs(endStr);
+
+    segments.push({
+      filename: file.filename,
+      rows,
+      startDate,
+      endDate,
+      startStr,
+      endStr,
+      initialBalance: rows[0].balance,
+      finalBalance: rows[rows.length - 1].balance
+    });
+  }
+
+  // Sort segments chronologically
+  segments.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+
+  // Check for chronological continuity / gaps and overlaps
+  for (let i = 0; i < segments.length - 1; i++) {
+    const current = segments[i];
+    const next = segments[i + 1];
+
+    if (next.startDate.getTime() < current.endDate.getTime()) {
+      return {
+        success: false,
+        error: `Sobreposição de datas detectada entre "${current.filename}" (termina em ${current.endStr}) e "${next.filename}" (começa em ${next.startStr}).`
+      };
+    }
+
+    // Check for gap in days between current.endDate and next.startDate
+    const diffMs = next.startDate.getTime() - current.endDate.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    // If gap is more than 35 days (e.g. missing months/quarters), flag error
+    if (diffDays > 35) {
+      return {
+        success: false,
+        error: `Lacuna de datas detectada entre "${current.filename}" (término: ${current.endStr}) e "${next.filename}" (início: ${next.startStr}). Intervalo de ${Math.round(diffDays)} dias sem dados.`
+      };
+    }
+  }
+
+  // Build merged equity curve and CSV lines
+  let cumulativeOffset = 0;
+  const mergedRows: string[] = ['<DATE>\t<BALANCE>\t<EQUITY>\t<DEPOSIT LOAD>'];
+  const mergedEquityCurve: EquityPoint[] = [];
+
+  const initialDeposit = segments[0].initialBalance || 10000;
+  let peakBalance = initialDeposit;
+  let maxDrawdown = 0;
+  let maxDrawdownPct = 0;
+
+  for (let segIdx = 0; segIdx < segments.length; segIdx++) {
+    const seg = segments[segIdx];
+    let lastAdjBalance = 0;
+
+    for (let rIdx = 0; rIdx < seg.rows.length; rIdx++) {
+      const r = seg.rows[rIdx];
+      const adjBalance = r.balance + cumulativeOffset;
+      const adjEquity = r.equity + cumulativeOffset;
+      lastAdjBalance = adjBalance;
+
+      mergedRows.push(
+        `${r.timestamp}\t${adjBalance.toFixed(2)}\t${adjEquity.toFixed(2)}\t${r.depositLoad.toFixed(4)}`
+      );
+
+      mergedEquityCurve.push({
+        timestamp: r.timestamp,
+        balance: adjBalance,
+        equity: adjEquity
+      });
+
+      if (adjEquity > peakBalance) peakBalance = adjEquity;
+      const dd = peakBalance - adjEquity;
+      if (dd > maxDrawdown) {
+        maxDrawdown = dd;
+        maxDrawdownPct = peakBalance > 0 ? (dd / peakBalance) * 100 : 0;
+      }
+    }
+
+    // Offset for next segment: difference so that next segment starting balance (e.g. 10000) matches lastAdjBalance
+    if (segIdx < segments.length - 1) {
+      const nextSegStartBalance = segments[segIdx + 1].initialBalance;
+      cumulativeOffset = lastAdjBalance - nextSegStartBalance;
+    }
+  }
+
+  // Calculate monthly drawdown
+  const months: { [key: string]: EquityPoint[] } = {};
+  mergedEquityCurve.forEach(p => {
+    const m = p.timestamp.substring(0, 7); // "YYYY.MM"
+    if (!months[m]) months[m] = [];
+    months[m].push(p);
+  });
+
+  const monthlyDrawdown: { month: string; maxDD: number; maxDDPct: number }[] = [];
+  let monthlyPeak = initialDeposit;
+  Object.keys(months).sort().forEach(mKey => {
+    let maxMonthDD = 0;
+    let maxMonthDDPct = 0;
+    months[mKey].forEach(p => {
+      if (p.equity > monthlyPeak) monthlyPeak = p.equity;
+      const dd = monthlyPeak - p.equity;
+      if (dd > maxMonthDD) {
+        maxMonthDD = dd;
+        maxMonthDDPct = monthlyPeak > 0 ? (dd / monthlyPeak) * 100 : 0;
+      }
+    });
+    monthlyDrawdown.push({ month: mKey, maxDD: maxMonthDD, maxDDPct: maxMonthDDPct });
+  });
+
+  // Calculate VaR 95%
+  let var95 = 0;
+  if (mergedEquityCurve.length > 10) {
+    const daily: Map<string, number> = new Map();
+    let prevE = mergedEquityCurve[0].equity;
+    mergedEquityCurve.forEach(p => {
+      const d = p.timestamp.split(' ')[0];
+      const pr = p.equity - prevE;
+      daily.set(d, (daily.get(d) || 0) + pr);
+      prevE = p.equity;
+    });
+    const profits = Array.from(daily.values());
+    if (profits.length >= 5) {
+      const returns = profits.map(p => p / (initialDeposit || 10000));
+      returns.sort((a, b) => a - b);
+      var95 = returns[Math.floor(returns.length * 0.05)] || 0;
+    }
+  }
+
+  const firstDate = segments[0].startStr.split(' ')[0];
+  const lastDate = segments[segments.length - 1].endStr.split(' ')[0];
+
+  const d1 = segments[0].startDate;
+  const d2 = segments[segments.length - 1].endDate;
+  const totalMonths = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()));
+
+  const finalBalance = mergedEquityCurve[mergedEquityCurve.length - 1].balance;
+  const totalProfit = finalBalance - initialDeposit;
+
+  return {
+    success: true,
+    result: {
+      mergedCSV: mergedRows.join('\r\n'),
+      equityCurve: mergedEquityCurve,
+      maxDrawdown,
+      maxDrawdownPct,
+      var95,
+      totalProfit,
+      totalMonths,
+      dateFrom: firstDate,
+      dateTo: lastDate,
+      initialDeposit,
+      finalBalance,
+      monthlyDrawdown
+    }
+  };
+}
+
 export function getRobotNameFromFilename(filename: string): string {
   // Remove extension, normalize
   return filename.replace(/\.(html|csv)$/i, '').trim();
@@ -709,3 +945,4 @@ export function normalizeRobotName(name: string): string {
 export function makeRobotId(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').substring(0, 80);
 }
+

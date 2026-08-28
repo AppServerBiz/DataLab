@@ -6,11 +6,11 @@ import {
 import { Line, Bar } from 'react-chartjs-2';
 import { 
   fetchComparativo, approveRobot, deleteRobot, clearComparativo, 
-  fetchEquityCurve, fetchRobotInfo, uploadFiles 
+  fetchEquityCurve, fetchRobotInfo, uploadFiles, uploadMergeFiles 
 } from '../api';
 import { 
   Check, X, TrendingDown, Info, Trash2, RefreshCw, 
-  FileText, Table, UploadCloud, Loader, CheckCircle
+  FileText, Table, UploadCloud, Loader, CheckCircle, GitMerge, AlertTriangle
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import axios from 'axios';
@@ -253,6 +253,7 @@ const Diagnostico = () => {
   const [uploadResult, setUploadResult] = useState<any>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mergeFileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent && robots.length === 0) setLoading(true);
@@ -288,9 +289,29 @@ const Diagnostico = () => {
         setUploadResult(null);
         load(true);
       }, 1500);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Erro no upload. Verifique se a API está rodando!');
+      alert(err.response?.data?.error || 'Erro no upload. Verifique se a API está rodando!');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const processMergeFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const data = await uploadMergeFiles(files);
+      setUploadResult(data);
+      setTimeout(() => {
+        setUploadResult(null);
+        load(true);
+      }, 1500);
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err.response?.data?.error || err.message || 'Erro ao realizar o merge dos arquivos.';
+      alert(`⚠️ Falha no Merge:\n\n${errMsg}`);
     } finally {
       setUploading(false);
     }
@@ -298,6 +319,13 @@ const Diagnostico = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) processFiles(Array.from(e.target.files));
+  };
+
+  const handleMergeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processMergeFiles(Array.from(e.target.files));
+      e.target.value = '';
+    }
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -349,14 +377,31 @@ const Diagnostico = () => {
       </div>
 
       <div className="card" style={{ marginBottom: '2.5rem', padding: '1.2rem', border: '1px dashed rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.01)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.8rem' }}>
           <div>
             <h2 className="card-title" style={{ fontSize: '0.9rem', marginBottom: '0.2rem' }}>Capturar Novos Dados MT5</h2>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Arraste arquivos HTML/CSV para processar novos robôs</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Arraste arquivos HTML/CSV individuais ou selecione múltiplos para merge contínuo</p>
           </div>
-          <button className="btn btn-success" style={{ fontSize: '0.75rem' }} onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-             {uploading ? 'Processando...' : <><UploadCloud size={14} /> Selecionar Arquivos</>}
-          </button>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <button 
+              className="btn" 
+              style={{ 
+                background: 'linear-gradient(135deg, rgba(147,51,234,0.15), rgba(79,70,229,0.15))', 
+                color: '#A855F7', 
+                border: '1px solid rgba(168,85,247,0.3)', 
+                fontSize: '0.75rem',
+                fontWeight: '600'
+              }} 
+              onClick={() => mergeFileInputRef.current?.click()} 
+              disabled={uploading}
+              title="Selecione múltiplos arquivos CSV (ex: partes A, B, C, D) para unir cronologicamente em um único robô contínuo"
+            >
+               {uploading ? 'Processando...' : <><GitMerge size={14} /> Arquivos Merge</>}
+            </button>
+            <button className="btn btn-success" style={{ fontSize: '0.75rem' }} onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+               {uploading ? 'Processando...' : <><UploadCloud size={14} /> Selecionar Arquivos</>}
+            </button>
+          </div>
         </div>
 
         <div
@@ -370,19 +415,24 @@ const Diagnostico = () => {
           {uploading ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem' }}>
               <Loader size={32} className="text-blue" style={{ animation: 'spin 1s linear infinite' }} />
-              <p style={{ color: 'var(--accent-blue)', fontSize: '0.85rem' }}>Analisando relatórios...</p>
+              <p style={{ color: 'var(--accent-blue)', fontSize: '0.85rem' }}>Analisando e unificando relatórios...</p>
             </div>
           ) : uploadResult ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem' }}>
               <CheckCircle size={32} style={{ color: 'var(--accent-green)' }} />
-              <p style={{ color: 'var(--accent-green)', fontSize: '0.85rem' }}>{uploadResult.processed?.length} robô(s) capturado(s)!</p>
+              <p style={{ color: 'var(--accent-green)', fontSize: '0.85rem' }}>
+                {uploadResult.processed?.[0]?.merged 
+                  ? `Merge concluído com sucesso: "${uploadResult.processed?.[0]?.name}" adicionado à sessão!` 
+                  : `${uploadResult.processed?.length} robô(s) capturado(s)!`}
+              </p>
             </div>
           ) : (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-              Arraste os arquivos aqui para iniciar a captura
+              Arraste os arquivos aqui para iniciar a captura ou clique nos botões acima
             </p>
           )}
           <input ref={fileInputRef} type="file" multiple accept=".html,.htm,.csv" onChange={handleFileChange} style={{ display: 'none' }} />
+          <input ref={mergeFileInputRef} type="file" multiple accept=".csv,.html,.htm" onChange={handleMergeFileChange} style={{ display: 'none' }} />
         </div>
       </div>
 

@@ -1,7 +1,4 @@
-import express from 'express';
-import cors from 'cors';
-import multer from 'multer';
-import { parseMT5BacktestHTML, parseCSVEquity, decodeBuffer, getRobotNameFromFilename, normalizeRobotName, makeRobotId, ParsedBacktestData, ParsedCSVData } from './parser';
+import { parseMT5BacktestHTML, parseCSVEquity, decodeBuffer, getRobotNameFromFilename, normalizeRobotName, makeRobotId, ParsedBacktestData, ParsedCSVData, mergeBacktestCSVs } from './parser';
 import { getDb } from './database';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import ExcelJS from 'exceljs';
@@ -13,6 +10,210 @@ app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 
 const upload = multer({ storage: multer.memoryStorage() });
+
+// POST /api/upload-merge - merge multiple sequential CSVs (and optionally HTML files) into a single robot
+app.post('/api/upload-merge', upload.array('files'), async (req, res) => {
+  console.log('Upload merge request received at /api/upload-merge');
+  try {
+    const db = await getDb();
+    const files = req.files as Express.Multer.File[];
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
+    }
+
+    const csvFiles: { filename: string; content: string; buffer: Buffer }[] = [];
+    const htmlFiles: { filename: string; content: string; buffer: Buffer }[] = [];
+
+    for (const file of files) {
+      const ext = file.originalname.split('.').pop()?.toLowerCase();
+      const content = decodeBuffer(file.buffer);
+      if (ext === 'csv') {
+        csvFiles.push({ filename: file.originalname, content, buffer: file.buffer });
+      } else if (ext === 'html' || ext === 'htm') {
+        htmlFiles.push({ filename: file.originalname, content, buffer: file.buffer });
+      }
+    }
+
+    if (csvFiles.length === 0) {
+      return res.status(400).json({ error: 'Envie pelo menos um arquivo .csv para realizar o merge.' });
+    }
+
+    // Determine robot base name
+    // Strip trailing part letters/numbers like "- A", "_a", " v28 - a", etc.
+    let baseName = getRobotNameFromFilename(csvFiles[0].filename)
+      .replace(/\s*[-_]\s*[a-zA-Z0-9]$/i, '')
+      .replace(/\s*part[e]?\s*\d+$/i, '')
+      .trim();
+
+    if (!baseName) baseName = 'Robô Unificado';
+
+    const mergedName = `${baseName} (Merged)`;
+    const robotId = makeRobotId(mergedName);
+
+    // Run merge algorithm
+    const mergeResult = mergeBacktestCSVs(csvFiles, mergedName);
+    if (!mergeResult.success || !mergeResult.result) {
+      return res.status(400).json({ error: mergeResult.error || 'Falha ao juntar backtestes.' });
+    }
+
+    const mr = mergeResult.result;
+
+    // Check if robot already exists and is approved
+    const existing = await db.get(`SELECT id FROM robots WHERE id = ? AND approved = 1`, [robotId]);
+    let finalRobotId = robotId;
+    let finalRobotName = mergedName;
+    let isStaging = false;
+    if (existing) {
+      finalRobotId = `${robotId}_pending`;
+      finalRobotName = `${mergedName} (Pendente)`;
+      isStaging = true;
+    }
+
+    // If HTML files were provided, parse metrics and aggregate them
+    let parsedHtmlMetrics: any = null;
+    let combinedConfigHtml = '';
+    let mainHtmlText = '';
+    let totalLotsSum = 0;
+    let maxLotExposureMax = 0;
+    let maxEntriesPerTradeMax = 0;
+    let totalTradesSum = 0;
+    let shortTradesSum = 0;
+    let longTradesSum = 0;
+    let grossProfitSum = 0;
+    let grossLossSum = 0;
+    let profitableTradesSum = 0;
+    let losingTradesSum = 0;
+    let brokerStr = '';
+    let assetStr = 'NAS100';
+    let timeframeStr = 'H1';
+    let parametersCombined: Record<string, any> = {};
+
+    if (htmlFiles.length > 0) {
+      // Sort HTML files to match segments
+      for (const hf of htmlFiles) {
+        const parsed = parseMT5BacktestHTML(hf.content, finalRobotName);
+        const m = parsed.metrics;
+
+        totalTradesSum += m.total_trades || 0;
+        shortTradesSum += m.short_trades || 0;
+        longTradesSum += m.long_trades || 0;
+        grossProfitSum += m.gross_profit || 0;
+        grossLossSum += m.gross_loss || 0;
+        profitableTradesSum += m.profitable_trades || 0;
+        losingTradesSum += m.losing_trades || 0;
+        totalLotsSum += m.total_lots || 0;
+        if (m.max_lot_exposure > maxLotExposureMax) maxLotExposureMax = m.max_lot_exposure;
+        if (m.max_entries_per_trade > maxEntriesPerTradeMax) maxEntriesPerTradeMax = m.max_entries_per_trade;
+        if (m.broker) brokerStr = m.broker;
+        if (m.asset) assetStr = m.asset;
+        if (m.timeframe) timeframeStr = m.timeframe;
+        if (m.parameters) parametersCombined = { ...parametersCombined, ...m.parameters };
+        if (parsed.configHtml && !combinedConfigHtml) combinedConfigHtml = parsed.configHtml;
+        if (!mainHtmlText) mainHtmlText = hf.content;
+      }
+    }
+
+    const totalNetProfit = mr.totalProfit;
+    const profitFactor = Math.abs(grossLossSum) > 0 ? (grossProfitSum / Math.abs(grossLossSum)) : (totalTradesSum > 0 ? 2.0 : 0);
+    const winRate = totalTradesSum > 0 ? (profitableTradesSum / totalTradesSum) * 100 : 0;
+    const avgProfitPerMonth = mr.totalMonths > 0 ? totalNetProfit / mr.totalMonths : 0;
+    const lotsPerMonth = mr.totalMonths > 0 ? totalLotsSum / mr.totalMonths : 0;
+    const recoveryFactor = mr.maxDrawdown > 0 ? totalNetProfit / mr.maxDrawdown : 0;
+    const expectedPayoff = totalTradesSum > 0 ? totalNetProfit / totalTradesSum : 0;
+
+    await db.run(`
+      INSERT INTO robots (
+        id, name,
+        total_net_profit, max_dd_equity, max_dd_equity_pct, profit_factor,
+        total_trades, short_trades, short_win_pct, long_trades, long_win_pct,
+        expected_payoff, sharpe_ratio, max_drawdown_abs, initial_deposit,
+        gross_profit, gross_loss, recovery_factor, profitable_trades, losing_trades,
+        win_rate, avg_win, avg_loss, max_win, max_loss,
+        max_consecutive_wins, max_consecutive_losses, avg_trade_duration, quality,
+        asset, period, timeframe, date_from, date_to, broker, parameters,
+        total_months, avg_profit_per_month, total_lots, lots_per_month, max_lot_exposure, max_entries_per_trade,
+        equity_curve, monthly_drawdown, max_dd_from_csv, max_dd_pct_from_csv,
+        config_html, raw_html, raw_csv, approved, status, var_95_dd_cap
+      ) VALUES (
+        ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        total_net_profit=excluded.total_net_profit,
+        max_dd_equity=excluded.max_dd_equity,
+        max_dd_equity_pct=excluded.max_dd_equity_pct,
+        profit_factor=excluded.profit_factor,
+        total_trades=excluded.total_trades,
+        short_trades=excluded.short_trades,
+        short_win_pct=excluded.short_win_pct,
+        long_trades=excluded.long_trades,
+        long_win_pct=excluded.long_win_pct,
+        expected_payoff=excluded.expected_payoff,
+        sharpe_ratio=excluded.sharpe_ratio,
+        max_drawdown_abs=excluded.max_drawdown_abs,
+        initial_deposit=excluded.initial_deposit,
+        gross_profit=excluded.gross_profit,
+        gross_loss=excluded.gross_loss,
+        recovery_factor=excluded.recovery_factor,
+        profitable_trades=excluded.profitable_trades,
+        losing_trades=excluded.losing_trades,
+        win_rate=excluded.win_rate,
+        avg_win=excluded.avg_win,
+        avg_loss=excluded.avg_loss,
+        max_win=excluded.max_win,
+        max_loss=excluded.max_loss,
+        max_consecutive_wins=excluded.max_consecutive_wins,
+        max_consecutive_losses=excluded.max_consecutive_losses,
+        avg_trade_duration=excluded.avg_trade_duration,
+        quality=excluded.quality,
+        asset=excluded.asset,
+        period=excluded.period,
+        timeframe=excluded.timeframe,
+        date_from=excluded.date_from,
+        date_to=excluded.date_to,
+        broker=excluded.broker,
+        parameters=excluded.parameters,
+        total_months=excluded.total_months,
+        avg_profit_per_month=excluded.avg_profit_per_month,
+        total_lots=excluded.total_lots,
+        lots_per_month=excluded.lots_per_month,
+        max_lot_exposure=excluded.max_lot_exposure,
+        max_entries_per_trade=excluded.max_entries_per_trade,
+        equity_curve=excluded.equity_curve,
+        monthly_drawdown=excluded.monthly_drawdown,
+        max_dd_from_csv=excluded.max_dd_from_csv,
+        max_dd_pct_from_csv=excluded.max_dd_pct_from_csv,
+        config_html=excluded.config_html,
+        raw_html=CASE WHEN excluded.raw_html IS NOT NULL THEN excluded.raw_html ELSE raw_html END,
+        raw_csv=excluded.raw_csv,
+        var_95_dd_cap=excluded.var_95_dd_cap,
+        updated_at=CURRENT_TIMESTAMP
+    `, [
+      finalRobotId, finalRobotName,
+      totalNetProfit, mr.maxDrawdown, mr.maxDrawdownPct, profitFactor,
+      totalTradesSum, shortTradesSum, shortTradesSum > 0 ? (profitableTradesSum / shortTradesSum) * 100 : 0, longTradesSum, longTradesSum > 0 ? (profitableTradesSum / longTradesSum) * 100 : 0,
+      expectedPayoff, 1.5, 0, mr.initialDeposit,
+      grossProfitSum, grossLossSum, recoveryFactor, profitableTradesSum, losingTradesSum,
+      winRate, 0, 0, 0, 0,
+      '', '', '', 100,
+      assetStr, `${timeframeStr} (${mr.dateFrom} - ${mr.dateTo})`, timeframeStr, mr.dateFrom, mr.dateTo, brokerStr, JSON.stringify(parametersCombined),
+      mr.totalMonths, avgProfitPerMonth, totalLotsSum, lotsPerMonth, maxLotExposureMax, maxEntriesPerTradeMax,
+      JSON.stringify(mr.equityCurve),
+      JSON.stringify(mr.monthlyDrawdown),
+      mr.maxDrawdown,
+      mr.maxDrawdownPct,
+      combinedConfigHtml, mainHtmlText, mr.mergedCSV, 0, 'pending', mr.var95
+    ]);
+
+    res.json({
+      success: true,
+      processed: [{ id: finalRobotId, name: finalRobotName, hasCSV: true, isStaging, merged: true }]
+    });
+  } catch (err: any) {
+    console.error('Error in /api/upload-merge:', err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
 
 // POST /api/upload - upload HTML and/or CSV files
 app.post('/api/upload', upload.array('files'), async (req, res) => {

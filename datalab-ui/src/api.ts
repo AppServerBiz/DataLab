@@ -12,6 +12,15 @@ export const uploadFiles = async (files: File[]) => {
   return res.data;
 };
 
+export const uploadMergeFiles = async (files: File[]) => {
+  const formData = new FormData();
+  files.forEach(f => formData.append('files', f));
+  const res = await api.post('/upload-merge', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return res.data;
+};
+
 export const fetchComparativo = async () => {
   const res = await api.get('/comparativo');
   return res.data;

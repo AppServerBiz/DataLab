@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { UploadCloud, CheckCircle, Loader } from 'lucide-react';
-import { uploadFiles } from '../api';
+import { UploadCloud, CheckCircle, Loader, GitMerge } from 'lucide-react';
+import { uploadFiles, uploadMergeFiles } from '../api';
 import { useNavigate } from 'react-router-dom';
 
 const Captura = () => {
@@ -9,6 +9,7 @@ const Captura = () => {
   const [dragOver, setDragOver] = useState(false);
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mergeFileInputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = async (files: File[]) => {
     if (files.length === 0) return;
@@ -18,9 +19,26 @@ const Captura = () => {
       const data = await uploadFiles(files);
       setResult(data);
       setTimeout(() => navigate('/comparativo'), 1500);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Erro no upload. Verifique se a API está rodando!');
+      alert(err.response?.data?.error || 'Erro no upload. Verifique se a API está rodando!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processMergeFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const data = await uploadMergeFiles(files);
+      setResult(data);
+      setTimeout(() => navigate('/comparativo'), 1500);
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err.response?.data?.error || err.message || 'Erro ao realizar o merge dos arquivos.';
+      alert(`⚠️ Falha no Merge:\n\n${errMsg}`);
     } finally {
       setLoading(false);
     }
@@ -28,6 +46,13 @@ const Captura = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) processFiles(Array.from(e.target.files));
+  };
+
+  const handleMergeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processMergeFiles(Array.from(e.target.files));
+      e.target.value = '';
+    }
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -44,11 +69,34 @@ const Captura = () => {
       <h1 className="section-title">Captura de Dados</h1>
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h2 className="card-title">Importar Relatórios MT5</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.7' }}>
-          Faça upload dos arquivos <code style={{ background: '#1E232F', padding: '2px 6px', borderRadius: '4px', color: 'var(--accent-blue)' }}>.html</code> e/ou <code style={{ background: '#1E232F', padding: '2px 6px', borderRadius: '4px', color: 'var(--accent-blue)' }}>.csv</code> exportados pelo MetaTrader 5.
-          O sistema fará o <strong style={{ color: '#fff' }}>merge automático</strong> pelo nome do arquivo — envie ambos com o mesmo nome para análise completa.
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.8rem' }}>
+          <div>
+            <h2 className="card-title" style={{ marginBottom: '0.2rem' }}>Importar Relatórios MT5</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
+              Envie arquivos <code style={{ background: '#1E232F', padding: '2px 6px', borderRadius: '4px', color: 'var(--accent-blue)' }}>.html</code> e <code style={{ background: '#1E232F', padding: '2px 6px', borderRadius: '4px', color: 'var(--accent-blue)' }}>.csv</code> individuais ou faça o merge de séries temporais sequenciais.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <button 
+              className="btn" 
+              style={{ 
+                background: 'linear-gradient(135deg, rgba(147,51,234,0.15), rgba(79,70,229,0.15))', 
+                color: '#A855F7', 
+                border: '1px solid rgba(168,85,247,0.3)', 
+                fontSize: '0.75rem',
+                fontWeight: '600'
+              }} 
+              onClick={() => mergeFileInputRef.current?.click()} 
+              disabled={loading}
+              title="Selecione múltiplos arquivos CSV (ex: partes A, B, C, D) para unir cronologicamente em um único robô contínuo"
+            >
+               {loading ? 'Processando...' : <><GitMerge size={14} /> Arquivos Merge</>}
+            </button>
+            <button className="btn btn-success" style={{ fontSize: '0.75rem' }} onClick={() => fileInputRef.current?.click()} disabled={loading}>
+               {loading ? 'Processando...' : <><UploadCloud size={14} /> Selecionar Arquivos</>}
+            </button>
+          </div>
+        </div>
 
         <div
           className={`file-drop-area ${dragOver ? 'dragover' : ''}`}
@@ -86,6 +134,15 @@ const Captura = () => {
             multiple
             accept=".html,.htm,.csv"
             onChange={handleFileChange}
+            style={{ display: 'none' }}
+            disabled={loading}
+          />
+          <input
+            ref={mergeFileInputRef}
+            type="file"
+            multiple
+            accept=".csv,.html,.htm"
+            onChange={handleMergeFileChange}
             style={{ display: 'none' }}
             disabled={loading}
           />
