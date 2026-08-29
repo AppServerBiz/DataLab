@@ -35,6 +35,22 @@ function AppContent() {
   const location = useLocation();
   const isReport = location.pathname === '/portfolio-report';
 
+  // Sincroniza o scroll da sidebar quando a página principal rola / chega ao final
+  const handleMainScroll = (e: React.UIEvent<HTMLElement>) => {
+    const target = e.currentTarget;
+    const sidebar = document.querySelector('.sidebar') as HTMLElement | null;
+    if (!sidebar) return;
+
+    const scrollableHeight = target.scrollHeight - target.clientHeight;
+    if (scrollableHeight > 0) {
+      const scrollRatio = target.scrollTop / scrollableHeight;
+      const sidebarScrollableHeight = sidebar.scrollHeight - sidebar.clientHeight;
+      if (sidebarScrollableHeight > 0) {
+        sidebar.scrollTop = scrollRatio * sidebarScrollableHeight;
+      }
+    }
+  };
+
   if (!isAuthenticated) {
     return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
@@ -42,7 +58,7 @@ function AppContent() {
   return (
     <div className={isReport ? "report-layout" : "app-container"}>
       {!isReport && <Sidebar />}
-      <main className={isReport ? "report-main" : "main-content"}>
+      <main className={isReport ? "report-main" : "main-content"} onScroll={handleMainScroll}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/diagnostico" element={<Diagnostico />} />

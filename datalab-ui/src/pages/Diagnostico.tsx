@@ -10,7 +10,7 @@ import {
 } from '../api';
 import { 
   Check, X, TrendingDown, Info, Trash2, RefreshCw, 
-  FileText, Table, UploadCloud, Loader, CheckCircle, GitMerge, AlertTriangle, Plus, Trash
+  FileText, Table, UploadCloud, Loader, CheckCircle, GitMerge, AlertTriangle, Plus, Trash, GitCompare
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import axios from 'axios';
@@ -245,6 +245,29 @@ const Diagnostico = () => {
   const saveComparison = (ids: string[]) => {
     setComparisonIds(ids);
     localStorage.setItem('nautilus_diagnostico_comparison', JSON.stringify(ids));
+  };
+
+  const handleToggleCompare = (robotId: string) => {
+    let nextIds: string[];
+    if (comparisonIds.includes(robotId)) {
+      nextIds = comparisonIds.filter(id => id !== robotId);
+      saveComparison(nextIds);
+    } else {
+      if (comparisonIds.length >= 10) {
+        alert('Limite máximo de 10 robôs no comparativo atingido!');
+        return;
+      }
+      nextIds = [...comparisonIds, robotId];
+      saveComparison(nextIds);
+      
+      // Rola suavemente até o comparativo de robôs
+      setTimeout(() => {
+        const compEl = document.getElementById('modulo-comparativo');
+        if (compEl) {
+          compEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 80);
+    }
   };
 
 
@@ -679,34 +702,54 @@ const Diagnostico = () => {
           {pending.length > 0 && (
             <section style={{ marginBottom: '2.5rem' }}>
               <h2 style={{ color: 'var(--accent-blue)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '0.8rem' }}>Sessão de Diagnóstico</h2>
-              <RobotTable robots={pending} onApprove={handleApprove} onDelete={handleDelete} onDD={setDdRobot} onInfo={setInfoRobot} actionLoading={actionLoading} />
+              <RobotTable 
+                robots={pending} 
+                onApprove={handleApprove} 
+                onDelete={handleDelete} 
+                onDD={setDdRobot} 
+                onInfo={setInfoRobot} 
+                actionLoading={actionLoading} 
+                comparisonIds={comparisonIds}
+                onToggleCompare={handleToggleCompare}
+              />
             </section>
           )}
 
-          <RobotComparisonModule
-            comparisonIds={comparisonIds}
-            robots={robots}
-            onRemoveRobot={(id) => {
-              saveComparison(comparisonIds.filter(cid => cid !== id));
-            }}
-            onClear={() => {
-              saveComparison([]);
-            }}
-            onDropRobot={(id) => {
-              if (comparisonIds.includes(id)) return;
-              if (comparisonIds.length >= 10) {
-                alert('Limite máximo de 10 robôs no comparativo atingido!');
-                return;
-              }
-              saveComparison([...comparisonIds, id]);
-            }}
-          />
-
+          <div id="modulo-comparativo">
+            <RobotComparisonModule
+              comparisonIds={comparisonIds}
+              robots={robots}
+              onRemoveRobot={(id) => {
+                saveComparison(comparisonIds.filter(cid => cid !== id));
+              }}
+              onClear={() => {
+                saveComparison([]);
+              }}
+              onDropRobot={(id) => {
+                if (comparisonIds.includes(id)) return;
+                if (comparisonIds.length >= 10) {
+                  alert('Limite máximo de 10 robôs no comparativo atingido!');
+                  return;
+                }
+                saveComparison([...comparisonIds, id]);
+              }}
+            />
+          </div>
 
           {approved.length > 0 && (
             <section>
               <h2 style={{ color: 'var(--accent-green)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '0.8rem' }}>Diagnósticos Aprovados</h2>
-              <RobotTable robots={approved} onApprove={handleApprove} onDelete={handleDelete} onDD={setDdRobot} onInfo={setInfoRobot} actionLoading={actionLoading} showApproveBtn={false} />
+              <RobotTable 
+                robots={approved} 
+                onApprove={handleApprove} 
+                onDelete={handleDelete} 
+                onDD={setDdRobot} 
+                onInfo={setInfoRobot} 
+                actionLoading={actionLoading} 
+                showApproveBtn={false} 
+                comparisonIds={comparisonIds}
+                onToggleCompare={handleToggleCompare}
+              />
             </section>
           )}
         </>
@@ -732,7 +775,17 @@ const Diagnostico = () => {
   );
 };
 
-export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLoading, showApproveBtn = true }: any) => {
+export const RobotTable = ({ 
+  robots, 
+  onApprove, 
+  onDelete, 
+  onDD, 
+  onInfo, 
+  actionLoading, 
+  showApproveBtn = true,
+  comparisonIds = [],
+  onToggleCompare
+}: any) => {
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
   const sortedRobots = [...robots].sort((a, b) => {
@@ -956,7 +1009,22 @@ export const RobotTable = ({ robots, onApprove, onDelete, onDD, onInfo, actionLo
               <td style={{ padding: '0.6rem 0.2rem' }}>
                 <div style={{ display: 'flex', gap: '0.3rem' }}>
                   <button title="Drawdown" className="btn" style={{ padding: '0.3rem 0.4rem', background: 'rgba(239,68,68,0.1)', color: 'var(--accent-red)' }} onClick={() => onDD(r)}><TrendingDown size={13} /></button>
-                  <button title="Configurações" className="btn" style={{ padding: '0.3rem 0.4rem', background: 'rgba(56,189,248,0.1)', color: 'var(--accent-blue)' }} onClick={(e) => { e.stopPropagation(); onInfo(r); }}><Info size={13} /></button>
+                  <button 
+                    title={comparisonIds?.includes(r.id) ? "Remover do Comparativo" : "Adicionar ao Comparativo de Robôs"} 
+                    className="btn" 
+                    style={{ 
+                      padding: '0.3rem 0.4rem', 
+                      background: comparisonIds?.includes(r.id) ? 'rgba(56,189,248,0.25)' : 'rgba(56,189,248,0.1)', 
+                      color: 'var(--accent-blue)',
+                      border: comparisonIds?.includes(r.id) ? '1px solid var(--accent-blue)' : '1px solid transparent'
+                    }} 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (onToggleCompare) onToggleCompare(r.id); 
+                    }}
+                  >
+                    <GitCompare size={13} />
+                  </button>
                   {showApproveBtn && <button title="Confirmar" className="btn btn-success" style={{ padding: '0.3rem 0.4rem' }} onClick={(e) => { e.stopPropagation(); onApprove(r); }} disabled={!!actionLoading && actionLoading.includes(r.id)}>{(actionLoading && actionLoading.includes(r.id)) ? '...' : <Check size={13} />}</button>}
                   <button title="Excluir" className="btn btn-danger" style={{ padding: '0.3rem 0.4rem' }} onClick={(e) => { e.stopPropagation(); onDelete(r); }} disabled={!!actionLoading && actionLoading.includes(r.id)}><Trash2 size={13} /></button>
                 </div>
