@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Line, Bar, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, Title, Tooltip, Legend, Filler, BarElement, ArcElement
 } from 'chart.js';
-import { Printer, Download, X } from 'lucide-react';
+import { Printer, Download, X, Loader2, RefreshCw } from 'lucide-react';
 import { ProfitabilityChart } from '../components/ProfitabilityChart';
+import { fetchPortfolios, fetchPortfolioStats } from '../api';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
 
@@ -74,24 +76,108 @@ const ddRiskTextColorPrint = (val: number, capital: number) => {
 };
 
 const PortfolioReport = () => {
+  const params = useParams();
+  const [searchParams] = useSearchParams();
+  const portfolioIdFromUrl = params.portfolioId || searchParams.get('id');
+
   const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // 1. Verificar se temos dados no localStorage que correspondem ao portfólio
+      const raw = localStorage.getItem('portfolio_report_data');
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.portfolio && parsed.stats) {
+            // Se foi fornecido um ID na URL, certifique-se de que corresponde ao ID em cache
+            if (!portfolioIdFromUrl || parsed.portfolio.id === portfolioIdFromUrl) {
+              setData(parsed);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('Falha ao ler cache do relatório:', e);
+        }
+      }
+
+      // 2. Se não temos cache ou o ID é diferente, buscar diretamente via API
+      const targetId = portfolioIdFromUrl || 'pf_1790114022204_8jxmgs';
+      if (!targetId) {
+        throw new Error('Nenhum identificador de portfólio especificado.');
+      }
+
+      const [allPortfolios, statsRes] = await Promise.all([
+        fetchPortfolios(),
+        fetchPortfolioStats(targetId)
+      ]);
+
+      const foundPortfolio = Array.isArray(allPortfolios) 
+        ? allPortfolios.find((p: any) => p.id === targetId)
+        : null;
+
+      if (!foundPortfolio) {
+        throw new Error(`Portfólio "${targetId}" não encontrado.`);
+      }
+
+      const freshData = {
+        portfolio: foundPortfolio,
+        stats: statsRes
+      };
+
+      setData(freshData);
+      localStorage.setItem('portfolio_report_data', JSON.stringify(freshData));
+    } catch (err: any) {
+      console.error('Erro ao carregar dados do relatório:', err);
+      setError(err?.response?.data?.error || err.message || 'Erro ao carregar portfólio');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const raw = localStorage.getItem('portfolio_report_data');
-    if (raw) {
-      try {
-        setData(JSON.parse(raw));
-      } catch (e) {
-        console.error('Falha ao ler dados do relatório:', e);
-      }
-    }
-  }, []);
+    loadData();
+  }, [portfolioIdFromUrl]);
 
-  if (!data) {
+  if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', color: '#64748b' }}>
-        <p>Aguardando dados do portfólio...</p>
-        <button onClick={() => window.close()} style={{ marginTop: '1rem', padding: '0.5rem 1rem', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}>Fechar Aba</button>
+        <Loader2 size={36} className="spin-animation" style={{ color: '#0284c7', marginBottom: '1rem', animation: 'spin 1s linear infinite' }} />
+        <h3 style={{ margin: 0, fontWeight: 600, color: '#1e293b' }}>Gerando Relatório Quantitativo...</h3>
+        <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.9rem' }}>Carregando dados estatísticos e curvas consolidadas</p>
+        <style>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', color: '#64748b' }}>
+        <p style={{ color: '#ef4444', fontWeight: 600 }}>{error || 'Aguardando dados do portfólio...'}</p>
+        <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1rem' }}>
+          <button 
+            onClick={loadData} 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', border: '1px solid #0284c7', background: '#0284c7', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 500 }}
+          >
+            <RefreshCw size={14} /> Tentar Novamente
+          </button>
+          <button 
+            onClick={() => window.close()} 
+            style={{ padding: '0.5rem 1rem', border: '1px solid #cbd5e1', background: '#fff', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            Fechar Aba
+          </button>
+        </div>
       </div>
     );
   }

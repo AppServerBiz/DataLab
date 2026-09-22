@@ -33,7 +33,7 @@ function AppContent() {
   });
 
   const location = useLocation();
-  const isReport = location.pathname === '/portfolio-report';
+  const isReport = location.pathname.startsWith('/portfolio-report');
 
   // Sincroniza o scroll da sidebar quando a página principal rola / chega ao final
   const handleMainScroll = (e: React.UIEvent<HTMLElement>) => {
@@ -66,6 +66,7 @@ function AppContent() {
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/portfolio/:portfolioId" element={<Portfolio />} />
           <Route path="/portfolio-report" element={<PortfolioReport />} />
+          <Route path="/portfolio-report/:portfolioId" element={<PortfolioReport />} />
           <Route path="/transmitir" element={<Transmitir />} />
           <Route path="/ia" element={<IA />} />
           <Route path="/strategy-studio" element={<StrategyStudio />} />

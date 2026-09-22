@@ -439,15 +439,19 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
   };
 
   const handleDownloadPDF = async () => {
-    // Salvar dados no localStorage para a nova aba
-    const reportData = {
-      portfolio: localPortfolio,
-      stats: stats
-    };
-    localStorage.setItem('portfolio_report_data', JSON.stringify(reportData));
+    if (!localPortfolio?.id) return;
     
-    // Abrir o relatório em nova aba
-    window.open('/portfolio-report', '_blank');
+    // Salvar dados no localStorage para carregamento instantâneo se disponível
+    if (stats) {
+      const reportData = {
+        portfolio: localPortfolio,
+        stats: stats
+      };
+      localStorage.setItem('portfolio_report_data', JSON.stringify(reportData));
+    }
+    
+    // Abrir o relatório passando o ID na rota/query para que sempre carregue mesmo sem cache ou com refresh
+    window.open(`/portfolio-report/${localPortfolio.id}`, '_blank');
   };
 
   return (
