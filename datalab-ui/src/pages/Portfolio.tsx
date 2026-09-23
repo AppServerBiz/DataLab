@@ -570,12 +570,12 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   { label: 'DD MAX SOMA $', value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), icon: <DollarSign size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)' },
                   { label: 'DD MAX SOMA %', value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: 'Soma Individual' },
                   {
-                    label: 'DME',
+                    label: 'Risk Budget',
                     value: (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {fmtCurrency(totals.dme || 0)}
                         <button className="no-print btn" style={{ padding: '0.1rem', fontSize: '0.5rem', opacity: 0.5 }} onClick={() => {
-                          const val = prompt('Digite o valor do DME manual:', String(totals.dme));
+                          const val = prompt('Digite o valor do Risk Budget manual:', String(totals.dme));
                           if (val !== null) updatePortfolio(portfolio.id, { ...portfolio, manual_dme: Number(val) }).then(loadStats);
                         }}><Edit2 size={10} /></button>
                       </div>
@@ -627,7 +627,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         <th>PESO LOTE</th>
                         <th style={{ color: 'var(--accent-red)' }}>DD × PESO</th>
                         <th style={{ color: 'var(--accent-green)' }}>LUCRO × PESO</th>
-                        <th style={{ color: '#F59E0B' }}>VAR DME</th>
+                        <th style={{ color: '#F59E0B' }}>VaR RB</th>
                         <th style={{ color: '#F59E0B' }}>F. CORREL.</th>
                         <th style={{ color: 'var(--accent-blue)' }}>LL/DD %</th>
                         <th>RETORNO %</th>
@@ -743,7 +743,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   <div className="card" style={{ padding: '1.2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
                       <h3 style={{ margin: 0, fontSize: '0.85rem', color: '#fff', fontWeight: '700' }}>Rentabilidade histórica</h3>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>% Capital ({fmtCurrency(portfolio.capital)}) | Lucro líquido | DME</span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>% Capital ({fmtCurrency(portfolio.capital)}) | Lucro líquido | Risk Budget</span>
                     </div>
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
@@ -801,12 +801,12 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                                   if (!cell) return <td key={m} style={{ padding: '0.3rem 0.4rem', textAlign: 'center', color: 'var(--text-muted)' }}>—</td>;
                                   return (
                                     <td key={m} style={{ padding: '0.3rem 0.4rem', textAlign: 'center', color: 'var(--accent-red)', fontSize: '0.65rem', opacity: 0.85 }}>
-                                      DME: {fmt(cell.dme)}
+                                      RB: {fmt(cell.dme)}
                                     </td>
                                   );
                                 })}
                                 <td style={{ padding: '0.3rem 0.6rem', textAlign: 'center', color: 'var(--accent-red)', fontWeight: '700', borderLeft: '1px solid rgba(255,255,255,0.1)', fontSize: '0.68rem' }}>
-                                  DME: {fmt(row.yearTotal.dme)}
+                                  RB: {fmt(row.yearTotal.dme)}
                                 </td>
                               </tr>
                             </React.Fragment>
@@ -817,7 +817,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
 
                     {/* Notas explicativas abaixo da tabela */}
                     <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                      <div>💡 <strong>DME (Drawdown Máximo de Exposição):</strong> Representa o maior rebaixamento financeiro acumulado no mês.</div>
+                      <div>💡 <strong>Risk Budget (Drawdown Máximo de Exposição):</strong> Representa o maior rebaixamento financeiro acumulado no mês (orçamento de risco consumido).</div>
                       <div>ℹ️ <strong>Nota de Cálculo:</strong> Os percentuais não consideram juros compostos; o cálculo é realizado assumindo o saque total do lucro mês a mês sobre o capital inicial.</div>
                       {robots.some((r: any) => r.has_incomplete_data) && (
                         <div>* <strong>Aviso de Histórico Parcial:</strong> Os robôs sinalizados com asterisco (*) possuem dados históricos que não cobrem todo o período de análise do portfólio. Para os meses em que um robô não operou, sua contribuição é tratada como zero ou estimada via média móvel.</div>

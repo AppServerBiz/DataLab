@@ -410,7 +410,7 @@ const Home = () => {
                       </div>
                       <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '0.4rem', marginTop: '0.2rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>VAR DME: <strong style={{ color: '#F59E0B' }}>{varDme}</strong></span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>VaR RB: <strong style={{ color: '#F59E0B' }}>{varDme}</strong></span>
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>F. CORREL: <strong style={{ color: '#F59E0B' }}>{r.f_correl ? `${r.f_correl}%` : '18%'}</strong></span>
                         </div>
                       </div>

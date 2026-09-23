@@ -317,7 +317,7 @@ const PortfolioReport = () => {
               ), 
               color: '#f59e0b' 
             },
-            { label: 'DME Atual', value: fmtCurrency(totals?.dme || portfolio.manual_dme || 0), color: '#0f172a' },
+            { label: 'Risk Budget Atual', value: fmtCurrency(totals?.dme || portfolio.manual_dme || 0), color: '#0f172a' },
 
             { label: 'Fator LL/DD', value: fmt(totals?.llDdPct || 0) + '%', color: '#0b57d0' },
             { label: 'Total Trades', value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), color: '#0f172a' },
@@ -459,19 +459,19 @@ const PortfolioReport = () => {
                       </td>
                     </tr>
 
-                    {/* Row 3: DME (Sem cifrão $) */}
+                    {/* Row 3: Risk Budget (Sem cifrão $) */}
                     <tr style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
                         const cell = row.months[m];
                         if (!cell) return <td key={m} style={{ padding: '2px', textAlign: 'center', color: '#94a3b8' }}>—</td>;
                         return (
                           <td key={m} style={{ padding: '2px', textAlign: 'center', color: '#b91c1c', fontSize: '7.5px' }}>
-                            DME: {fmt(cell.dme)}
+                            RB: {fmt(cell.dme)}
                           </td>
                         );
                       })}
                       <td style={{ padding: '2px 4px', textAlign: 'center', color: '#b91c1c', fontWeight: '700', borderLeft: '1px solid #cbd5e1', fontSize: '8px', background: '#f8fafc' }}>
-                        DME: {fmt(row.yearTotal.dme)}
+                        RB: {fmt(row.yearTotal.dme)}
                       </td>
                     </tr>
                   </React.Fragment>
@@ -481,7 +481,7 @@ const PortfolioReport = () => {
 
             {/* Rodapé explicativo abaixo da tabela */}
             <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '8.5px', color: '#475569', lineHeight: '1.4' }}>
-              <div>💡 <strong>DME (Drawdown Máximo de Exposição):</strong> Representa o maior rebaixamento financeiro acumulado no mês.</div>
+              <div>💡 <strong>Risk Budget (Drawdown Máximo de Exposição):</strong> Representa o maior rebaixamento financeiro acumulado no mês (orçamento de risco consumido).</div>
               <div>ℹ️ <strong>Nota de Cálculo:</strong> Os percentuais não consideram juros compostos; o cálculo é realizado assumindo o saque total do lucro mês a mês sobre o capital inicial.</div>
               {robots.some((r: any) => r.has_incomplete_data) && (
                 <div>* <strong>Aviso de Histórico Parcial:</strong> Os robôs sinalizados com asterisco (*) possuem dados históricos que não cobrem todo o período de análise do portfólio. Para os meses em que um robô não operou, sua contribuição é tratada como zero ou estimada via média móvel.</div>

@@ -107,7 +107,7 @@ export const DDModal = ({ robot, onClose }: { robot: any; onClose: () => void })
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '0.8rem', marginBottom: '1.5rem' }}>
               <StatBox label="Max DD Equity" value={fmtCurrency(robot.max_dd_equity)} color="var(--accent-red)" />
-              <StatBox label="VaR DME" value={fmt(robot.var_95_dd_cap * 100) + '%'} color="#F59E0B" />
+              <StatBox label="VaR RB" value={fmt(robot.var_95_dd_cap * 100) + '%'} color="#F59E0B" />
               <StatBox label="Pontos Totais" value={String(data?.equity_curve?.length || 0)} color="var(--accent-blue)" />
               <StatBox label="Período" value={String(monthlyDD.length) + ' Meses'} color="var(--accent-green)" />
             </div>
@@ -907,9 +907,9 @@ export const RobotTable = ({
             <th 
               style={thStyle} 
               onClick={() => requestSort('var_95_dd_cap')}
-              data-tooltip="Value at Risk (DME - Drawdown Máximo Esperado). Estatística que define, com 95% de confiança, o risco provável com base na volatilidade histórica."
+              data-tooltip="Value at Risk (Risk Budget - Drawdown Máximo Esperado). Estatística que define, com 95% de confiança, o risco provável com base na volatilidade histórica."
             >
-              VaR DME{getSortIcon('var_95_dd_cap')}
+              VaR RB{getSortIcon('var_95_dd_cap')}
             </th>
             <th 
               style={thStyle} 
@@ -1121,7 +1121,7 @@ export const RobotComparisonModule = ({
     { label: 'Max Entradas', key: 'max_entries_per_trade', isCurrency: false, lowerIsBetter: true, decimals: 0 },
     { label: 'LL/DD %', key: 'll_dd', isPct: true, lowerIsBetter: false },
     { label: 'LL MÊS', key: 'avg_profit_per_month', isCurrency: true, lowerIsBetter: false },
-    { label: 'VaR DME %', key: 'var_95_dd_cap', isPct: true, scale100: true, lowerIsBetter: true },
+    { label: 'VaR RB %', key: 'var_95_dd_cap', isPct: true, scale100: true, lowerIsBetter: true },
     { label: 'Compras (win%)', key: 'long_win_pct', isPct: true, lowerIsBetter: false },
     { label: 'Vendas (win%)', key: 'short_win_pct', isPct: true, lowerIsBetter: false },
     { label: 'Expected Payoff', key: 'expected_payoff', isCurrency: true, lowerIsBetter: false },
@@ -1330,7 +1330,7 @@ export const RobotComparisonModule = ({
                 <th style={thStyle}>ENT.</th>
                 <th style={thStyle}>LL/DD%</th>
                 <th style={thStyle}>LL MÊS</th>
-                <th style={thStyle}>VaR DME</th>
+                <th style={thStyle}>VaR RB</th>
                 <th style={thStyle}>COMPRAS</th>
                 <th style={thStyle}>VENDAS</th>
                 <th style={thStyle}>PAYOFF</th>
