@@ -1635,7 +1635,20 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 <h2 style={{ margin: 0, color: '#fff', fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Zap size={18} style={{ color: '#A855F7' }} /> Otimização de Pesos
                 </h2>
-                <p style={{ margin: '0.3rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>Maximização LL/DD com penalização por correlação</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginTop: '0.3rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>Maximização LL/DD com penalização por correlação</p>
+                  <span style={{ 
+                    fontSize: '0.7rem', 
+                    padding: '0.15rem 0.6rem', 
+                    borderRadius: '20px', 
+                    background: 'rgba(239,68,68,0.12)', 
+                    color: 'var(--accent-red)', 
+                    border: '1px solid rgba(239,68,68,0.25)', 
+                    fontWeight: '700' 
+                  }}>
+                    🎯 DD Alvo Máximo: {fmtCurrency(optimizeData.target_dd || localPortfolio.target_dd || 5000)}
+                  </span>
+                </div>
               </div>
               <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', padding: '0.3rem 0.6rem' }} onClick={() => { setShowOptimizeModal(false); setOptimizeData(null); }}><X size={16} /></button>
             </div>

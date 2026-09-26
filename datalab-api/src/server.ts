@@ -1427,30 +1427,78 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
     // Apply DD target constraint using DD Max Portf.
     const targetDD = Number(pf.target_dd) || 5000;
 
-    // First pass: compute DD with raw weights to check if we need to scale down
-    const rawWeightMap = new Map<string, number>();
-    rawWeights.forEach(rw => rawWeightMap.set(rw.robot.robot_id, Math.max(1, Math.round(rw.rawWeight))));
-    const rawDDMaxPortf = calcDDMaxPortf(rawWeightMap);
+    // Minimum baseline: all robots with weight = 1
+    const baseWeightMap = new Map<string, number>();
+    robots.forEach(r => baseWeightMap.set(r.robot_id, 1));
+    const minPossibleDD = calcDDMaxPortf(baseWeightMap);
 
-    let scaleFactor = 1;
-    if (rawDDMaxPortf > targetDD && rawDDMaxPortf > 0) {
-      scaleFactor = targetDD / rawDDMaxPortf;
+    let bestWeights = new Map<string, number>();
+    robots.forEach(r => bestWeights.set(r.robot_id, 1));
+
+    let warnMsg: string | null = null;
+
+    if (targetDD < minPossibleDD) {
+      warnMsg = `Atenção: O DD Alvo (${targetDD.toLocaleString('pt-BR', { style: 'currency', currency: 'USD' })}) é menor que o DD mínimo do portfólio (${minPossibleDD.toLocaleString('pt-BR', { style: 'currency', currency: 'USD' })} com peso 1× em cada robô). Todos os pesos foram ajustados para 1×.`;
+    } else {
+      // Find maximum scale factor S such that calcDDMaxPortf(roundedWeights) <= targetDD
+      // Scores determine relative weight proportions
+      const maxScore = Math.max(...scores.map(s => s.score));
+      const normalizedProportions = scores.map(sc => ({
+        robot_id: sc.robot.robot_id,
+        prop: maxScore > 0 ? (sc.score / maxScore) : 1
+      }));
+
+      let bestProfit = 0;
+
+      // Fine-grained search for optimal scale factor S
+      for (let s = 1.0; s <= 25.0; s += 0.1) {
+        const testMap = new Map<string, number>();
+        for (const np of normalizedProportions) {
+          testMap.set(np.robot_id, Math.max(1, Math.round(np.prop * s)));
+        }
+        const testDD = calcDDMaxPortf(testMap);
+        if (testDD <= targetDD) {
+          const testProfit = robots.reduce((sum, r) => sum + (r.avg_profit_per_month * (testMap.get(r.robot_id) || 1)), 0);
+          if (testProfit > bestProfit || bestProfit === 0) {
+            bestProfit = testProfit;
+            bestWeights = new Map(testMap);
+          }
+        }
+      }
+
+      // Greedy step-up: check if incrementing any high-efficiency robot weight by +1 stays within targetDD
+      const sortedByEfficiency = [...scores].sort((a, b) => b.score - a.score);
+      let improved = true;
+      let iterations = 0;
+      while (improved && iterations < 50) {
+        improved = false;
+        iterations++;
+        for (const sc of sortedByEfficiency) {
+          const candMap = new Map(bestWeights);
+          const curW = candMap.get(sc.robot.robot_id) || 1;
+          candMap.set(sc.robot.robot_id, curW + 1);
+          const candDD = calcDDMaxPortf(candMap);
+          if (candDD <= targetDD) {
+            bestWeights = candMap;
+            improved = true;
+            break;
+          }
+        }
+      }
     }
 
-    // Apply scale and round to integers (min 1)
-    const suggestions = rawWeights.map(rw => {
-      const scaled = rw.rawWeight * scaleFactor;
-      const rounded = Math.max(1, Math.round(scaled));
+    const suggestions = scores.map(sc => {
+      const suggested_weight = bestWeights.get(sc.robot.robot_id) || 1;
       return {
-        robot_id: rw.robot.robot_id,
-        name: rw.robot.name,
-        asset: rw.robot.asset,
-        current_weight: rw.robot.weight,
-        suggested_weight: rounded,
-        score: parseFloat(rw.score.toFixed(3)),
-        baseScore: parseFloat(rw.baseScore.toFixed(3)),
-        avgCorr: parseFloat(rw.avgCorr.toFixed(3)),
-        reason: rw.reason
+        robot_id: sc.robot.robot_id,
+        name: sc.robot.name,
+        asset: sc.robot.asset,
+        current_weight: sc.robot.weight,
+        suggested_weight,
+        score: parseFloat(sc.score.toFixed(3)),
+        baseScore: parseFloat(sc.baseScore.toFixed(3)),
+        avgCorr: parseFloat(sc.avgCorr.toFixed(3)),
+        reason: sc.reason
       };
     });
 
@@ -1471,6 +1519,8 @@ app.post('/api/portfolios/:id/optimize-weights', async (req, res) => {
     const optimizedROI = pf.capital > 0 ? (optimizedLucroMes / pf.capital) * 100 : 0;
 
     res.json({
+      target_dd: targetDD,
+      message: warnMsg,
       suggestions,
       comparison: {
         current: {
