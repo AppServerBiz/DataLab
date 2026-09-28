@@ -368,10 +368,10 @@ const PortfolioReport = () => {
             <div style={{ fontSize: '38px', fontWeight: '900', color: '#000', lineHeight: 1, letterSpacing: '-1px' }}>Nautilus</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Performance Analysis</h1>
-            <div style={{ fontSize: '13px', color: '#334155', fontWeight: '700', marginTop: '4px' }}>{portfolio.name} · Investimentos Quantitativos</div>
+            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.5px' }}>{t('report.perfAnalysis', 'Performance Analysis')}</h1>
+            <div style={{ fontSize: '13px', color: '#334155', fontWeight: '700', marginTop: '4px' }}>{portfolio.name} · {t('report.quantInvestments', 'Investimentos Quantitativos')}</div>
             <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Relatório emitido em: {new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {t('report.issuedAt', 'Relatório emitido em:')} {new Date().toLocaleString(language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </div>
           </div>
         </div>
@@ -394,10 +394,10 @@ const PortfolioReport = () => {
             { label: t('portfolio.monthlyProfit', 'Lucro Méd. Mês'), value: fmtCurrency(totals?.lucroMes || 0), color: (totals?.lucroMes || 0) >= 0 ? '#10b981' : '#ef4444' },
             { label: t('common.roi', 'ROI Mês'), value: fmtPct(totals?.roiMes || 0), color: (totals?.roiMes || 0) >= 0 ? '#10b981' : '#ef4444' },
             { label: t('portfolio.maxDD', 'DD Máx Portfólio'), value: fmtCurrency(totals?.ddMaxPortfolio || 0), color: '#ef4444' },
-            { label: 'DD Máx %', value: fmtPct(totals?.ddMaxPct || 0), color: '#ef4444' },
+            { label: t('portfolio.ddMaxPct', 'DD Máx %'), value: fmtPct(totals?.ddMaxPct || 0), color: '#ef4444' },
             
-            { label: 'DD Soma Individual', value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), color: '#ef4444' },
-            { label: 'DD Soma %', value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), color: '#ef4444' },
+            { label: t('portfolio.ddMaxSumDollar', 'DD Soma Individual'), value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), color: '#ef4444' },
+            { label: t('portfolio.ddMaxSumPct', 'DD Soma %'), value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), color: '#ef4444' },
             { 
               label: t('portfolio.var95', 'VaR 95% (Prob.)'), 
               value: (
@@ -410,12 +410,12 @@ const PortfolioReport = () => {
               ), 
               color: '#f59e0b' 
             },
-            { label: 'Risk Budget Atual', value: fmtCurrency(totals?.dme || portfolio.manual_dme || 0), color: '#0f172a' },
+            { label: t('portfolio.riskBudget', 'Risk Budget Atual'), value: fmtCurrency(totals?.dme || portfolio.manual_dme || 0), color: '#0f172a' },
 
-            { label: 'Fator LL/DD', value: fmt(totals?.llDdPct || 0) + '%', color: '#0b57d0' },
-            { label: 'Total Trades', value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), color: '#0f172a' },
-            { label: 'Soma Lotes', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0) * (r.weight || 1), 0), 2), color: '#0f172a' },
-            { label: 'Lotes Mês', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0) * (r.weight || 1), 0), 2), color: '#0f172a' },
+            { label: t('portfolio.llddFactor', 'Fator LL/DD'), value: fmt(totals?.llDdPct || 0) + '%', color: '#0b57d0' },
+            { label: t('portfolio.totalTrades', 'Total Trades'), value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), color: '#0f172a' },
+            { label: t('portfolio.sumLots', 'Soma Lotes'), value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0) * (r.weight || 1), 0), 2), color: '#0f172a' },
+            { label: t('portfolio.lotsMonth', 'Lotes Mês'), value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0) * (r.weight || 1), 0), 2), color: '#0f172a' },
           ].map(m => (
             <div key={m.label} style={{ background: '#fff', padding: '15px' }}>
               <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', marginBottom: '5px' }}>{m.label}</div>
@@ -428,17 +428,17 @@ const PortfolioReport = () => {
         <div style={{ marginBottom: '60px' }}>
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            {t('portfolio.allocatedRobots', 'Composição Detalhada do Portfólio')}
+            {t('report.detailedComposition', 'Composição Detalhada do Portfólio')}
           </h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderTop: '2px solid #000', borderBottom: '2px solid #000' }}>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '900' }}>ESTRATÉGIA (ROBÔ)</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '900' }}>ATIVO</th>
-                <th style={{ padding: '10px', textAlign: 'center', fontWeight: '900' }}>PESO</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '900' }}>DD ESTIMADO</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '900' }}>LUCRO ESTIMADO</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '900' }}>RETORNO %</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '900' }}>{t('portfolio.thRobot', 'ESTRATÉGIA (ROBÔ)')}</th>
+                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '900' }}>{t('portfolio.thAsset', 'ATIVO')}</th>
+                <th style={{ padding: '10px', textAlign: 'center', fontWeight: '900' }}>{t('common.weight', 'PESO')}</th>
+                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '900' }}>{t('portfolio.thDDWeight', 'DD ESTIMADO')}</th>
+                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '900' }}>{t('portfolio.thProfitWeight', 'LUCRO ESTIMADO')}</th>
+                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '900' }}>{t('portfolio.thReturnPct', 'RETORNO %')}</th>
               </tr>
             </thead>
             <tbody>
@@ -460,13 +460,13 @@ const PortfolioReport = () => {
         <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Curva de Patrimônio Consolidado (Closing Balance)
+            {t('report.consolidatedEquity', 'Curva de Patrimônio Consolidado (Closing Balance)')}
           </h3>
           <div style={{ height: '350px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
             <Line 
               data={{ 
                 labels: (stats?.combined_curve || []).map((c: any) => c.day), 
-                datasets: [{ label: 'Patrimônio ($)', data: (stats?.combined_curve || []).map((c: any) => portfolio.capital + (c.balanceProfit || c.profit || 0)), borderColor: '#000', backgroundColor: 'rgba(0,0,0,0.02)', fill: true, pointRadius: 0, borderWidth: 2.5 }] 
+                datasets: [{ label: `${t('common.capital', 'Patrimônio')} ($)`, data: (stats?.combined_curve || []).map((c: any) => portfolio.capital + (c.balanceProfit || c.profit || 0)), borderColor: '#000', backgroundColor: 'rgba(0,0,0,0.02)', fill: true, pointRadius: 0, borderWidth: 2.5 }] 
               }} 
               options={getPrintChartOptions({ plugins: { legend: { display: false } } })}
             />
@@ -476,7 +476,7 @@ const PortfolioReport = () => {
         <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Curva Individual por Robô ($)
+            {t('portfolio.chartIndividualRobots', 'Curva Individual por Robô ($)')}
           </h3>
           <div style={{ height: '350px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
             <Line 
@@ -501,17 +501,17 @@ const PortfolioReport = () => {
           <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
             <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-              Rentabilidade Histórica Mês a Mês
+              {t('report.monthlyTableTitle', 'Rentabilidade Histórica Mês a Mês')}
             </h3>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
               <thead>
                 <tr style={{ background: '#334155', color: '#fff', textAlign: 'center' }}>
-                  <th style={{ padding: '6px 4px', textAlign: 'left', fontWeight: '900' }}>ANO</th>
-                  {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map(m => (
+                  <th style={{ padding: '6px 4px', textAlign: 'left', fontWeight: '900' }}>{t('portfolio.year', 'ANO')}</th>
+                  {(language === 'en' ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : language === 'es' ? ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] : ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']).map(m => (
                     <th key={m} style={{ padding: '6px 2px', fontWeight: '800' }}>{m}</th>
                   ))}
-                  <th style={{ padding: '6px 4px', fontWeight: '900', borderLeft: '1px solid #475569' }}>No ano</th>
+                  <th style={{ padding: '6px 4px', fontWeight: '900', borderLeft: '1px solid #475569' }}>{t('portfolio.yearTotal', 'No ano')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -574,10 +574,10 @@ const PortfolioReport = () => {
 
             {/* Rodapé explicativo abaixo da tabela */}
             <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '8.5px', color: '#475569', lineHeight: '1.4' }}>
-              <div>💡 <strong>Risk Budget (Drawdown Máximo de Exposição):</strong> Representa o maior rebaixamento financeiro acumulado no mês (orçamento de risco consumido).</div>
-              <div>ℹ️ <strong>Nota de Cálculo:</strong> Os percentuais não consideram juros compostos; o cálculo é realizado assumindo o saque total do lucro mês a mês sobre o capital inicial.</div>
+              <div>💡 <strong>{t('portfolio.riskBudget', 'Risk Budget')}:</strong> {t('portfolio.riskBudgetNote', 'Representa o maior rebaixamento financeiro acumulado no mês (orçamento de risco consumido).')}</div>
+              <div>ℹ️ <strong>{t('portfolio.calcNote', 'Nota de Cálculo: Os percentuais não consideram juros compostos; o cálculo é realizado assumindo o saque total do lucro mês a mês sobre o capital inicial.')}</strong></div>
               {robots.some((r: any) => r.has_incomplete_data) && (
-                <div>* <strong>Aviso de Histórico Parcial:</strong> Os robôs sinalizados com asterisco (*) possuem dados históricos que não cobrem todo o período de análise do portfólio. Para os meses em que um robô não operou, sua contribuição é tratada como zero ou estimada via média móvel.</div>
+                <div>* <strong>{t('portfolio.partialHistoryNote', 'Aviso de Histórico Parcial: Robôs com (*) possuem dados incompletos para todo o período.')}</strong></div>
               )}
             </div>
           </div>
@@ -588,7 +588,7 @@ const PortfolioReport = () => {
           <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
             <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-              Evolução de Rentabilidade Mensal vs Benchmarks
+              {t('report.benchmarkEvolution', 'Evolução de Rentabilidade Mensal vs Benchmarks')}
             </h3>
             <ProfitabilityChart
               portfolioName={portfolio?.name || 'ALPHA1 GOLD'}
@@ -601,18 +601,20 @@ const PortfolioReport = () => {
 
         <div style={{ pageBreakAfter: 'always' }}></div>
 
-        {/* Charts - Page 2:          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
+        {/* Charts - Page 2: Profit Analysis */}
+        <div style={{ paddingTop: '20px' }}>
+          <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-                Lucro Acumulado por Robô (Top 10)
+                {t('report.top10ProfitTitle', 'Lucro Acumulado por Robô (Top 10)')}
               </h3>
             </div>
             <div style={{ height: '300px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
               <Bar 
                 data={{
                   labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name),
-                  datasets: [{ label: 'Lucro ($)', data: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.avg_profit_per_month * r.weight), backgroundColor: ROBOT_COLORS, borderWidth: 1 }]
+                  datasets: [{ label: `${t('portfolio.profit', 'Lucro')} ($)`, data: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.avg_profit_per_month * r.weight), backgroundColor: ROBOT_COLORS, borderWidth: 1 }]
                 }}
                 options={getPrintChartOptions({
                   plugins: {
@@ -620,7 +622,7 @@ const PortfolioReport = () => {
                     tooltip: {
                       callbacks: {
                         title: (items: any) => items[0]?.label || '',
-                        label: (context: any) => ` Lucro: ${fmtCurrency(context.raw)}`
+                        label: (context: any) => ` ${t('portfolio.profit', 'Lucro')}: ${fmtCurrency(context.raw)}`
                       }
                     }
                   },
@@ -646,7 +648,7 @@ const PortfolioReport = () => {
           <div style={{ marginBottom: '60px', pageBreakInside: 'avoid' }}>
             <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-              Distribuição de Lucro Portfólio
+              {t('report.profitDistTitle', 'Distribuição de Lucro Portfólio')}
             </h3>
             <div style={{ height: '350px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'center' }}>
               <Pie 
@@ -668,9 +670,9 @@ const PortfolioReport = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-                Exposição ao Risco Consolidada (Drawdown Intra-day)
+                {t('report.realTimeExposure', 'Exposição ao Risco Consolidada (Drawdown Intra-day)')}
               </h3>
-              <span title="Cálculo Consolidado: Soma aritmética direta dos drawdowns máximos diários individuais de cada robô no portfólio. Representa uma visão conservadora de pior cenário." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">Como é calculated?</span>
+              <span title="Cálculo Consolidado: Soma aritmética direta dos drawdowns máximos diários individuais de cada robô no portfólio. Representa uma visão conservadora de pior cenário." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">{t('portfolio.howCalculated', 'Como é calculado?')}</span>
             </div>
             <div style={{ height: '300px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
               <Line 
@@ -687,9 +689,9 @@ const PortfolioReport = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-                Drawdown Individual por Robô ($)
+                {t('portfolio.chartIndividualDD', 'Drawdown Individual por Robô ($)')}
               </h3>
-              <span title="Cálculo Individual: Plota o rebaixamento diário máximo de cada robô isoladamente, multiplicado por seu respectivo peso no portfólio." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">Como é calculado?</span>
+              <span title="Cálculo Individual: Plota o rebaixamento diário máximo de cada robô isoladamente, multiplicado por seu respectivo peso no portfólio." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">{t('portfolio.howCalculated', 'Como é calculado?')}</span>
             </div>
             <div style={{ height: '350px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
               <Line 
@@ -724,9 +726,9 @@ const PortfolioReport = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-                Top 10 maiores drawdowns (dia)
+                {t('portfolio.chartTop10DDDay', 'Top 10 maiores drawdowns (dia)')}
               </h3>
-              <span title="Cálculo Diário: Identifica e ordena os maiores períodos de rebaixamento consolidado da curva diária do portfólio, e não por trade isolado." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">Como é calculado?</span>
+              <span title="Cálculo Diário: Identifica e ordena os maiores períodos de rebaixamento consolidado da curva diária do portfólio, e não por trade isolado." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">{t('portfolio.howCalculated', 'Como é calculado?')}</span>
             </div>
             <div style={{ height: '400px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
               <Bar 
@@ -766,10 +768,10 @@ const PortfolioReport = () => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <div style={{ width: '4px', height: '14px', background: '#0b57d0' }}></div>
-                Performance Recente (Últimos 12 Meses)
+                {t('report.recent12MTitle', 'Performance Recente (Últimos 12 Meses)')}
               </h3>
               <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>
-                WINDOW: {totals?.recent?.days || 0} dias · {fmt(totals?.recent?.months || 0, 1)} meses
+                {t('portfolio.recentWindow', 'JANELA RECENTE')}: {totals?.recent?.days || 0} dias · {fmt(totals?.recent?.months || 0, 1)} {t('portfolio.months', 'meses')}
               </div>
             </div>
             
@@ -779,11 +781,11 @@ const PortfolioReport = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '800' }}>ROBÔ</th>
-                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>LUCRO (12M)</th>
-                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>DD (12M)</th>
-                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>VAR 95%</th>
-                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>LOTES</th>
+                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '800' }}>{t('portfolio.thRobot', 'ROBÔ')}</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>{t('portfolio.profit', 'LUCRO')} (12M)</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>{t('portfolio.maxDDShort', 'MAX DD')} (12M)</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>VaR 95%</th>
+                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '800' }}>{t('portfolio.lots', 'LOTES')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -803,28 +805,28 @@ const PortfolioReport = () => {
             {/* Comparison Table */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '15px', color: '#000' }}>
-                <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', opacity: 0.6, marginBottom: '10px', color: '#64748b' }}>Comparativo de Período</div>
+                <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', opacity: 0.6, marginBottom: '10px', color: '#64748b' }}>{t('report.periodComparison', 'Comparativo de Período')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.08)', paddingBottom: '5px' }}>
-                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1.2 }}>Métrica</span>
-                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Últimos 12 Meses</span>
-                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Restante Ponderado</span>
-                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>Restante Soma</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1.2 }}>{t('portfolio.metric', 'Métrica')}</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>{t('portfolio.last12M', 'Últimos 12 Meses')}</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>{t('portfolio.weightedRemaining', 'Restante Ponderado')}</span>
+                    <span style={{ fontSize: '9px', fontWeight: '600', flex: 1, textAlign: 'right' }}>{t('portfolio.sumRemaining', 'Restante Soma')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>Lucro Total</span>
+                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>{t('portfolio.totalProfit', 'Lucro Total')}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', color: (totals?.recent?.profit || 0) >= 0 ? '#10b981' : '#ef4444', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.profit || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.weightedProfit || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.profit || 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>Número de Trades</span>
+                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>{t('portfolio.numTrades', 'Número de Trades')}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', flex: 1, textAlign: 'right' }}>{fmt(totals?.recent?.trades || 0, 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmt(totals?.past?.weightedTrades || 0, 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmt(totals?.past?.trades || 0, 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>Max Drawdown</span>
+                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>{t('portfolio.maxDDPeriod', 'Max Drawdown')}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', color: '#ef4444', flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.recent?.maxDD || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.maxDD || 0)}</span>
@@ -836,7 +838,7 @@ const PortfolioReport = () => {
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtCurrency(totals?.past?.var95 || 0)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>ROI Médio/Mês</span>
+                    <span style={{ fontSize: '9px', opacity: 0.7, flex: 1.2 }}>{t('portfolio.roiMonth', 'ROI Médio/Mês')}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', flex: 1, textAlign: 'right' }}>{fmtPct((totals?.recent?.profit || 0) / (portfolio.capital || 1) / (totals?.recent?.months || 1) * 100)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.8, flex: 1, textAlign: 'right' }}>{fmtPct((totals?.past?.profit || 0) / (portfolio.capital || 1) / (totals?.past?.months || 1) * 100)}</span>
                     <span style={{ fontSize: '10px', fontWeight: '800', opacity: 0.5, flex: 1, textAlign: 'right' }}>{fmtPct((totals?.past?.profit || 0) / (portfolio.capital || 1) / (totals?.past?.months || 1) * 100)}</span>
@@ -845,12 +847,11 @@ const PortfolioReport = () => {
               </div>
               
               <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', background: '#fff', marginTop: '10px' }}>
-                <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', color: '#64748b', marginBottom: '8px' }}>Nota de Tomada de Decisão</div>
+                <div style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '800', color: '#64748b', marginBottom: '8px' }}>{t('report.decisionNote', 'Nota de Tomada de Decisão')}</div>
                 <div style={{ fontSize: '10px', lineHeight: '1.4', color: '#334155' }}>
-                  A performance dos últimos 12 meses reflete melhor a dinâmica atual do mercado. 
-                  Considere robôs com Lucro/DD {'>'} 2 no período recente para maior estabilidade.
+                  {t('report.decisionNoteText', 'A performance dos últimos 12 meses reflete melhor a dinâmica atual do mercado. Considere robôs com Lucro/DD > 2 no período recente para maior estabilidade.')}
                   <br/><br/>
-                  ⚠️ <strong>Nota:</strong> Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média para preencher lacunas.
+                  ⚠️ <strong>{t('portfolio.noteWarning', 'Nota:')}</strong> {t('portfolio.dateWarning', 'Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média para preencher lacunas.')}
                 </div>
               </div>
             </div>
@@ -861,7 +862,7 @@ const PortfolioReport = () => {
         <div style={{ paddingTop: '10px', pageBreakInside: 'avoid' }}>
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Matriz de Correlação Diária
+            {t('portfolio.dailyCorrMatrix', 'Matriz de Correlação Diária')}
           </h3>
           <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '40px' }}>
             <table className="correlation-matrix" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
@@ -897,7 +898,7 @@ const PortfolioReport = () => {
 
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginTop: '30px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Matriz de Impacto de Risco de Drawdown ($)
+            {t('portfolio.ddRiskMatrix', 'Matriz de Impacto de Risco de Drawdown ($)')}
           </h3>
           {matrices?.ddCorrelationRisk ? (
             <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '30px' }}>
@@ -1093,7 +1094,7 @@ const PortfolioReport = () => {
               <div style={{ marginTop: '30px', pageBreakInside: 'avoid' }}>
                 <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-                  Guia Metodológico & Análise Comparativa dos 6 Métodos de Portfólio
+                  {t('report.methodsGuideTitle', 'Guia Metodológico & Análise Comparativa dos 6 Métodos de Portfólio')}
                 </h3>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
@@ -1101,14 +1102,14 @@ const PortfolioReport = () => {
                   {/* 1. Nautilus Quant */}
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', background: '#f8fafc' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <strong style={{ fontSize: '11px', color: '#0f172a' }}>1. Nautilus Quant (Configuração Atual)</strong>
-                      <span style={{ fontSize: '8px', background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Em Uso</span>
+                      <strong style={{ fontSize: '11px', color: '#0f172a' }}>{t('portfolio.method1Title', '1. Nautilus Quant (Configuração Atual)')}</strong>
+                      <span style={{ fontSize: '8px', background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{t('portfolio.running', 'Em Uso')}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
-                      <div><span style={{ color: '#64748b' }}>Lucro Mês:</span> <strong>{fmtCurrency(nautilusProfit)} ({fmt(nautilusROI, 1)}%)</strong></div>
-                      <div><span style={{ color: '#64748b' }}>DD Máximo (Equity):</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(nautilusDD)} ({fmt(nautilusDDPct, 1)}%)</strong></div>
-                      <div><span style={{ color: '#64748b' }}>Eficiência LL/DD:</span> <strong>{fmt(nautilusLLDD, 1)}%</strong></div>
-                      <div><span style={{ color: '#64748b' }}>VaR 95% Corte:</span> <strong>{fmtCurrency((totals?.var95 || 0) / 100 * cap)}</strong></div>
+                      <div><span style={{ color: '#64748b' }}>{t('portfolio.profit', 'Lucro Mês')}:</span> <strong>{fmtCurrency(nautilusProfit)} ({fmt(nautilusROI, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>{t('portfolio.maxDDShort', 'DD Máximo')}:</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(nautilusDD)} ({fmt(nautilusDDPct, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>{t('portfolio.efficiencyLLDD', 'Eficiência LL/DD')}:</span> <strong>{fmt(nautilusLLDD, 1)}%</strong></div>
+                      <div><span style={{ color: '#64748b' }}>VaR 95%:</span> <strong>{fmtCurrency((totals?.var95 || 0) / 100 * cap)}</strong></div>
                     </div>
                     <div style={{ fontSize: '8px', color: '#475569', background: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                       <strong>Pesos Atuais:</strong> {robotMetrics.map((r: any) => `${r.name.slice(0, 10)}: ${r.w}x`).join(' | ')}
@@ -1119,12 +1120,12 @@ const PortfolioReport = () => {
                   {/* 2. HRP */}
                   <div style={{ border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px', background: '#f0fdf4' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <strong style={{ fontSize: '11px', color: '#166534' }}>2. Hierarchical Risk Parity (HRP)</strong>
-                      <span style={{ fontSize: '8px', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥇 Top Eficiência</span>
+                      <strong style={{ fontSize: '11px', color: '#166534' }}>{t('portfolio.method2Title', '2. Hierarchical Risk Parity (HRP)')}</strong>
+                      <span style={{ fontSize: '8px', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥇 {t('portfolio.topEfficiency', 'Top Eficiência')}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
-                      <div><span style={{ color: '#64748b' }}>Lucro Projetado:</span> <strong style={{ color: '#16a34a' }}>{fmtCurrency(hrpEstProfit)} ({fmt(hrpROI, 1)}%)</strong></div>
-                      <div><span style={{ color: '#64748b' }}>DD Descorrelacionado:</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(hrpEstDD)} ({fmt(hrpEstDD / cap * 100, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>{t('portfolio.profit', 'Lucro')} Proj.:</span> <strong style={{ color: '#16a34a' }}>{fmtCurrency(hrpEstProfit)} ({fmt(hrpROI, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>DD Descorrel.:</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(hrpEstDD)} ({fmt(hrpEstDD / cap * 100, 1)}%)</strong></div>
                       <div><span style={{ color: '#64748b' }}>LL/DD Otimizado:</span> <strong style={{ color: '#15803d' }}>{fmt(hrpLLDD, 1)}%</strong></div>
                       <div><span style={{ color: '#64748b' }}>Clusters:</span> <strong>{clusterKeys.length} blocos ({clusterKeys.join(', ')})</strong></div>
                     </div>
@@ -1137,11 +1138,11 @@ const PortfolioReport = () => {
                   {/* 3. Risk Parity */}
                   <div style={{ border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', background: '#fffbeb' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <strong style={{ fontSize: '11px', color: '#92400e' }}>3. Risk Parity (Paridade de Risco)</strong>
-                      <span style={{ fontSize: '8px', background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥈 Equalização</span>
+                      <strong style={{ fontSize: '11px', color: '#92400e' }}>{t('portfolio.method3Title', '3. Risk Parity (Paridade de Risco)')}</strong>
+                      <span style={{ fontSize: '8px', background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥈 {t('portfolio.equalization', 'Equalização')}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
-                      <div><span style={{ color: '#64748b' }}>Lucro Projetado:</span> <strong>{fmtCurrency(rpEstProfit)} ({fmt(rpROI, 1)}%)</strong></div>
+                      <div><span style={{ color: '#64748b' }}>{t('portfolio.profit', 'Lucro')} Proj.:</span> <strong>{fmtCurrency(rpEstProfit)} ({fmt(rpROI, 1)}%)</strong></div>
                       <div><span style={{ color: '#64748b' }}>DD Projetado:</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(rpEstDD)} ({fmt(rpEstDD / cap * 100, 1)}%)</strong></div>
                       <div><span style={{ color: '#64748b' }}>LL/DD Estimado:</span> <strong>{fmt(rpLLDD, 1)}%</strong></div>
                       <div><span style={{ color: '#64748b' }}>Risco p/ Robô:</span> <strong>~{fmtCurrency(rpTargetSingleDD)} cada</strong></div>
@@ -1155,8 +1156,8 @@ const PortfolioReport = () => {
                   {/* 4. CVaR */}
                   <div style={{ border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', background: '#fef2f2' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <strong style={{ fontSize: '11px', color: '#991b1b' }}>4. CVaR (Expected Shortfall 95%)</strong>
-                      <span style={{ fontSize: '8px', background: '#fee2e2', color: '#b91c1c', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥉 Risco de Cauda</span>
+                      <strong style={{ fontSize: '11px', color: '#991b1b' }}>{t('portfolio.method4Title', '4. CVaR (Expected Shortfall 95%)')}</strong>
+                      <span style={{ fontSize: '8px', background: '#fee2e2', color: '#b91c1c', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥉 {t('portfolio.tailRisk', 'Risco de Cauda')}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
                       <div><span style={{ color: '#64748b' }}>Perda Média (5% Piores):</span> <strong style={{ color: '#dc2626' }}>{fmtCurrency(cvar95Val)}</strong></div>
@@ -1173,8 +1174,8 @@ const PortfolioReport = () => {
                   {/* 5. Kelly */}
                   <div style={{ border: '1px solid #e9d5ff', borderRadius: '8px', padding: '12px', background: '#faf5ff' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <strong style={{ fontSize: '11px', color: '#6b21a8' }}>5. Kelly Criterion (Half-Kelly)</strong>
-                      <span style={{ fontSize: '8px', background: '#f3e8ff', color: '#7e22ce', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Crescimento Ótimo</span>
+                      <strong style={{ fontSize: '11px', color: '#6b21a8' }}>{t('portfolio.method5Title', '5. Kelly Criterion (Half-Kelly)')}</strong>
+                      <span style={{ fontSize: '8px', background: '#f3e8ff', color: '#7e22ce', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{t('portfolio.optimalGrowth', 'Crescimento Ótimo')}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
                       <div><span style={{ color: '#64748b' }}>Exposição Ótima:</span> <strong>{fmt(sumHalfKelly * 100, 1)}% do Capital</strong></div>
@@ -1191,8 +1192,8 @@ const PortfolioReport = () => {
                   {/* 6. Markowitz MVO */}
                   <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px', background: '#f8fafc' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <strong style={{ fontSize: '11px', color: '#334155' }}>6. Markowitz MVO (Max Sharpe)</strong>
-                      <span style={{ fontSize: '8px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Clássico</span>
+                      <strong style={{ fontSize: '11px', color: '#334155' }}>{t('portfolio.method6Title', '6. Markowitz MVO (Max Sharpe)')}</strong>
+                      <span style={{ fontSize: '8px', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{t('portfolio.classic', 'Clássico')}</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '9px', marginBottom: '8px' }}>
                       <div><span style={{ color: '#64748b' }}>Lucro Estimado:</span> <strong>{fmtCurrency(mvoEstProfit)} ({fmt(mvoROI, 1)}%)</strong></div>
@@ -1218,7 +1219,7 @@ const PortfolioReport = () => {
 
           {/* PDF Footer Final */}
           <div style={{ marginTop: '60px', borderTop: '2px solid #000', paddingTop: '20px', textAlign: 'center', fontSize: '9pt', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
-             DATA_LAB Nautilus Invest · Relatório de Gestão Consolidada · © {new Date().getFullYear()} All Rights Reserved
+             {t('report.footerNote', 'DATA_LAB Nautilus Invest · Relatório de Gestão Consolidada · © {year} All Rights Reserved').replace('{year}', new Date().getFullYear().toString())}
           </div>
         </div>
         </div>

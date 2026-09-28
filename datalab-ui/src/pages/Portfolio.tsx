@@ -551,28 +551,28 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
         {loading ? (
           <div style={{ textAlign: 'center', padding: '6rem', color: 'var(--text-muted)' }}>
             <Loader size={32} className="spin" style={{ marginBottom: '1rem' }} />
-            <p>Calculando métricas do portfólio...</p>
+            <p>{t('portfolio.calculatingMetrics', 'Calculando métricas do portfólio...')}</p>
           </div>
         ) : (
           <div id="portfolio-report">
             {/* Print Only Header */}
             <div className="print-header" style={{ display: 'none', marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
                <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#000', fontWeight: '800' }}>DATA_LAB Nautilus — Portfólio</h1>
-               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#333' }}>{localPortfolio.name} · Relatório Gerencial · Gerado em: {new Date().toLocaleString('pt-BR')}</p>
+               <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#333' }}>{localPortfolio.name} · {t('report.perfAnalysis', 'Relatório Gerencial')} · Gerado em: {new Date().toLocaleString(language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-BR')}</p>
             </div>
 
             {/* Stats Summary Cards */}
             {totals && (
               <div className="metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.8rem', marginBottom: '1.8rem' }}>
                 {[
-                  { label: 'LUCRO MÉD. MÊS', value: fmtCurrency(totals.lucroMes || 0), icon: <TrendingUp size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.08)' },
-                  { label: 'ROI MÊS', value: fmtPct(totals.roiMes || 0), icon: <BarChart2 size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.08)' },
-                  { label: 'DD MAX PORTF.', value: fmtCurrency(totals.ddMaxPortfolio || 0), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: 'Consolidado' },
-                  { label: 'DD MAX %', value: fmtPct(totals.ddMaxPct || 0), icon: <TrendingDown size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)' },
-                  { label: 'DD MAX SOMA $', value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), icon: <DollarSign size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)' },
-                  { label: 'DD MAX SOMA %', value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: 'Soma Individual' },
+                  { label: t('portfolio.monthlyProfit', 'LUCRO MÉD. MÊS'), value: fmtCurrency(totals.lucroMes || 0), icon: <TrendingUp size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.08)' },
+                  { label: t('portfolio.roiMonth', 'ROI MÊS'), value: fmtPct(totals.roiMes || 0), icon: <BarChart2 size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.08)' },
+                  { label: t('portfolio.ddMaxConsolidated', 'DD MAX PORTF.'), value: fmtCurrency(totals.ddMaxPortfolio || 0), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: t('portfolio.consolidated', 'Consolidado') },
+                  { label: t('portfolio.ddMaxPct', 'DD MAX %'), value: fmtPct(totals.ddMaxPct || 0), icon: <TrendingDown size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)' },
+                  { label: t('portfolio.ddMaxSumDollar', 'DD MAX SOMA $'), value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), icon: <DollarSign size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)' },
+                  { label: t('portfolio.ddMaxSumPct', 'DD MAX SOMA %'), value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), icon: <TrendingDown size={16} />, color: 'var(--accent-red)', bg: 'rgba(239,68,68,0.08)', note: t('portfolio.individualSum', 'Soma Individual') },
                   {
-                    label: 'Risk Budget',
+                    label: t('portfolio.riskBudget', 'Risk Budget'),
                     value: (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {fmtCurrency(totals.dme || 0)}
@@ -584,11 +584,11 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                     ),
                     icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.08)'
                   },
-                  { label: 'VAR 95%', value: `${fmtCurrency((totals.var95 || 0) / 100 * portfolio.capital)} - ${fmtPct(totals.var95 || 0)}`, icon: <DollarSign size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', note: '95% Prob. DD' },
-                  { label: 'LL/DD FATOR', value: fmt(totals.llDdPct || 0) + '%', icon: <Activity size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.05)' },
-                  { label: 'TOTAL TRADES', value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
-                  { label: 'SOMA LOTES', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0) * (r.weight || 1), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
-                  { label: 'LOTES MÊS', value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0) * (r.weight || 1), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
+                  { label: 'VAR 95%', value: `${fmtCurrency((totals.var95 || 0) / 100 * portfolio.capital)} - ${fmtPct(totals.var95 || 0)}`, icon: <DollarSign size={16} />, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', note: t('portfolio.probDD', '95% Prob. DD') },
+                  { label: t('portfolio.llddFactor', 'LL/DD FATOR'), value: fmt(totals.llDdPct || 0) + '%', icon: <Activity size={16} />, color: 'var(--accent-green)', bg: 'rgba(34,197,94,0.05)' },
+                  { label: t('portfolio.totalTrades', 'TOTAL TRADES'), value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
+                  { label: t('portfolio.sumLots', 'SOMA LOTES'), value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0) * (r.weight || 1), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
+                  { label: t('portfolio.lotsMonth', 'LOTES MÊS'), value: fmt(robots.reduce((s: any, r: any) => s + Number(r.lots_per_month || 0) * (r.weight || 1), 0), 2), icon: <Activity size={16} />, color: 'var(--accent-blue)', bg: 'rgba(56,189,248,0.05)' },
                 ].map(s => (
                   <div key={s.label} className="metric-card" style={{ background: s.bg, border: `1px solid ${s.color}22`, borderRadius: '10px', padding: '1rem' }}>
                     <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: s.color, marginBottom: '0.5rem', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
@@ -617,23 +617,23 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               {robots.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '5rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.01)', borderRadius: '10px', border: '1px dashed rgba(255,255,255,0.08)' }}>
                   <FolderOpen size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                  <p>Portfólio vazio. Arraste robôs da barra lateral para cá.</p>
+                  <p>{t('portfolio.emptyDropText', 'Portfólio vazio. Arraste robôs da barra lateral para cá.')}</p>
                 </div>
               ) : (
                 <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
                   <table className="oakmont-table" style={{ fontSize: '0.78rem' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                        <th style={{ padding: '0.8rem' }}>ROBÔ</th>
-                        <th>ATIVO</th>
-                        <th>PESO LOTE</th>
-                        <th style={{ color: 'var(--accent-red)' }}>DD × PESO</th>
-                        <th style={{ color: 'var(--accent-green)' }}>LUCRO × PESO</th>
-                        <th style={{ color: '#F59E0B' }}>VaR RB</th>
-                        <th style={{ color: '#F59E0B' }}>F. CORREL.</th>
-                        <th style={{ color: 'var(--accent-blue)' }}>LL/DD %</th>
-                        <th>RETORNO %</th>
-                        <th>AÇÕES</th>
+                        <th style={{ padding: '0.8rem' }}>{t('portfolio.thRobot', 'ROBÔ')}</th>
+                        <th>{t('portfolio.thAsset', 'ATIVO')}</th>
+                        <th>{t('portfolio.thWeightLot', 'PESO LOTE')}</th>
+                        <th style={{ color: 'var(--accent-red)' }}>{t('portfolio.thDDWeight', 'DD × PESO')}</th>
+                        <th style={{ color: 'var(--accent-green)' }}>{t('portfolio.thProfitWeight', 'LUCRO × PESO')}</th>
+                        <th style={{ color: '#F59E0B' }}>{t('portfolio.thVarRB', 'VaR RB')}</th>
+                        <th style={{ color: '#F59E0B' }}>{t('portfolio.thFCorrel', 'F. CORREL.')}</th>
+                        <th style={{ color: 'var(--accent-blue)' }}>{t('portfolio.thLLDD', 'LL/DD %')}</th>
+                        <th>{t('portfolio.thReturnPct', 'RETORNO %')}</th>
+                        <th>{t('portfolio.thActions', 'AÇÕES')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -704,12 +704,12 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
             {stats?.combined_curve && (
               <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr', gap: '1.2rem' }}>
                 <div className="card chart-row" style={{ padding: '1.2rem', height: '320px' }}>
-                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Curva de Saldo Fechado (Consolidado) ($)</h3>
+                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.chartClosedBalance', 'Curva de Saldo Fechado (Consolidado) ($)')}</h3>
                   <div style={{ height: '240px' }}>
                     <Line 
                       data={{ 
                         labels: (stats?.combined_curve || []).map((c: any) => c.day), 
-                         datasets: [{ label: 'Saldo Fechado', data: (stats?.combined_curve || []).map((c: any) => portfolio.capital + (c.balanceProfit || 0)), borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,0.05)', fill: true, pointRadius: 0, borderWidth: 2 }] 
+                         datasets: [{ label: t('portfolio.chartClosedBalance', 'Saldo Fechado'), data: (stats?.combined_curve || []).map((c: any) => portfolio.capital + (c.balanceProfit || 0)), borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,0.05)', fill: true, pointRadius: 0, borderWidth: 2 }] 
                        }} 
                        options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxTicksLimit: 12, color: '#64748B', font: { size: 9 } }, grid: { display: false } }, y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748B', font: { size: 9 }, callback: (v: any) => fmtCurrency(v as number) } } } }}
                     />
@@ -718,7 +718,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 <div className="print-spacer" style={{ height: '3rem', display: 'none' }}></div>
 
                 <div className="card chart-row" style={{ padding: '1.2rem', height: '320px' }}>
-                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Curva Individual por Robô (Saldo Fechado) ($)</h3>
+                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.chartIndividualRobots', 'Curva Individual por Robô (Saldo Fechado) ($)')}</h3>
                   <div style={{ height: '240px' }}>
                     <Line 
                       data={{ 
@@ -744,18 +744,18 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 {stats?.monthly_returns && stats.monthly_returns.length > 0 && (
                   <div className="card" style={{ padding: '1.2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
-                      <h3 style={{ margin: 0, fontSize: '0.85rem', color: '#fff', fontWeight: '700' }}>Rentabilidade histórica</h3>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>% Capital ({fmtCurrency(portfolio.capital)}) | Lucro líquido | Risk Budget</span>
+                      <h3 style={{ margin: 0, fontSize: '0.85rem', color: '#fff', fontWeight: '700' }}>{t('portfolio.histProfitability', 'Rentabilidade Histórica')}</h3>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>% Capital ({fmtCurrency(portfolio.capital)}) | {t('portfolio.profit', 'Lucro Líquido')} | Risk Budget</span>
                     </div>
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
                         <thead>
                           <tr style={{ background: '#262930', color: '#fff', textAlign: 'center' }}>
-                            <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: '800' }}>ANO</th>
-                            {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map(m => (
+                            <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: '800' }}>{t('portfolio.year', 'ANO')}</th>
+                            {(language === 'en' ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : language === 'es' ? ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] : ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']).map(m => (
                               <th key={m} style={{ padding: '0.6rem 0.4rem', fontWeight: '700', minWidth: '55px' }}>{m}</th>
                             ))}
-                            <th style={{ padding: '0.6rem 0.6rem', fontWeight: '800', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>No ano</th>
+                            <th style={{ padding: '0.6rem 0.6rem', fontWeight: '800', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>{t('portfolio.yearTotal', 'No ano')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -819,10 +819,10 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
 
                     {/* Notas explicativas abaixo da tabela */}
                     <div style={{ marginTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                      <div>💡 <strong>Risk Budget (Drawdown Máximo de Exposição):</strong> Representa o maior rebaixamento financeiro acumulado no mês (orçamento de risco consumido).</div>
-                      <div>ℹ️ <strong>Nota de Cálculo:</strong> Os percentuais não consideram juros compostos; o cálculo é realizado assumindo o saque total do lucro mês a mês sobre o capital inicial.</div>
+                      <div>💡 <strong>{t('portfolio.riskBudget', 'Risk Budget')}:</strong> {t('portfolio.riskBudgetNote', 'Representa o maior rebaixamento financeiro acumulado no mês (orçamento de risco consumido).')}</div>
+                      <div>ℹ️ <strong>{t('portfolio.calcNote', 'Nota de Cálculo: Os percentuais não consideram juros compostos; o cálculo é realizado assumindo o saque total do lucro mês a mês sobre o capital inicial.')}</strong></div>
                       {robots.some((r: any) => r.has_incomplete_data) && (
-                        <div>* <strong>Aviso de Histórico Parcial:</strong> Os robôs sinalizados com asterisco (*) possuem dados históricos que não cobrem todo o período de análise do portfólio. Para os meses em que um robô não operou, sua contribuição é tratada como zero ou estimada via média móvel.</div>
+                        <div>* <strong>{t('portfolio.partialHistoryNote', 'Aviso de Histórico Parcial: Robôs com (*) possuem dados incompletos para todo o período.')}</strong></div>
                       )}
                     </div>
 
@@ -838,13 +838,13 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
 
                 <div className="flex-between chart-row" style={{ gap: '1.2rem', flexWrap: 'wrap' }}>
                   <div className="card" style={{ padding: '1.2rem', flex: 1, minWidth: '300px' }}>
-                    <h3 style={{ margin: '0 0 1.2rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Top 10 Robôs por Lucro Total ($)</h3>
+                    <h3 style={{ margin: '0 0 1.2rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.chartTop10Profit', 'Top 10 Robôs por Lucro Total ($)')}</h3>
                     <div style={{ height: '320px' }}>
                       <Bar 
                         data={{
                           labels: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.name || ''),
                           datasets: [{
-                            label: 'Lucro Total Estimado',
+                            label: t('portfolio.totalProfit', 'Lucro Total Estimado'),
                             data: [...robots].sort((a,b) => (b.avg_profit_per_month * b.weight) - (a.avg_profit_per_month * a.weight)).slice(0, 10).map(r => r.avg_profit_per_month * r.weight),
                             backgroundColor: ROBOT_COLORS.map(c => c + '99'),
                             borderColor: ROBOT_COLORS.map(c => c),
@@ -859,7 +859,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                             tooltip: {
                               callbacks: {
                                 title: (items: any) => items[0]?.label || '',
-                                label: (context: any) => ` Lucro: ${fmtCurrency(context.raw)}`
+                                label: (context: any) => ` ${t('common.profit', 'Lucro')}: ${fmtCurrency(context.raw)}`
                               }
                             }
                           },
@@ -869,7 +869,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                               ticks: {
                                 color: '#64748B',
                                 font: { size: 9 },
-                                callback: function(value: any, index: number) {
+                                callback: function(value: any) {
                                   const label = this.getLabelForValue(value as number) || '';
                                   return label.length > 15 ? label.slice(0, 13) + '..' : label;
                                 }
@@ -883,7 +883,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                   </div>
                   
                   <div className="card" style={{ padding: '1.2rem', flex: 1, minWidth: '300px' }}>
-                    <h3 style={{ margin: '0 0 1.2rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Distribuição de Lucro (%)</h3>
+                    <h3 style={{ margin: '0 0 1.2rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.chartProfitDist', 'Distribuição de Lucro (%)')}</h3>
                     <div style={{ height: '320px', display: 'flex', justifyContent: 'center' }}>
                       <Pie 
                          data={{
@@ -909,10 +909,10 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
 
                 <div className="card chart-row" style={{ padding: '1.2rem', height: '280px' }}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                     <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Exposição (Drawdown) em Tempo Real ($)</h3>
+                     <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.chartRealTimeDD', 'Exposição (Drawdown) em Tempo Real ($)')}</h3>
                      <div style={{ display: 'flex', gap: '0.8rem' }}>
-                       <span title="Cálculo Consolidado: Soma aritmética direta dos drawdowns máximos diários individuais de cada robô no portfólio. Representa uma visão conservadora de pior cenário." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculated?</span>
-                       <span title="Diferença: Séries mensais usam apenas fechamentos de mês. O Real-time captura todas as oscilações intra-dia do histórico do relatório." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Diferença entre Real-time e Mensal</span>
+                       <span title="Cálculo Consolidado: Soma aritmética direta dos drawdowns máximos diários individuais de cada robô no portfólio. Representa uma visão conservadora de pior cenário." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>{t('portfolio.howCalculated', 'Como é calculado?')}</span>
+                       <span title="Diferença: Séries mensais usam apenas fechamentos de mês. O Real-time captura todas as oscilações intra-dia do histórico do relatório." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>{t('portfolio.diffRealtimeMonthly', 'Diferença entre Real-time e Mensal')}</span>
                      </div>
                    </div>
                    <div style={{ height: '200px' }}>
@@ -929,8 +929,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
 
                 <div className="card chart-row" style={{ padding: '1.2rem', height: '340px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Drawdown Individual por Robô ($)</h3>
-                    <span title="Cálculo Individual: Plota o rebaixamento diário máximo de cada robô isoladamente, multiplicado por seu respectivo peso no portfólio." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculado?</span>
+                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.chartIndividualDD', 'Drawdown Individual por Robô ($)')}</h3>
+                    <span title="Cálculo Individual: Plota o rebaixamento diário máximo de cada robô isoladamente, multiplicado por seu respectivo peso no portfólio." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>{t('portfolio.howCalculated', 'Como é calculado?')}</span>
                   </div>
                   <div style={{ height: '260px' }}>
                     <Line 
@@ -972,8 +972,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
 
                 <div className="card" style={{ padding: '1.2rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Top 10 maiores drawdowns (dia)</h3>
-                    <span title="Cálculo Diário: Identifica e ordena os maiores períodos de rebaixamento consolidado da curva diária do portfólio, e não por trade isolado." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>Como é calculado?</span>
+                    <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.chartTop10DDDay', 'Top 10 Maiores Drawdowns (Dia)')}</h3>
+                    <span title="Cálculo Diário: Identifica e ordena os maiores períodos de rebaixamento consolidado da curva diária do portfólio, e não por trade isolado." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>{t('portfolio.howCalculated', 'Como é calculado?')}</span>
                   </div>
                   <div style={{ height: '360px' }}>
                     <Bar 
@@ -1017,20 +1017,20 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
             <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.2rem' }}>
               <div className="card" style={{ padding: '1.2rem', border: '1px solid rgba(56,189,248,0.2)', background: 'linear-gradient(135deg, rgba(56,189,248,0.05) 0%, rgba(0,0,0,0) 100%)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--accent-blue)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tomada de Decisão (Últimos 12 Meses)</h3>
+                  <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--accent-blue)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.decisionTTM', 'Tomada de Decisão (Últimos 12 Meses)')}</h3>
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
-                    RECENT WINDOW: {totals?.recent?.days || 0}d
+                    {t('portfolio.recentWindow', 'JANELA RECENTE')}: {totals?.recent?.days || 0}d
                   </div>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                     <thead>
                       <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>ESTRATÉGIA</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>LUCRO</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>MAX DD</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>{t('portfolio.strategy', 'ESTRATÉGIA')}</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>{t('portfolio.profit', 'LUCRO')}</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>{t('portfolio.maxDDShort', 'MAX DD')}</th>
                         <th style={{ padding: '0.5rem', textAlign: 'right' }}>VAR 95%</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>LOTES</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>{t('portfolio.lots', 'LOTES')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1049,20 +1049,20 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               </div>
 
               <div className="card" style={{ padding: '1.2rem', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }}>
-                <h3 style={{ margin: '0 0 1.2rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Comparativo: Recente vs Histórico</h3>
+                <h3 style={{ margin: '0 0 1.2rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.compareRecentPast', 'Comparativo: Recente vs Histórico')}</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                   <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem', marginBottom: '0.4rem' }}>
-                    <div style={{ flex: 1.2, fontSize: '0.6rem', color: 'var(--text-muted)' }}>MÉTRICA</div>
-                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--accent-blue)', textAlign: 'right' }}>ÚLT. 12M</div>
-                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>RESTANTE PONDERADO</div>
-                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>RESTANTE SOMA</div>
+                    <div style={{ flex: 1.2, fontSize: '0.6rem', color: 'var(--text-muted)' }}>{t('portfolio.metric', 'MÉTRICA')}</div>
+                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--accent-blue)', textAlign: 'right' }}>{t('portfolio.last12M', 'ÚLT. 12M')}</div>
+                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>{t('portfolio.weightedRemaining', 'RESTANTE PONDERADO')}</div>
+                    <div style={{ flex: 1, fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'right' }}>{t('portfolio.sumRemaining', 'RESTANTE SOMA')}</div>
                   </div>
                   {[
-                    { label: 'Lucro Total', recent: totals?.recent?.profit, past: totals?.past?.weightedProfit, pastTotal: totals?.past?.profit, isCurrency: true },
-                    { label: 'Número de Trades', recent: totals?.recent?.trades, past: totals?.past?.weightedTrades, pastTotal: totals?.past?.trades, isDecimal: true },
-                    { label: 'Max Drawdown (Período)', recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, pastTotal: totals?.past?.maxDD, isCurrency: true, isRisk: true },
-                    { label: 'VaR 95% (Risco Prob.)', recent: totals?.recent?.var95, past: totals?.past?.var95, pastTotal: totals?.past?.var95, isCurrency: true, isRisk: true },
-                    { label: 'Eficiência (L/DD)', recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.weightedProfit / (totals?.past?.maxDD || 1)) * 100, pastTotal: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
+                    { label: t('portfolio.totalProfit', 'Lucro Total'), recent: totals?.recent?.profit, past: totals?.past?.weightedProfit, pastTotal: totals?.past?.profit, isCurrency: true },
+                    { label: t('portfolio.numTrades', 'Número de Trades'), recent: totals?.recent?.trades, past: totals?.past?.weightedTrades, pastTotal: totals?.past?.trades, isDecimal: true },
+                    { label: t('portfolio.maxDDPeriod', 'Max Drawdown (Período)'), recent: totals?.recent?.maxDD, past: totals?.past?.maxDD, pastTotal: totals?.past?.maxDD, isCurrency: true, isRisk: true },
+                    { label: t('portfolio.var95Risk', 'VaR 95% (Risco Prob.)'), recent: totals?.recent?.var95, past: totals?.past?.var95, pastTotal: totals?.past?.var95, isCurrency: true, isRisk: true },
+                    { label: t('portfolio.efficiencyLLDD', 'Eficiência (L/DD)'), recent: (totals?.recent?.profit / (totals?.recent?.maxDD || 1)) * 100, past: (totals?.past?.weightedProfit / (totals?.past?.maxDD || 1)) * 100, pastTotal: (totals?.past?.profit / (totals?.past?.maxDD || 1)) * 100, isPct: true }
                   ].map(m => (
                     <div key={m.label} style={{ display: 'flex', alignItems: 'center' }}>
                       <div style={{ flex: 1.2, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{m.label}</div>
@@ -1078,9 +1078,9 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                     </div>
                   ))}
                   <div style={{ marginTop: '0.5rem', padding: '0.8rem', background: 'rgba(56,189,248,0.05)', borderRadius: '6px', fontSize: '0.65rem', color: 'var(--accent-blue)', border: '1px solid rgba(56,189,248,0.1)' }}>
-                    🎯 <strong>Análise:</strong> O "Restante Ponderado" normaliza o passado para uma janela de 12 meses, permitindo uma comparação justa de performance entre as épocas.
+                    🎯 <strong>{t('common.details', 'Análise')}:</strong> {t('portfolio.analysisTip', 'O "Restante Ponderado" normaliza o passado para uma janela de 12 meses, permitindo uma comparação justa de performance entre as épocas.')}
                     <br/><br/>
-                    ⚠️ <strong>Nota:</strong> Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média para preencher lacunas.
+                    ⚠️ <strong>{t('common.error', 'Nota')}:</strong> {t('portfolio.dateWarning', 'Cuidado ao analisar essas métricas, pois se algum robô tiver o backtest em datas diferentes no portfólio, pode haver dados imprecisos ou calculados como média.')}
                   </div>
                 </div>
               </div>
@@ -1090,7 +1090,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
             {corr && Object.keys(corr).length >= 2 && (
               <>
                 <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
-                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Matriz de Correlação Diária</h3>
+                  <h3 style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.dailyCorrMatrix', 'Matriz de Correlação Diária')}</h3>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: '100%' }}>
                       <thead>
@@ -1125,10 +1125,10 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 <div className="card correlation-section" style={{ padding: '1.2rem', marginTop: '1.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      Matriz de Impacto de Risco de Drawdown ($)
+                      {t('portfolio.ddRiskMatrix', 'Matriz de Impacto de Risco de Drawdown ($)')}
                     </h3>
                     <span title="Esta matriz mede o impacto financeiro real da correlação de drawdown entre as estratégias no capital. Diagonal: Drawdown individual ajustado por peso (DD x Peso). Fora da diagonal: Risco compartilhado em dólares (valores positivos somam risco, valores negativos reduzem o risco por diversificação)." style={{ cursor: 'help', fontSize: '0.65rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>
-                      Como ler?
+                      {t('portfolio.howToRead', 'Como ler?')}
                     </span>
                   </div>
                   
@@ -1349,15 +1349,15 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '1.1rem' }}>📐</span>
                             <h3 style={{ margin: 0, fontSize: '0.85rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '700' }}>
-                              Cálculo Comparativo dos 6 Métodos no Portfólio Atual
+                              {t('portfolio.methodsTitle', 'Cálculo Comparativo dos 6 Métodos no Portfólio Atual')}
                             </h3>
                           </div>
                           <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                            Resultados quantitativos calculados em tempo real para o portfólio <strong>{localPortfolio?.name}</strong> (Capital: {fmtCurrency(cap)} | Target DD: {fmtCurrency(targetDd)}).
+                            {t('portfolio.methodsSubtitle', 'Resultados quantitativos calculados em tempo real para o portfólio')} <strong>{localPortfolio?.name}</strong> (Capital: {fmtCurrency(cap)} | Target DD: {fmtCurrency(targetDd)}).
                           </p>
                         </div>
                         <span style={{ fontSize: '0.65rem', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-blue)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '3px 8px', borderRadius: '12px', fontWeight: '600' }}>
-                          {nRobots} {nRobots === 1 ? 'Estratégia' : 'Estratégias'} Analisadas
+                          {nRobots} {t('portfolio.strategiesAnalyzed', 'Estratégias Analisadas')}
                         </span>
                       </div>
 
@@ -1368,8 +1368,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                              <strong style={{ fontSize: '0.82rem', color: 'var(--accent-blue)' }}>1. Nautilus Quant (Configuração Atual)</strong>
-                              <span style={{ fontSize: '0.6rem', background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Em Execução</span>
+                              <strong style={{ fontSize: '0.82rem', color: 'var(--accent-blue)' }}>{t('portfolio.method1Title', '1. Nautilus Quant (Configuração Atual)')}</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{t('portfolio.running', 'Em Execução')}</span>
                             </div>
                             
                             {/* Bloco de Métricas Calculadas */}
@@ -1406,8 +1406,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                              <strong style={{ fontSize: '0.82rem', color: '#34d399' }}>2. Hierarchical Risk Parity (HRP)</strong>
-                              <span style={{ fontSize: '0.6rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥇 Top Eficiência</span>
+                              <strong style={{ fontSize: '0.82rem', color: '#34d399' }}>{t('portfolio.method2Title', '2. Hierarchical Risk Parity (HRP)')}</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥇 {t('portfolio.topEfficiency', 'Top Eficiência')}</span>
                             </div>
 
                             {/* Bloco de Métricas Calculadas */}
@@ -1444,8 +1444,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(251, 191, 36, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                              <strong style={{ fontSize: '0.82rem', color: '#fbbf24' }}>3. Risk Parity (Paridade de Risco)</strong>
-                              <span style={{ fontSize: '0.6rem', background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥈 Equalização</span>
+                              <strong style={{ fontSize: '0.82rem', color: '#fbbf24' }}>{t('portfolio.method3Title', '3. Risk Parity (Paridade de Risco)')}</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥈 {t('portfolio.equalization', 'Equalização')}</span>
                             </div>
 
                             {/* Bloco de Métricas Calculadas */}
@@ -1482,8 +1482,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(248, 113, 113, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                              <strong style={{ fontSize: '0.82rem', color: '#f87171' }}>4. CVaR (Expected Shortfall 95%)</strong>
-                              <span style={{ fontSize: '0.6rem', background: 'rgba(248, 113, 113, 0.15)', color: '#f87171', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥉 Risco de Cauda</span>
+                              <strong style={{ fontSize: '0.82rem', color: '#f87171' }}>{t('portfolio.method4Title', '4. CVaR (Expected Shortfall 95%)')}</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(248, 113, 113, 0.15)', color: '#f87171', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>🥉 {t('portfolio.tailRisk', 'Risco de Cauda')}</span>
                             </div>
 
                             {/* Bloco de Métricas Calculadas */}
@@ -1520,8 +1520,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(192, 132, 252, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                              <strong style={{ fontSize: '0.82rem', color: '#c084fc' }}>5. Kelly Criterion (Half-Kelly)</strong>
-                              <span style={{ fontSize: '0.6rem', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Crescimento Ótimo</span>
+                              <strong style={{ fontSize: '0.82rem', color: '#c084fc' }}>{t('portfolio.method5Title', '5. Kelly Criterion (Half-Kelly)')}</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{t('portfolio.optimalGrowth', 'Crescimento Ótimo')}</span>
                             </div>
 
                             {/* Bloco de Métricas Calculadas */}
@@ -1558,8 +1558,8 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                         <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(148, 163, 184, 0.25)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                              <strong style={{ fontSize: '0.82rem', color: '#94a3b8' }}>6. Markowitz MVO (Max Sharpe)</strong>
-                              <span style={{ fontSize: '0.6rem', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Clássico</span>
+                              <strong style={{ fontSize: '0.82rem', color: '#94a3b8' }}>{t('portfolio.method6Title', '6. Markowitz MVO (Max Sharpe)')}</strong>
+                              <span style={{ fontSize: '0.6rem', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{t('portfolio.classic', 'Clássico')}</span>
                             </div>
 
                             {/* Bloco de Métricas Calculadas */}
