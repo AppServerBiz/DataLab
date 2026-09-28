@@ -1,0 +1,279 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Michroma&display=swap');
+
+:root {
+  /* Cores Base do Portal Nautilus */
+  --bg-main: #0B0E14;        /* Fundo principal profundo */
+  --bg-card: #181C25;        /* Fundo de cards e containers */
+  --bg-card-hover: #1E232F;  /* Hover técnico */
+  --bg-surface: #121620;     /* Superfícies intermediárias */
+  --bg-toolbar: #13171F;     /* Barras de controle */
+  
+  --text-main: #E2E8F0;      /* Branco acinzentado de leitura */
+  --text-muted: #64748B;     /* Subtítulos e labels */
+  --text-heading: #FFFFFF;   /* Títulos de alto contraste */
+  
+  --accent-blue: #38BDF8;    /* Destaques primários e links (Cyan) */
+  --accent-blue-hover: #7DD3FC;
+  --accent-green: #22C55E;   /* Lucro, positivo, Sharpe alto */
+  --accent-green-soft: rgba(34, 197, 94, 0.15);
+  --accent-red: #EF4444;     /* Prejuízo, Drawdown, risco */
+  --accent-red-soft: rgba(239, 68, 68, 0.15);
+  --accent-warning: #F59E0B; /* Alertas e volatilidade média */
+  --accent-purple: #A855F7;  /* IA, automações e benchmarks secundários */
+
+  --border-color: rgba(255, 255, 255, 0.05);
+  --border-medium: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 20px;
+  
+  --font-main: 'JetBrains Mono', monospace;
+  --font-header: 'Michroma', sans-serif;
+  
+  font-family: var(--font-main);
+  color: var(--text-main);
+  background-color: var(--bg-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-main);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrollbar Customizada Estilo Terminal Quant */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: #272f3d;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+}
+
+/* Typography Headings */
+.nautilus-title, h1.section-title {
+  font-family: var(--font-header);
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--text-heading);
+  margin-top: 0;
+  margin-bottom: 2rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.nautilus-card-title, h2.card-title {
+  font-family: var(--font-header);
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Grids & Cards */
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+
+.card-kpi {
+  display: flex;
+  flex-direction: column;
+  justifyContent: space-between;
+}
+
+.value-highlight {
+  font-family: var(--font-main);
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0.5rem 0;
+  letter-spacing: -1px;
+}
+
+/* Status & Color Helpers */
+.text-profit { color: var(--accent-green) !important; }
+.text-loss { color: var(--accent-red) !important; }
+.text-blue { color: var(--accent-blue) !important; }
+.text-muted { color: var(--text-muted) !important; }
+.text-warning { color: var(--accent-warning) !important; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-profit {
+  background: var(--accent-green-soft);
+  color: var(--accent-green);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-loss {
+  background: var(--accent-red-soft);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-blue {
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--accent-blue);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* Tables */
+.table-container {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  overflow-x: auto;
+  margin-bottom: 2rem;
+}
+
+.oakmont-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.oakmont-table th {
+  padding: 1.1rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.oakmont-table td {
+  padding: 1.1rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+  font-size: 0.9rem;
+}
+
+.oakmont-row:last-child td {
+  border-bottom: none;
+}
+
+.oakmont-row:hover td {
+  background-color: var(--bg-card-hover);
+}
+
+/* Buttons & Inputs */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-primary {
+  background-color: var(--accent-blue);
+  color: #000;
+}
+.btn-primary:hover {
+  background-color: var(--accent-blue-hover);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+}
+
+.btn-danger {
+  background-color: var(--accent-red-soft);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.btn-danger:hover {
+  background-color: rgba(239, 68, 68, 0.25);
+}
+
+.btn-success {
+  background-color: var(--accent-green-soft);
+  color: var(--accent-green);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.btn-success:hover {
+  background-color: rgba(34, 197, 94, 0.25);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--border-medium);
+}
+.btn-outline:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}

@@ -1,0 +1,160 @@
+/* ==========================================================================
+   NAUTILUS DESIGN SYSTEM - TEAR SHEET & QUANT REPORT STYLES
+   Suporte a A4 Vertical / Horizontal, Impressão e PDF Clean
+   ========================================================================== */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 12mm 12mm 12mm;
+  }
+
+  body {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    font-size: 10pt;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print, .toolbar-floating, .sidebar, nav {
+    display: none !important;
+  }
+
+  .report-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-after: always;
+  }
+
+  .report-page:last-child {
+    page-break-after: avoid;
+  }
+
+  /* Forçar quebras de página controladas */
+  .page-break {
+    page-break-before: always;
+  }
+
+  .avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-card {
+    background: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    box-shadow: none !important;
+  }
+
+  .report-table th {
+    background: #F8FAFC !important;
+    color: #0F172A !important;
+    border-bottom: 2px solid #0F172A !important;
+  }
+
+  .report-table td {
+    border-bottom: 1px solid #E2E8F0 !important;
+    color: #000000 !important;
+  }
+}
+
+/* Modo Tela / Preview A4 */
+.report-page {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 18mm 16mm;
+  margin: 20px auto;
+  background: #FFFFFF;
+  color: #0F172A;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+  font-family: 'JetBrains Mono', -apple-system, sans-serif;
+  position: relative;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #0F172A;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+
+.report-brand-title {
+  font-family: 'Michroma', sans-serif;
+  font-size: 18px;
+  color: #0284C7;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.report-brand-sub {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #64748B;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+.report-meta {
+  text-align: right;
+  font-size: 10px;
+  color: #475569;
+}
+
+.report-grid-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.report-kpi-box {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.report-kpi-label {
+  font-size: 9px;
+  color: #64748B;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.report-kpi-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0F172A;
+  margin-top: 4px;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  margin-top: 10px;
+}
+
+.report-table th {
+  background: #F1F5F9;
+  color: #334155;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border-bottom: 1px solid #CBD5E1;
+  text-align: left;
+}
+
+.report-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #F1F5F9;
+}

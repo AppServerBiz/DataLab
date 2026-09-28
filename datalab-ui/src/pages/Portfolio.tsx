@@ -1128,14 +1128,17 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                     <Line 
                       data={{
                         labels: (stats?.combined_curve || []).map((c: any) => c.day),
-                        datasets: Object.entries(stats?.robot_curves || {}).map(([name, curve]: any, idx: number) => ({
-                          label: name || 'Robô',
-                          data: Array.isArray(curve) ? curve.map((pt: any) => -(pt.dd || 0)) : [],
-                          borderColor: ROBOT_COLORS[idx % ROBOT_COLORS.length],
-                          borderWidth: 1.2,
-                          pointRadius: 0,
-                          fill: false
-                        }))
+                        datasets: Object.entries(stats?.robot_curves || {}).map(([name, curve]: any, idx: number) => {
+                          const cap = Number(localPortfolio?.capital || portfolio?.capital || 30000);
+                          return {
+                            label: name || 'Robô',
+                            data: Array.isArray(curve) ? curve.map((pt: any) => cap > 0 ? -((pt.dd || 0) / cap * 100) : 0) : [],
+                            borderColor: ROBOT_COLORS[idx % ROBOT_COLORS.length],
+                            borderWidth: 1.2,
+                            pointRadius: 0,
+                            fill: false
+                          };
+                        })
                       }}
                        options={{
                          maintainAspectRatio: false,
@@ -1148,13 +1151,13 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                            tooltip: {
                              callbacks: {
                                title: (items: any) => items[0]?.label || '',
-                               label: (context: any) => ` ${context.dataset.label}: ${fmtCurrency(context.raw)}`
+                               label: (context: any) => ` ${context.dataset.label}: ${fmtPct(context.raw)}`
                              }
                            }
                          },
                          scales: {
                            x: { ticks: { maxTicksLimit: 12, color: '#64748B', font: { size: 9 } }, grid: { display: false } },
-                           y: { max: 0, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748B', font: { size: 9 }, callback: (v: any) => fmtCurrency(v as number) } }
+                           y: { max: 0, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748B', font: { size: 9 }, callback: (v: any) => fmtPct(v as number) } }
                          }
                        }}
                     />

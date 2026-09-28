@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nautilus Design System — Showcase & Guia de Componentes</title>
+  <link rel="stylesheet" href="./css/nautilus.css">
+  <link rel="stylesheet" href="./reports/report-styles.css">
+  <style>
+    .showcase-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+    .component-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+    .color-swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
+    }
+    .color-swatch {
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .color-preview {
+      height: 48px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 16px;
+    }
+    .icon-box {
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="showcase-container">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+      <div>
+        <div style="font-size: 0.75rem; letter-spacing: 4px; color: var(--accent-blue); text-transform: uppercase; font-weight: 700; margin-bottom: 6px;">DESIGN SYSTEM</div>
+        <h1 class="nautilus-title" style="margin: 0;">Nautilus Quant UI Framework</h1>
+      </div>
+      <div>
+        <span class="badge badge-blue">v1.0.0 Standalone</span>
+      </div>
+    </div>
+
+    <!-- 1. Paleta de Cores -->
+    <div class="component-section">
+      <h2 class="nautilus-card-title">1. Cores e Identidade Quant</h2>
+      <div class="color-swatch-grid">
+        <div class="color-swatch">
+          <div class="color-preview" style="background: #0B0E14; border: 1px solid rgba(255,255,255,0.1);"></div>
+          <strong>Background Main</strong>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">#0B0E14</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-preview" style="background: #181C25;"></div>
+          <strong>Background Card</strong>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">#181C25</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-preview" style="background: #38BDF8;"></div>
+          <strong>Accent Cyan</strong>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">#38BDF8</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-preview" style="background: #22C55E;"></div>
+          <strong>Profit Green</strong>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">#22C55E</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-preview" style="background: #EF4444;"></div>
+          <strong>Loss / DD Red</strong>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">#EF4444</div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-preview" style="background: #F59E0B;"></div>
+          <strong>Warning Amber</strong>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">#F59E0B</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Badges & Botões -->
+    <div class="component-section">
+      <h2 class="nautilus-card-title">2. Ações e Badges Quantitativos</h2>
+      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px;">
+        <button class="btn btn-primary">Gerar Análise</button>
+        <button class="btn btn-success">Aprovar Portfólio</button>
+        <button class="btn btn-danger">Excluir Registro</button>
+        <button class="btn btn-outline">Filtrar Período</button>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <span class="badge badge-profit">Sharpe 2.45</span>
+        <span class="badge badge-profit">+34.8% Retorno</span>
+        <span class="badge badge-loss">-4.12% Drawdown</span>
+        <span class="badge badge-blue">14 Robôs Ativos</span>
+      </div>
+    </div>
+
+    <!-- 3. Stat Cards / KPIs -->
+    <div class="component-section">
+      <h2 class="nautilus-card-title">3. Indicadores de Desempenho (Stat Cards)</h2>
+      <div class="grid-cards" style="margin-bottom: 0;">
+        <div class="card card-kpi">
+          <h2 class="card-title">Lucro Líquido Acumulado</h2>
+          <div class="value-highlight text-profit">+$142,850.00</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Capital: $50,000</span>
+            <span class="badge badge-profit">+285.7%</span>
+          </div>
+        </div>
+        <div class="card card-kpi">
+          <h2 class="card-title">Max Drawdown Histórico</h2>
+          <div class="value-highlight text-loss">-$5,210.00</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Pico de Risco</span>
+            <span class="badge badge-loss">-3.64%</span>
+          </div>
+        </div>
+        <div class="card card-kpi">
+          <h2 class="card-title">Fator de Recuperação</h2>
+          <div class="value-highlight text-blue">27.4x</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Robustez Global</span>
+            <span class="badge badge-blue">Excelente</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Tabela de Estratégias / Portfólio -->
+    <div class="component-section">
+      <h2 class="nautilus-card-title">4. Tabela de Estratégias Quant</h2>
+      <div class="table-container" style="margin-bottom: 0;">
+        <table class="oakmont-table">
+          <thead>
+            <tr>
+              <th>Estratégia / Robô</th>
+              <th>Ativo</th>
+              <th>Lucro Líquido</th>
+              <th>Drawdown</th>
+              <th>Sharpe</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="oakmont-row">
+              <td><strong>Nautilus Momentum Alpha</strong></td>
+              <td><span class="text-blue">WINFUT</span></td>
+              <td class="text-profit">+$54,200.00</td>
+              <td class="text-loss">-$1,840.00</td>
+              <td>2.84</td>
+              <td><span class="badge badge-profit">Ativo</span></td>
+            </tr>
+            <tr class="oakmont-row">
+              <td><strong>Mean Reversion Scalper</strong></td>
+              <td><span class="text-blue">WDOFUT</span></td>
+              <td class="text-profit">+$38,150.00</td>
+              <td class="text-loss">-$1,210.00</td>
+              <td>2.10</td>
+              <td><span class="badge badge-profit">Ativo</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 5. Ícones Quant -->
+    <div class="component-section">
+      <h2 class="nautilus-card-title">5. Ícones Quantitativos Dedicados (SVG)</h2>
+      <div class="icon-grid">
+        <div class="icon-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><path d="M12 2a10 10 0 0 0-10 10c0 4.42 2.87 8.17 6.84 9.5"/><path d="M12 6a6 6 0 0 0-6 6c0 2.65 1.72 4.9 4.1 5.7"/><path d="M12 10a2 2 0 0 0-2 2c0 .88.57 1.63 1.37 1.9"/><circle cx="12" cy="12" r="0.5" fill="var(--accent-blue)"/></svg>
+          <span>Nautilus Core</span>
+        </div>
+        <div class="icon-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><path d="M9 3v4"/><rect x="6" y="7" width="6" height="8" rx="1"/><path d="M9 15v6"/><path d="M17 5v2"/><rect x="14" y="7" width="6" height="11" rx="1"/><path d="M17 18v3"/></svg>
+          <span>Candlestick</span>
+        </div>
+        <div class="icon-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M3 20h18"/><path d="M3 17l6-6 4 4 8-10"/><polyline points="15 5 21 5 21 11"/></svg>
+          <span>Curva Equity</span>
+        </div>
+        <div class="icon-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red)" stroke-width="2"><path d="M3 4h18"/><path d="M3 7l6 6 4-4 8 10"/><polyline points="21 13 21 19 15 19"/></svg>
+          <span>Drawdown</span>
+        </div>
+        <div class="icon-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 4v4"/><circle cx="9" cy="13" r="1" fill="var(--accent-blue)"/><circle cx="15" cy="13" r="1" fill="var(--accent-blue)"/><path d="M9 17h6"/></svg>
+          <span>Robô Quant</span>
+        </div>
+        <div class="icon-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>Tear Sheet</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

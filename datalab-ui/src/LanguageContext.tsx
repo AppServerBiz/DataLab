@@ -200,7 +200,7 @@ export const translations = {
   'portfolio.chartTop10Profit': { pt: 'Top 10 Robôs por Lucro Total ($)', en: 'Top 10 Robots by Total Profit ($)', es: 'Top 10 Robots por Beneficio Total ($)' },
   'portfolio.chartProfitDist': { pt: 'Distribuição de Lucro (%)', en: 'Profit Distribution (%)', es: 'Distribución de Beneficio (%)' },
   'portfolio.chartRealTimeDD': { pt: 'Exposição (Drawdown) em Tempo Real ($)', en: 'Real-Time Drawdown Exposure ($)', es: 'Exposición (Drawdown) en Tiempo Real ($)' },
-  'portfolio.chartIndividualDD': { pt: 'Drawdown Individual por Robô ($)', en: 'Individual Robot Drawdown ($)', es: 'Drawdown Individual por Robot ($)' },
+  'portfolio.chartIndividualDD': { pt: 'Drawdown Individual por Robô (%)', en: 'Individual Robot Drawdown (%)', es: 'Drawdown Individual por Robot (%)' },
   'portfolio.chartTop10DDDay': { pt: 'Top 10 Maiores Drawdowns (Dia)', en: 'Top 10 Greatest Drawdowns (Day)', es: 'Top 10 Mayores Drawdowns (Día)' },
 
   // Monthly Table

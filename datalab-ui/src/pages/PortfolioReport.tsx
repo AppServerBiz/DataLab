@@ -389,15 +389,12 @@ const PortfolioReport = () => {
         </div>
 
         {/* Key Metrics Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: '#e2e8f0', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '45px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1px', background: '#e2e8f0', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '45px' }}>
           {[
             { label: t('portfolio.monthlyProfit', 'Lucro Méd. Mês'), value: fmtCurrency(totals?.lucroMes || 0), color: (totals?.lucroMes || 0) >= 0 ? '#10b981' : '#ef4444' },
             { label: t('common.roi', 'ROI Mês'), value: fmtPct(totals?.roiMes || 0), color: (totals?.roiMes || 0) >= 0 ? '#10b981' : '#ef4444' },
             { label: t('portfolio.maxDD', 'DD Máx Portfólio'), value: fmtCurrency(totals?.ddMaxPortfolio || 0), color: '#ef4444' },
             { label: t('portfolio.ddMaxPct', 'DD Máx %'), value: fmtPct(totals?.ddMaxPct || 0), color: '#ef4444' },
-            
-            { label: t('portfolio.ddMaxSumDollar', 'DD Soma Individual'), value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), color: '#ef4444' },
-            { label: t('portfolio.ddMaxSumPct', 'DD Soma %'), value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), color: '#ef4444' },
             { 
               label: t('portfolio.var95', 'VaR 95% (Prob.)'), 
               value: (
@@ -411,7 +408,6 @@ const PortfolioReport = () => {
               color: '#f59e0b' 
             },
             { label: t('portfolio.riskBudget', 'Risk Budget Atual'), value: fmtCurrency(totals?.dme || portfolio.manual_dme || 0), color: '#0f172a' },
-
             { label: t('portfolio.llddFactor', 'Fator LL/DD'), value: fmt(totals?.llDdPct || 0) + '%', color: '#0b57d0' },
             { label: t('portfolio.totalTrades', 'Total Trades'), value: String(robots.reduce((s: any, r: any) => s + Number(r.total_trades || 0), 0)), color: '#0f172a' },
             { label: t('portfolio.sumLots', 'Soma Lotes'), value: fmt(robots.reduce((s: any, r: any) => s + Number(r.total_lots || 0) * (r.weight || 1), 0), 2), color: '#0f172a' },
@@ -697,14 +693,17 @@ const PortfolioReport = () => {
               <Line 
                 data={{
                   labels: (stats?.combined_curve || []).map((c: any) => c.day),
-                  datasets: Object.entries(stats?.robot_curves || {}).map(([name, curve]: any, idx: number) => ({
-                    label: name,
-                    data: Array.isArray(curve) ? curve.map((pt: any) => -(pt.dd || 0)) : [],
-                    borderColor: ROBOT_COLORS[idx % ROBOT_COLORS.length],
-                    borderWidth: 1.2,
-                    pointRadius: 0,
-                    fill: false
-                  }))
+                  datasets: Object.entries(stats?.robot_curves || {}).map(([name, curve]: any, idx: number) => {
+                    const cap = Number(portfolio?.capital || 30000);
+                    return {
+                      label: name,
+                      data: Array.isArray(curve) ? curve.map((pt: any) => cap > 0 ? -((pt.dd || 0) / cap * 100) : 0) : [],
+                      borderColor: ROBOT_COLORS[idx % ROBOT_COLORS.length],
+                      borderWidth: 1.2,
+                      pointRadius: 0,
+                      fill: false
+                    };
+                  })
                 }}
                 options={getPrintChartOptions({
                   plugins: {
@@ -712,11 +711,18 @@ const PortfolioReport = () => {
                     tooltip: {
                       callbacks: {
                         title: (items: any) => items[0]?.label || '',
-                        label: (context: any) => ` ${context.dataset.label}: ${fmtCurrency(context.raw)}`
+                        label: (context: any) => ` ${context.dataset.label}: ${fmtPct(context.raw)}`
                       }
                     }
                   },
-                  scales: { y: { max: 0 } }
+                  scales: {
+                    y: {
+                      max: 0,
+                      ticks: {
+                        callback: (v: any) => fmtPct(v as number)
+                      }
+                    }
+                  }
                 })}
               />
             </div>
