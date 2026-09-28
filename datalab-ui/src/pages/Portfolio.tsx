@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -217,7 +217,7 @@ const AvailableRobotsList = ({ existingIds }: { existingIds: string[] }) => {
 
 // ─── Portfolio Detail View ─────────────────────────────────
 const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [localPortfolio, setLocalPortfolio] = useState(portfolio);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -331,7 +331,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
   const existingRobotIds = robots.map((r: any) => r.robot_id);
 
   // Compute Drawdown Correlation Risk Matrix ($)
-  const matrices = (() => {
+  const matrices = useMemo(() => {
     if (!stats?.correlation || Object.keys(stats.correlation).length === 0) return null;
     const rNames = Object.keys(stats.correlation);
     if (rNames.length === 0) return null;
@@ -339,25 +339,29 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
     const corr = stats.correlation;
     const capital = Number(localPortfolio?.capital || portfolio?.capital || 30000);
 
+    // Pre-index robots by name for O(1) lookups
+    const robotMap = new Map<string, any>();
+    robots.forEach((r: any) => robotMap.set(r.name, r));
+
     const ddCorrelationRisk: { [rA: string]: { [rB: string]: number } } = {};
     rNames.forEach(rA => {
       ddCorrelationRisk[rA] = {};
-      const robotA = robots.find((r: any) => r.name === rA);
+      const robotA = robotMap.get(rA);
       const ddA = Number(robotA?.max_dd_from_csv || robotA?.max_dd_equity || 0);
       const wA = robotA?.weight ?? 1;
+      const wDDA = ddA * wA;
 
       rNames.forEach(rB => {
-        const robotB = robots.find((r: any) => r.name === rB);
-        const ddB = Number(robotB?.max_dd_from_csv || robotB?.max_dd_equity || 0);
-        const wB = robotB?.weight ?? 1;
-
         if (rA === rB) {
           // Diagonal: Weighted Drawdown
-          ddCorrelationRisk[rA][rB] = ddA * wA;
+          ddCorrelationRisk[rA][rB] = wDDA;
         } else {
-          // Off-diagonal: Correlation Drawdown Risk Impact (Geometric Mean in $)
+          const robotB = robotMap.get(rB);
+          const ddB = Number(robotB?.max_dd_from_csv || robotB?.max_dd_equity || 0);
+          const wB = robotB?.weight ?? 1;
           const baseCorr = corr?.[rA]?.[rB] ?? 0;
-          ddCorrelationRisk[rA][rB] = baseCorr * Math.sqrt((ddA * wA) * (ddB * wB));
+          // Off-diagonal: Correlation Drawdown Risk Impact (Geometric Mean in $)
+          ddCorrelationRisk[rA][rB] = baseCorr * Math.sqrt(Math.max(0, wDDA * (ddB * wB)));
         }
       });
     });
@@ -365,7 +369,201 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
     return {
       ddCorrelationRisk
     };
-  })();
+  }, [stats?.correlation, robots, localPortfolio?.capital, portfolio?.capital]);
+
+  // Pre-calculate average correlation factor per robot
+  const robotAvgCorrMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!corr) return map;
+    Object.keys(corr).forEach(rName => {
+      const row = corr[rName];
+      if (!row) return;
+      const otherValues = Object.entries(row)
+        .filter(([k]) => k !== rName)
+        .map(([, v]) => Math.abs(Number(v) || 0));
+      if (otherValues.length === 0) {
+        map.set(rName, '0%');
+      } else {
+        const avg = otherValues.reduce((s, v) => s + v, 0) / otherValues.length;
+        map.set(rName, `${fmt(avg * 100, 0)}%`);
+      }
+    });
+    return map;
+  }, [corr]);
+
+  // 6 Métodos de Composição e Risco otimizados com useMemo
+  const methodsData = useMemo(() => {
+    const cap = Number(localPortfolio?.capital || portfolio?.capital || 30000);
+    const targetDd = Number(localPortfolio?.target_dd || portfolio?.target_dd || 5000);
+    const activeRobots = robots || [];
+    const nRobots = activeRobots.length;
+
+    if (nRobots === 0) return null;
+
+    // 1. DADOS BASE DOS ROBÔS
+    const robotMetrics = activeRobots.map((r: any) => {
+      const w = Number(r.weight || 1);
+      const dd = Number(r.max_dd_from_csv || r.max_dd_equity || 1000);
+      const profit = Number(r.avg_profit_per_month || 0);
+      const trades = Number(r.total_trades || 100);
+      const winRate = Number(r.win_rate ?? (r.profitable_trades && trades ? (r.profitable_trades / trades) * 100 : 55)) / 100;
+      const pfVal = Number(r.profit_factor || 1.5);
+      const sharpe = Number(r.sharpe_ratio || 1.0);
+      const asset = r.asset || 'GERAL';
+      return { ...r, w, dd, profit, trades, winRate, pfVal, sharpe, asset };
+    });
+
+    // ── MÉTODO 1: NAUTILUS QUANT (Atual) ──────────────────────────
+    const nautilusProfit = totals?.lucroMes ?? robotMetrics.reduce((s: number, r: any) => s + r.profit * r.w, 0);
+    const nautilusDD = totals?.ddMaxPortfolio ?? robotMetrics.reduce((s: number, r: any) => s + r.dd * r.w, 0);
+    const nautilusROI = cap > 0 ? (nautilusProfit / cap) * 100 : 0;
+    const nautilusDDPct = cap > 0 ? (nautilusDD / cap) * 100 : 0;
+    const nautilusLLDD = nautilusDD > 0 ? (nautilusProfit / nautilusDD) * 100 : 0;
+
+    // ── MÉTODO 2: HIERARCHICAL RISK PARITY (HRP) ──────────────────
+    const clusters: { [key: string]: typeof robotMetrics } = {};
+    robotMetrics.forEach((r: any) => {
+      const key = r.asset ? r.asset.toUpperCase().trim() : 'OUTROS';
+      if (!clusters[key]) clusters[key] = [];
+      clusters[key].push(r);
+    });
+    const clusterKeys = Object.keys(clusters);
+    const clusterWeights: { [key: string]: number } = {};
+    let totalClusterInvRisk = 0;
+    clusterKeys.forEach(k => {
+      const avgClusterDD = clusters[k].reduce((s, r) => s + r.dd, 0) / clusters[k].length;
+      const invRisk = 1 / Math.max(100, avgClusterDD);
+      clusterWeights[k] = invRisk;
+      totalClusterInvRisk += invRisk;
+    });
+    const hrpWeights: { [id: string]: number } = {};
+    clusterKeys.forEach(k => {
+      const cShare = totalClusterInvRisk > 0 ? clusterWeights[k] / totalClusterInvRisk : (1 / clusterKeys.length);
+      let intraInvSum = 0;
+      clusters[k].forEach(r => intraInvSum += (1 / Math.max(100, r.dd)));
+      clusters[k].forEach(r => {
+        const intraShare = intraInvSum > 0 ? (1 / Math.max(100, r.dd)) / intraInvSum : (1 / clusters[k].length);
+        hrpWeights[r.id || r.robot_id || r.name] = cShare * intraShare;
+      });
+    });
+
+    const hrpRawDD = robotMetrics.reduce((s: number, r: any) => {
+      const id = r.id || r.robot_id || r.name;
+      return s + r.dd * (hrpWeights[id] || (1 / nRobots));
+    }, 0);
+    const hrpScale = hrpRawDD > 0 ? Math.min(3, targetDd / hrpRawDD) : 1;
+    const hrpSuggestedLots = robotMetrics.map((r: any) => {
+      const id = r.id || r.robot_id || r.name;
+      return { name: r.name, lot: Math.max(0.1, Number(((hrpWeights[id] || (1 / nRobots)) * hrpScale * nRobots).toFixed(1))), pct: Number(((hrpWeights[id] || 0) * 100).toFixed(1)) };
+    });
+    const hrpEstProfit = robotMetrics.reduce((s: number, r: any) => {
+      const id = r.id || r.robot_id || r.name;
+      const lot = Math.max(0.1, (hrpWeights[id] || (1 / nRobots)) * hrpScale * nRobots);
+      return s + r.profit * (lot / Math.max(1, r.w));
+    }, 0);
+    const hrpEstDD = hrpRawDD * (hrpScale * nRobots / 2.2);
+    const hrpROI = cap > 0 ? (hrpEstProfit / cap) * 100 : 0;
+    const hrpLLDD = hrpEstDD > 0 ? (hrpEstProfit / hrpEstDD) * 100 : 0;
+
+    // ── MÉTODO 3: RISK PARITY (Equal Risk Contribution) ───────────
+    let sumInvDD = 0;
+    robotMetrics.forEach((r: any) => { sumInvDD += (1 / Math.max(100, r.dd)); });
+    const rpWeights = robotMetrics.map((r: any) => {
+      const pct = sumInvDD > 0 ? (1 / Math.max(100, r.dd)) / sumInvDD : (1 / nRobots);
+      return { ...r, pct };
+    });
+    const rpTargetSingleDD = targetDd / Math.max(1, Math.sqrt(nRobots));
+    const rpLots = rpWeights.map((r: any) => {
+      const targetLot = Math.max(0.1, Number((rpTargetSingleDD / (r.dd / Math.max(1, r.w))).toFixed(1)));
+      return { name: r.name, lot: targetLot, pct: Number((r.pct * 100).toFixed(1)) };
+    });
+    const rpEstProfit = rpWeights.reduce((s: number, r: any, i: number) => s + (r.profit / Math.max(1, r.w)) * rpLots[i].lot, 0);
+    const rpEstDD = targetDd * 0.88;
+    const rpROI = cap > 0 ? (rpEstProfit / cap) * 100 : 0;
+    const rpLLDD = rpEstDD > 0 ? (rpEstProfit / rpEstDD) * 100 : 0;
+
+    // ── MÉTODO 4: CVaR (Expected Shortfall 95%) ────────────────────
+    let cvar95Val = (totals?.var95 ? (totals.var95 / 100 * cap) : (nautilusDD * 0.85)) * 1.28;
+    if (stats?.combined_curve && stats.combined_curve.length > 10) {
+      const allDDs = stats.combined_curve.map((c: any) => Number(c.dd || 0)).sort((a: number, b: number) => a - b);
+      const cutoffIdx = Math.floor(allDDs.length * 0.95);
+      const worst5pct = allDDs.slice(cutoffIdx);
+      if (worst5pct.length > 0) {
+        cvar95Val = worst5pct.reduce((s: number, v: number) => s + v, 0) / worst5pct.length;
+      }
+    }
+    const cvarPct = cap > 0 ? (cvar95Val / cap) * 100 : 0;
+    const cvarSafeCap = cvar95Val > 0 ? cvar95Val * 1.5 : cap;
+
+    // ── MÉTODO 5: KELLY CRITERION (Fractional Half-Kelly) ─────────
+    const kellyMetrics = robotMetrics.map((r: any) => {
+      const p = Math.min(0.85, Math.max(0.35, r.winRate));
+      const q = 1 - p;
+      const b = Math.max(0.5, r.pfVal);
+      let fStar = (p * b - q) / b;
+      fStar = Math.max(0.02, Math.min(0.40, fStar));
+      const halfKelly = fStar * 0.5;
+      return { ...r, fStar, halfKelly, pctCap: Number((halfKelly * 100).toFixed(1)) };
+    });
+    const sumHalfKelly = kellyMetrics.reduce((s: number, k: any) => s + k.halfKelly, 0);
+    const kellyAlocTotal = cap * Math.min(1.0, sumHalfKelly);
+    const kellyEstProfit = nautilusProfit * (sumHalfKelly > 0 ? sumHalfKelly * 1.2 : 1);
+    const kellyEstDD = nautilusDD * (sumHalfKelly > 0 ? sumHalfKelly * 1.15 : 1);
+    const kellyROI = cap > 0 ? (kellyEstProfit / cap) * 100 : 0;
+    const kellyLLDD = kellyEstDD > 0 ? (kellyEstProfit / kellyEstDD) * 100 : 0;
+
+    // ── MÉTODO 6: MARKOWITZ (MVO - Max Sharpe) ────────────────────
+    let sumSharpePos = 0;
+    robotMetrics.forEach((r: any) => { sumSharpePos += Math.max(0.1, r.sharpe); });
+    const mvoWeights = robotMetrics.map((r: any) => {
+      const pct = sumSharpePos > 0 ? Math.max(0.1, r.sharpe) / sumSharpePos : (1 / nRobots);
+      const lot = Math.max(0.1, Number((pct * nRobots * 1.2).toFixed(1)));
+      return { name: r.name, lot, pct: Number((pct * 100).toFixed(1)) };
+    });
+    const mvoEstProfit = robotMetrics.reduce((s: number, r: any, i: number) => s + (r.profit / Math.max(1, r.w)) * mvoWeights[i].lot, 0);
+    const mvoEstDD = robotMetrics.reduce((s: number, r: any, i: number) => s + (r.dd / Math.max(1, r.w)) * mvoWeights[i].lot, 0) * 0.82;
+    const mvoROI = cap > 0 ? (mvoEstProfit / cap) * 100 : 0;
+    const mvoLLDD = mvoEstDD > 0 ? (mvoEstProfit / mvoEstDD) * 100 : 0;
+
+    return {
+      cap,
+      targetDd,
+      nRobots,
+      robotMetrics,
+      nautilusProfit,
+      nautilusDD,
+      nautilusROI,
+      nautilusDDPct,
+      nautilusLLDD,
+      clusterKeys,
+      hrpSuggestedLots,
+      hrpEstProfit,
+      hrpEstDD,
+      hrpROI,
+      hrpLLDD,
+      rpLots,
+      rpEstProfit,
+      rpEstDD,
+      rpROI,
+      rpLLDD,
+      rpTargetSingleDD,
+      cvar95Val,
+      cvarPct,
+      cvarSafeCap,
+      kellyMetrics,
+      sumHalfKelly,
+      kellyAlocTotal,
+      kellyEstProfit,
+      kellyEstDD,
+      kellyROI,
+      kellyLLDD,
+      mvoWeights,
+      mvoEstProfit,
+      mvoEstDD,
+      mvoROI,
+      mvoLLDD
+    };
+  }, [stats, robots, totals, localPortfolio?.capital, portfolio?.capital, localPortfolio?.target_dd, portfolio?.target_dd]);
 
   const btnCommonStyle: any = {
     fontSize: '0.65rem',
@@ -672,13 +870,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                              {fmt((r.var_95_dd_cap * r.initial_deposit * r.weight / (totals?.dme || portfolio.capital || 1)) * 100)}%
                            </td>
                            <td style={{ color: '#F59E0B', fontWeight: '800' }}>
-                             {(() => {
-                               if (!corr || !corr[r.name]) return '0%';
-                               const values = Object.values(corr[r.name]).filter((v: any, i) => Object.keys(corr[r.name])[i] !== r.name);
-                               if (values.length === 0) return '0%';
-                               const avg = values.reduce((s: any, v: any) => s + Math.abs(v), 0) / values.length;
-                               return fmt(avg * 100, 0) + '%';
-                             })()}
+                             {robotAvgCorrMap.get(r.name) || '0%'}
                            </td>
                            <td style={{ color: 'var(--accent-blue)', fontWeight: '700' }}>{fmt(r.ll_dd_pct)}%</td>
                            <td style={{ color: 'var(--accent-green)', fontSize: '0.75rem', fontWeight: '800' }}>{fmtPct(r.avg_profit_per_month * r.weight / (portfolio.capital || 1) * 100)}</td>
@@ -1206,141 +1398,45 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 </div>
 
                 {/* Guia Metodológico & Cálculos Comparativos: 6 Métodos de Composição e Risco */}
-                {(() => {
-                  const cap = Number(localPortfolio?.capital || portfolio?.capital || 30000);
-                  const targetDd = Number(localPortfolio?.target_dd || portfolio?.target_dd || 5000);
-                  const activeRobots = robots || [];
-                  const nRobots = activeRobots.length;
-
-                  if (nRobots === 0) return null;
-
-                  // 1. DADOS BASE DOS ROBÔS
-                  const robotMetrics = activeRobots.map((r: any) => {
-                    const w = Number(r.weight || 1);
-                    const dd = Number(r.max_dd_from_csv || r.max_dd_equity || 1000);
-                    const profit = Number(r.avg_profit_per_month || 0);
-                    const trades = Number(r.total_trades || 100);
-                    const winRate = Number(r.win_rate ?? (r.profitable_trades && trades ? (r.profitable_trades / trades) * 100 : 55)) / 100;
-                    const pfVal = Number(r.profit_factor || 1.5);
-                    const sharpe = Number(r.sharpe_ratio || 1.0);
-                    const asset = r.asset || 'GERAL';
-                    return { ...r, w, dd, profit, trades, winRate, pfVal, sharpe, asset };
-                  });
-
-                  // ── MÉTODO 1: NAUTILUS QUANT (Atual) ──────────────────────────
-                  const nautilusProfit = totals?.lucroMes ?? robotMetrics.reduce((s: number, r: any) => s + r.profit * r.w, 0);
-                  const nautilusDD = totals?.ddMaxPortfolio ?? robotMetrics.reduce((s: number, r: any) => s + r.dd * r.w, 0);
-                  const nautilusROI = cap > 0 ? (nautilusProfit / cap) * 100 : 0;
-                  const nautilusDDPct = cap > 0 ? (nautilusDD / cap) * 100 : 0;
-                  const nautilusLLDD = nautilusDD > 0 ? (nautilusProfit / nautilusDD) * 100 : 0;
-
-                  // ── MÉTODO 2: HIERARCHICAL RISK PARITY (HRP) ──────────────────
-                  // Agrupa robôs por classe/cluster de ativo e faz alocação hierárquica inversa de variância/DD
-                  const clusters: { [key: string]: typeof robotMetrics } = {};
-                  robotMetrics.forEach((r: any) => {
-                    const key = r.asset ? r.asset.toUpperCase().trim() : 'OUTROS';
-                    if (!clusters[key]) clusters[key] = [];
-                    clusters[key].push(r);
-                  });
-                  const clusterKeys = Object.keys(clusters);
-                  const clusterWeights: { [key: string]: number } = {};
-                  let totalClusterInvRisk = 0;
-                  clusterKeys.forEach(k => {
-                    const avgClusterDD = clusters[k].reduce((s, r) => s + r.dd, 0) / clusters[k].length;
-                    const invRisk = 1 / Math.max(100, avgClusterDD);
-                    clusterWeights[k] = invRisk;
-                    totalClusterInvRisk += invRisk;
-                  });
-                  const hrpWeights: { [id: string]: number } = {};
-                  clusterKeys.forEach(k => {
-                    const cShare = clusterWeights[k] / totalClusterInvRisk;
-                    let intraInvSum = 0;
-                    clusters[k].forEach(r => intraInvSum += (1 / Math.max(100, r.dd)));
-                    clusters[k].forEach(r => {
-                      const intraShare = (1 / Math.max(100, r.dd)) / intraInvSum;
-                      hrpWeights[r.id || r.robot_id || r.name] = cShare * intraShare;
-                    });
-                  });
-                  // Escalar para o capital / target DD
-                  const hrpRawDD = robotMetrics.reduce((s: number, r: any) => {
-                    const id = r.id || r.robot_id || r.name;
-                    return s + r.dd * (hrpWeights[id] || (1 / nRobots));
-                  }, 0);
-                  const hrpScale = hrpRawDD > 0 ? Math.min(3, targetDd / hrpRawDD) : 1;
-                  const hrpSuggestedLots = robotMetrics.map((r: any) => {
-                    const id = r.id || r.robot_id || r.name;
-                    return { name: r.name, lot: Math.max(0.1, Number(((hrpWeights[id] || (1 / nRobots)) * hrpScale * nRobots).toFixed(1))), pct: Number(((hrpWeights[id] || 0) * 100).toFixed(1)) };
-                  });
-                  const hrpEstProfit = robotMetrics.reduce((s: number, r: any) => {
-                    const id = r.id || r.robot_id || r.name;
-                    const lot = Math.max(0.1, (hrpWeights[id] || (1 / nRobots)) * hrpScale * nRobots);
-                    return s + r.profit * (lot / Math.max(1, r.w));
-                  }, 0);
-                  const hrpEstDD = hrpRawDD * (hrpScale * nRobots / 2.2); // descorrelação inter-clusters
-                  const hrpROI = cap > 0 ? (hrpEstProfit / cap) * 100 : 0;
-                  const hrpLLDD = hrpEstDD > 0 ? (hrpEstProfit / hrpEstDD) * 100 : 0;
-
-                  // ── MÉTODO 3: RISK PARITY (Equal Risk Contribution) ───────────
-                  let sumInvDD = 0;
-                  robotMetrics.forEach((r: any) => { sumInvDD += (1 / Math.max(100, r.dd)); });
-                  const rpWeights = robotMetrics.map((r: any) => {
-                    const pct = (1 / Math.max(100, r.dd)) / sumInvDD;
-                    return { ...r, pct };
-                  });
-                  const rpTargetSingleDD = targetDd / Math.max(1, Math.sqrt(nRobots));
-                  const rpLots = rpWeights.map((r: any) => {
-                    const targetLot = Math.max(0.1, Number((rpTargetSingleDD / (r.dd / Math.max(1, r.w))).toFixed(1)));
-                    return { name: r.name, lot: targetLot, pct: Number((r.pct * 100).toFixed(1)) };
-                  });
-                  const rpEstProfit = rpWeights.reduce((s: number, r: any, i: number) => s + (r.profit / Math.max(1, r.w)) * rpLots[i].lot, 0);
-                  const rpEstDD = targetDd * 0.88;
-                  const rpROI = cap > 0 ? (rpEstProfit / cap) * 100 : 0;
-                  const rpLLDD = rpEstDD > 0 ? (rpEstProfit / rpEstDD) * 100 : 0;
-
-                  // ── MÉTODO 4: CVaR (Expected Shortfall 95%) ────────────────────
-                  // Extrai da curva combinada real a média dos 5% piores drawdowns
-                  let cvar95Val = (totals?.var95 ? (totals.var95 / 100 * cap) : (nautilusDD * 0.85)) * 1.28;
-                  if (stats?.combined_curve && stats.combined_curve.length > 10) {
-                    const allDDs = stats.combined_curve.map((c: any) => Number(c.dd || 0)).sort((a: number, b: number) => a - b);
-                    const cutoffIdx = Math.floor(allDDs.length * 0.95);
-                    const worst5pct = allDDs.slice(cutoffIdx);
-                    if (worst5pct.length > 0) {
-                      cvar95Val = worst5pct.reduce((s: number, v: number) => s + v, 0) / worst5pct.length;
-                    }
-                  }
-                  const cvarPct = cap > 0 ? (cvar95Val / cap) * 100 : 0;
-                  const cvarSafeCap = cvar95Val > 0 ? cvar95Val * 1.5 : cap; // Colchão recomendado
-
-                  // ── MÉTODO 5: KELLY CRITERION (Fractional Half-Kelly) ─────────
-                  // f* = (p*b - q)/b  | b = (PF - 1)
-                  const kellyMetrics = robotMetrics.map((r: any) => {
-                    const p = Math.min(0.85, Math.max(0.35, r.winRate));
-                    const q = 1 - p;
-                    const b = Math.max(0.5, r.pfVal);
-                    let fStar = (p * b - q) / b;
-                    fStar = Math.max(0.02, Math.min(0.40, fStar)); // cap racional
-                    const halfKelly = fStar * 0.5;
-                    return { ...r, fStar, halfKelly, pctCap: Number((halfKelly * 100).toFixed(1)) };
-                  });
-                  const sumHalfKelly = kellyMetrics.reduce((s: number, k: any) => s + k.halfKelly, 0);
-                  const kellyAlocTotal = cap * Math.min(1.0, sumHalfKelly);
-                  const kellyEstProfit = nautilusProfit * (sumHalfKelly > 0 ? sumHalfKelly * 1.2 : 1);
-                  const kellyEstDD = nautilusDD * (sumHalfKelly > 0 ? sumHalfKelly * 1.15 : 1);
-                  const kellyROI = cap > 0 ? (kellyEstProfit / cap) * 100 : 0;
-                  const kellyLLDD = kellyEstDD > 0 ? (kellyEstProfit / kellyEstDD) * 100 : 0;
-
-                  // ── MÉTODO 6: MARKOWITZ (MVO - Max Sharpe) ────────────────────
-                  let sumSharpePos = 0;
-                  robotMetrics.forEach((r: any) => { sumSharpePos += Math.max(0.1, r.sharpe); });
-                  const mvoWeights = robotMetrics.map((r: any) => {
-                    const pct = Math.max(0.1, r.sharpe) / sumSharpePos;
-                    const lot = Math.max(0.1, Number((pct * nRobots * 1.2).toFixed(1)));
-                    return { name: r.name, lot, pct: Number((pct * 100).toFixed(1)) };
-                  });
-                  const mvoEstProfit = robotMetrics.reduce((s: number, r: any, i: number) => s + (r.profit / Math.max(1, r.w)) * mvoWeights[i].lot, 0);
-                  const mvoEstDD = robotMetrics.reduce((s: number, r: any, i: number) => s + (r.dd / Math.max(1, r.w)) * mvoWeights[i].lot, 0) * 0.82;
-                  const mvoROI = cap > 0 ? (mvoEstProfit / cap) * 100 : 0;
-                  const mvoLLDD = mvoEstDD > 0 ? (mvoEstProfit / mvoEstDD) * 100 : 0;
+                {methodsData && (() => {
+                  const {
+                    cap,
+                    targetDd,
+                    nRobots,
+                    robotMetrics,
+                    nautilusProfit,
+                    nautilusDD,
+                    nautilusROI,
+                    nautilusDDPct,
+                    nautilusLLDD,
+                    clusterKeys,
+                    hrpSuggestedLots,
+                    hrpEstProfit,
+                    hrpEstDD,
+                    hrpROI,
+                    hrpLLDD,
+                    rpLots,
+                    rpEstProfit,
+                    rpEstDD,
+                    rpROI,
+                    rpLLDD,
+                    rpTargetSingleDD,
+                    cvar95Val,
+                    cvarPct,
+                    cvarSafeCap,
+                    kellyMetrics,
+                    sumHalfKelly,
+                    kellyAlocTotal,
+                    kellyEstProfit,
+                    kellyEstDD,
+                    kellyROI,
+                    kellyLLDD,
+                    mvoWeights,
+                    mvoEstProfit,
+                    mvoEstDD,
+                    mvoROI,
+                    mvoLLDD
+                  } = methodsData;
 
                   return (
                     <div className="card" style={{ padding: '1.4rem', marginTop: '1.5rem', background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
