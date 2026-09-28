@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { fetchPortfolios, fetchPortfolioRobots } from '../api';
 import { Network, FolderLock, Printer } from 'lucide-react';
+import { useLanguage } from '../LanguageContext';
 
 const fmtNumber = (val: number, decimals = 2) => val.toFixed(decimals);
 
 export default function Transmitir() {
+  const { t } = useLanguage();
   const [lockedPortfolios, setLockedPortfolios] = useState<any[]>([]);
   const [robotsByPortfolio, setRobotsByPortfolio] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
@@ -38,35 +40,35 @@ export default function Transmitir() {
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Carregando dados de transmissão...</div>;
+    return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>{t('common.loading', 'Carregando dados de transmissão...')}</div>;
   }
 
   return (
     <div className="transmitir-page">
       <div className="flex-between no-print" style={{ marginBottom: '1.8rem' }}>
         <h1 className="section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Network size={20} /> Transmissão VPS
+          <Network size={20} /> {t('transmit.title', 'Transmissão VPS')}
         </h1>
         <button className="btn btn-success" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Printer size={16} /> Imprimir
+          <Printer size={16} /> {t('transmit.print', 'Imprimir')}
         </button>
       </div>
 
       <div className="print-header" style={{ display: 'none', marginBottom: '1rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
-         <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#000' }}>DATA_LAB Nautilus — Transmissão VPS</h1>
+         <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#000' }}>DATA_LAB Nautilus — {t('transmit.title', 'Transmissão VPS')}</h1>
          <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#333' }}>Relatório Gerencial de Lotes — Impresso em: {now}</p>
       </div>
 
       <div style={{ marginBottom: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem', maxWidth: '800px' }} className="no-print">
-        Abaixo estão listados todos os robôs contidos em <strong>Portfólios Travados</strong>. Utilize esses dados para configurar o balanceamento exato de Lotes e Parciais no ambiente da sua VPS no MT5.
+        {t('transmit.subtitle', 'Abaixo estão listados todos os robôs contidos em Portfólios Travados. Utilize esses dados para configurar o balanceamento exato de Lotes e Parciais no ambiente da sua VPS no MT5.')}
       </div>
 
       {lockedPortfolios.length === 0 && (
         <div style={{ padding: '3rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.05)' }}>
           <FolderLock size={32} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
-          <h3 style={{ margin: '0 0 0.5rem', color: '#fff' }}>Nenhum portfólio travado</h3>
+          <h3 style={{ margin: '0 0 0.5rem', color: '#fff' }}>{t('transmit.noLocked', 'Nenhum portfólio travado')}</h3>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            Acesse a página de "Gerenciar Portfólio", adicione robôs e clique em "Travar" para prepará-los para transmissão.
+            {t('transmit.onlyLocked', 'Acesse a página de "Gerenciar Portfólio", adicione robôs e clique em "Travar" para prepará-los para transmissão.')}
           </p>
         </div>
       )}

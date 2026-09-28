@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { useLanguage } from '../LanguageContext';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -17,10 +18,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   message,
   onConfirm,
   onCancel,
-  confirmLabel = 'Confirmar',
+  confirmLabel,
   isDanger = true
 }) => {
+  const { t } = useLanguage();
   if (!isOpen) return null;
+
+  const resolvedConfirmLabel = confirmLabel || t('common.confirm', 'Confirmar');
 
   return (
     <div style={{
@@ -70,7 +74,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             }} 
             onClick={onCancel}
           >
-            Cancelar
+            {t('common.cancel', 'Cancelar')}
           </button>
           <button 
             className={`btn ${isDanger ? 'btn-danger' : 'btn-primary'}`} 
@@ -81,7 +85,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             onClick={onConfirm}
           >
             {isDanger && <Trash2 size={14} style={{ marginRight: '0.4rem' }} />}
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </button>
         </div>
       </div>

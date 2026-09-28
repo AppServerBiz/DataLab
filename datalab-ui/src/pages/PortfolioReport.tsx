@@ -5,9 +5,10 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, Title, Tooltip, Legend, Filler, BarElement, ArcElement
 } from 'chart.js';
-import { Printer, Download, X, Loader2, RefreshCw } from 'lucide-react';
+import { Printer, Download, X, Loader2, RefreshCw, Globe } from 'lucide-react';
 import { ProfitabilityChart } from '../components/ProfitabilityChart';
 import { fetchPortfolios, fetchPortfolioStats } from '../api';
+import { useLanguage, type Language } from '../LanguageContext';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
 
@@ -76,6 +77,7 @@ const ddRiskTextColorPrint = (val: number, capital: number) => {
 };
 
 const PortfolioReport = () => {
+  const { language, setLanguage, t } = useLanguage();
   const params = useParams();
   const [searchParams] = useSearchParams();
   const portfolioIdFromUrl = params.portfolioId || searchParams.get('id');
@@ -251,8 +253,99 @@ const PortfolioReport = () => {
   });
 
 
+  const languages: { code: Language; label: string; flag: string }[] = [
+    { code: 'pt', label: 'PT', flag: '🇧🇷' },
+    { code: 'en', label: 'EN', flag: '🇺🇸' },
+    { code: 'es', label: 'ES', flag: '🇪🇸' }
+  ];
+
   return (
     <div style={{ background: '#f1f5f9', minHeight: '100vh', padding: '40px 0' }}>
+
+      {/* Floating Control Toolbar (No Print) */}
+      <div className="no-print" style={{
+        position: 'sticky',
+        top: '20px',
+        zIndex: 1000,
+        width: '794px',
+        margin: '0 auto 20px auto',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: '#13171F',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '10px',
+        padding: '10px 16px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+      }}>
+        {/* Language Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#94a3b8', fontSize: '11px', fontWeight: 600 }}>
+            <Globe size={14} />
+            <span>{t('sidebar.language', 'Idioma')}:</span>
+          </div>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {languages.map(lang => (
+              <button
+                key={lang.code}
+                onClick={() => setLanguage(lang.code)}
+                style={{
+                  background: language === lang.code ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+                  color: language === lang.code ? '#000' : '#cbd5e1',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span>{lang.flag}</span>
+                <span>{lang.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Print / Close Actions */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => window.print()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#22c55e',
+              color: '#000',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 14px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer'
+            }}
+          >
+            <Printer size={14} /> {t('transmit.print', 'Imprimir')} / PDF
+          </button>
+          <button
+            onClick={() => window.close()}
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              color: '#94a3b8',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+          >
+            {t('common.cancel', 'Fechar')}
+          </button>
+        </div>
+      </div>
 
       {/* Main Report Document */}
       <div 
@@ -286,11 +379,11 @@ const PortfolioReport = () => {
         {/* Global Targets section */}
         <div style={{ display: 'flex', gap: '50px', marginBottom: '45px' }}>
            <div style={{ borderLeft: '4px solid #000', paddingLeft: '18px' }}>
-             <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Capital Alocado</div>
+             <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>{t('portfolio.fundCapital', 'Capital Alocado')}</div>
              <div style={{ fontSize: '28px', fontWeight: '900' }}>{fmtCurrency(portfolio.capital)}</div>
            </div>
            <div style={{ borderLeft: '4px solid #000', paddingLeft: '18px' }}>
-             <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>Drawdown Alvo</div>
+             <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>{t('portfolio.targetDD', 'Drawdown Alvo')}</div>
              <div style={{ fontSize: '28px', fontWeight: '900' }}>{fmtCurrency(portfolio.target_dd)}</div>
            </div>
         </div>
@@ -298,15 +391,15 @@ const PortfolioReport = () => {
         {/* Key Metrics Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: '#e2e8f0', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '45px' }}>
           {[
-            { label: 'Lucro Méd. Mês', value: fmtCurrency(totals?.lucroMes || 0), color: (totals?.lucroMes || 0) >= 0 ? '#10b981' : '#ef4444' },
-            { label: 'ROI Mês', value: fmtPct(totals?.roiMes || 0), color: (totals?.roiMes || 0) >= 0 ? '#10b981' : '#ef4444' },
-            { label: 'DD Máx Portfólio', value: fmtCurrency(totals?.ddMaxPortfolio || 0), color: '#ef4444' },
+            { label: t('portfolio.monthlyProfit', 'Lucro Méd. Mês'), value: fmtCurrency(totals?.lucroMes || 0), color: (totals?.lucroMes || 0) >= 0 ? '#10b981' : '#ef4444' },
+            { label: t('common.roi', 'ROI Mês'), value: fmtPct(totals?.roiMes || 0), color: (totals?.roiMes || 0) >= 0 ? '#10b981' : '#ef4444' },
+            { label: t('portfolio.maxDD', 'DD Máx Portfólio'), value: fmtCurrency(totals?.ddMaxPortfolio || 0), color: '#ef4444' },
             { label: 'DD Máx %', value: fmtPct(totals?.ddMaxPct || 0), color: '#ef4444' },
             
             { label: 'DD Soma Individual', value: fmtCurrency(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0)), color: '#ef4444' },
             { label: 'DD Soma %', value: fmtPct(robots.reduce((s: any, r: any) => s + Number(r.max_dd_from_csv || r.max_dd_equity || 0) * r.weight, 0) / portfolio.capital * 100), color: '#ef4444' },
             { 
-              label: 'VaR 95% (Prob.)', 
+              label: t('portfolio.var95', 'VaR 95% (Prob.)'), 
               value: (
                 <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.1' }}>
                   <span>{fmtPct(totals?.var95 || 0)}</span>
@@ -335,7 +428,7 @@ const PortfolioReport = () => {
         <div style={{ marginBottom: '60px' }}>
           <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '900', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
-            Composição Detalhada do Portfólio
+            {t('portfolio.allocatedRobots', 'Composição Detalhada do Portfólio')}
           </h3>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
             <thead>

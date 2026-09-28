@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ProfitabilityChart } from '../components/ProfitabilityChart';
+import { useLanguage } from '../LanguageContext';
 import { Line, Bar, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -216,6 +217,7 @@ const AvailableRobotsList = ({ existingIds }: { existingIds: string[] }) => {
 
 // ─── Portfolio Detail View ─────────────────────────────────
 const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
+  const { t } = useLanguage();
   const [localPortfolio, setLocalPortfolio] = useState(portfolio);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -460,10 +462,10 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
         {/* Header */}
         <div className="flex-between" style={{ marginBottom: '1.8rem' }}>
           <div>
-            <button className="btn" style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)', marginBottom: '0.6rem' }} onClick={onBack}>← Voltar</button>
+            <button className="btn" style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)', marginBottom: '0.6rem' }} onClick={onBack}>← {t('common.back', 'Voltar')}</button>
             <h1 className="section-title" style={{ margin: 0, fontSize: '1.6rem', fontWeight: '800' }}>{localPortfolio.name}</h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: '0.4rem 0 0', opacity: 0.9 }}>
-              Capital: <strong style={{ color: 'var(--accent-green)', fontSize: '1.2rem' }}>{fmtCurrency(localPortfolio.capital)}</strong> · DD Alvo: <strong style={{ color: 'var(--accent-red)', fontSize: '1.2rem' }}>{fmtCurrency(localPortfolio.target_dd)}</strong>
+              {t('common.capital', 'Capital')}: <strong style={{ color: 'var(--accent-green)', fontSize: '1.2rem' }}>{fmtCurrency(localPortfolio.capital)}</strong> · {t('portfolio.targetDD', 'DD Alvo')}: <strong style={{ color: 'var(--accent-red)', fontSize: '1.2rem' }}>{fmtCurrency(localPortfolio.target_dd)}</strong>
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem' }}>
@@ -472,7 +474,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               style={{ ...btnCommonStyle, background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} 
               onClick={loadStats}
             >
-              <RefreshCw size={13} className={loading ? 'spin' : ''} /> {loading ? 'Sincronizando...' : 'Atualizar'}
+              <RefreshCw size={13} className={loading ? 'spin' : ''} /> {loading ? t('common.syncing', 'Sincronizando...') : t('common.update', 'Atualizar')}
             </button>
             <button 
               className="btn" 
@@ -485,14 +487,14 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               onClick={toggleLock}
               disabled={locking}
             >
-              {localPortfolio.locked ? <><Unlock size={13} /> DESTRAVAR</> : <><Lock size={13} /> TRAVAR</>}
+              {localPortfolio.locked ? <><Unlock size={13} /> {t('portfolio.unlock', 'DESTRAVAR')}</> : <><Lock size={13} /> {t('portfolio.lock', 'TRAVAR')}</>}
             </button>
             <button 
               className="btn" 
               style={{ ...btnCommonStyle, background: 'rgba(56,189,248,0.1)', color: 'var(--accent-blue)', border: '1px solid rgba(56,189,248,0.2)' }} 
               onClick={() => setShowEditPortfolio(true)}
             >
-              <Edit2 size={13} /> Editar Fundo
+              <Edit2 size={13} /> {t('common.edit', 'Editar')}
             </button>
             <button 
               className="btn" 
@@ -500,7 +502,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               onClick={handleCopyPortfolio}
               disabled={copying}
             >
-              {copying ? <Loader size={13} className="spin" /> : <Copy size={13} />} COPIAR
+              {copying ? <Loader size={13} className="spin" /> : <Copy size={13} />} {t('portfolio.copy', 'COPIAR')}
             </button>
             <a 
               href={getExportPortfolioUrl(portfolio.id)} 
@@ -526,7 +528,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
               }} 
               onClick={handleDownloadPDF}
             >
-              <BarChart2 size={13} /> Relatório
+              <BarChart2 size={13} /> {t('portfolio.exportReport', 'Relatório')}
             </button>
             <button 
               className="btn" 
@@ -1826,6 +1828,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
 };
 // ─── Portfolio List ────────────────────────────────────────
 const Portfolio = () => {
+  const { t } = useLanguage();
   const { portfolioId } = useParams<{ portfolioId: string }>();
   const navigate = useNavigate();
   const [portfolios, setPortfolios] = useState<any[]>([]);
@@ -1896,23 +1899,23 @@ const Portfolio = () => {
   return (
     <div>
       <div className="flex-between" style={{ marginBottom: '1.8rem' }}>
-        <h1 className="section-title" style={{ margin: 0, fontSize: '1.2rem' }}>Portfólios</h1>
+        <h1 className="section-title" style={{ margin: 0, fontSize: '1.2rem' }}>{t('portfolio.title', 'Portfólios')}</h1>
         <div style={{ display: 'flex', gap: '0.6rem' }}>
-          <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', fontSize: '0.8rem' }} onClick={load}><RefreshCw size={13} /> Atualizar</button>
-          <button className="btn btn-success" style={{ fontSize: '0.8rem' }} onClick={() => setShowCreate(true)}><Plus size={14} /> Novo Portfólio</button>
+          <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', fontSize: '0.8rem' }} onClick={load}><RefreshCw size={13} /> {t('common.update', 'Atualizar')}</button>
+          <button className="btn btn-success" style={{ fontSize: '0.8rem' }} onClick={() => setShowCreate(true)}><Plus size={14} /> {t('portfolio.newPortfolio', 'Novo Portfólio')}</button>
         </div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '6rem', color: 'var(--text-muted)' }}>
           <Loader size={32} style={{ animation: 'spin 1s linear infinite', marginBottom: '1rem' }} />
-          <p>Carregando portfólios...</p>
+          <p>{t('common.loading', 'Carregando portfólios...')}</p>
         </div>
       ) : portfolios.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '6rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.01)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.08)' }}>
           <FolderOpen size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-          <p style={{ marginBottom: '1.5rem' }}>Nenhum portfólio criado ainda.</p>
-          <button className="btn btn-success" onClick={() => setShowCreate(true)}><Plus size={14} /> Criar Primeiro Portfólio</button>
+          <p style={{ marginBottom: '1.5rem' }}>{t('home.noPortfolios', 'Nenhum portfólio criado ainda.')}</p>
+          <button className="btn btn-success" onClick={() => setShowCreate(true)}><Plus size={14} /> {t('home.createPortfolio', 'Criar Primeiro Portfólio')}</button>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>

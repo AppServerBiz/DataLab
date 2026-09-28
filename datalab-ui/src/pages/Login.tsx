@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, ShieldAlert, ShieldCheck, Terminal, Compass, Cpu, Globe } from 'lucide-react';
+import { useLanguage, type Language } from '../LanguageContext';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -20,6 +21,7 @@ interface SecurityDetails {
 }
 
 export default function Login({ onLoginSuccess }: LoginProps) {
+  const { language, setLanguage, t } = useLanguage();
   const [username, setUsername] = useState('');
   const [showUsername, setShowUsername] = useState(false);
   const [error, setError] = useState('');
@@ -122,7 +124,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     
     const uName = username.trim();
     if (!uName) {
-      setError('Informe seu usuário.');
+      setError(t('login.enterUser', 'Informe seu usuário.'));
       return;
     }
     
@@ -134,18 +136,60 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         localStorage.setItem('investhub_user', '579524@Bizuco');
         onLoginSuccess();
       } else {
-        setError('Credencial inválida. Verifique seus dados de acesso.');
+        setError(t('login.invalidKey', 'Credencial inválida. Verifique seus dados de acesso.'));
       }
     } catch {
-      setError('Erro ao conectar ao servidor. Tente novamente.');
+      setError(t('common.error', 'Erro ao conectar ao servidor. Tente novamente.'));
     } finally {
       setLoading(false);
     }
   };
 
+  const languages: { code: Language; label: string; flag: string }[] = [
+    { code: 'pt', label: 'PT', flag: '🇧🇷' },
+    { code: 'en', label: 'EN', flag: '🇺🇸' },
+    { code: 'es', label: 'ES', flag: '🇪🇸' }
+  ];
+
   return (
     <div className="login-overlay" style={{ flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', padding: '2rem 1rem' }}>
       <div className="login-bg" />
+
+      {/* Top Floating Language Switcher */}
+      <div style={{
+        display: 'flex',
+        gap: '4px',
+        background: 'rgba(19, 23, 31, 0.85)',
+        backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '8px',
+        padding: '4px 6px',
+        zIndex: 10
+      }}>
+        {languages.map(lang => (
+          <button
+            key={lang.code}
+            onClick={() => setLanguage(lang.code)}
+            style={{
+              background: language === lang.code ? 'var(--accent-blue)' : 'transparent',
+              color: language === lang.code ? '#000' : 'var(--text-muted)',
+              border: 'none',
+              borderRadius: '5px',
+              padding: '4px 10px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>{lang.flag}</span>
+            <span>{lang.label}</span>
+          </button>
+        ))}
+      </div>
 
       <div className="login-card" style={{ marginBottom: 0 }}>
         {/* Logo */}
@@ -154,8 +198,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           <div className="hub-sub" style={{ fontSize: '0.85rem', letterSpacing: '4px', color: '#fff', fontWeight: 600, marginTop: '4px' }}>DATA_LAB</div>
         </div>
 
-        <h2>Bem-vindo de volta</h2>
-        <p>Acesse a plataforma com sua credencial.</p>
+        <h2>{t('login.welcomeBack', 'Bem-vindo de volta')}</h2>
+        <p>{t('login.accessMsg', 'Acesse a plataforma com sua credencial.')}</p>
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="password-input-wrapper">
@@ -179,14 +223,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             </button>
           </div>
           <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? 'Autenticando...' : 'Entrar no Sistema'}
+            {loading ? t('login.authenticating', 'Autenticando...') : t('login.enterBtn', 'Entrar no Sistema')}
           </button>
         </form>
 
         {error && <div className="login-error" style={{ marginTop: '0.75rem' }}>{error}</div>}
 
         <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-          Acesso exclusivo a Nautilus Investing.
+          {t('login.exclusive', 'Acesso exclusivo a Nautilus Investing.')}
         </div>
       </div>
 
@@ -220,7 +264,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.5rem' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f87171', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              <ShieldAlert size={14} /> SISTEMA DE MONITORAMENTO ATIVO
+              <ShieldAlert size={14} /> {t('login.monitoringActive', 'SISTEMA DE MONITORAMENTO ATIVO')}
             </span>
             <span style={{ fontSize: '0.65rem', color: '#64748b', background: 'rgba(255,255,255,0.04)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
               SEC-ID: #{Math.floor(100000 + Math.random() * 900000)}
@@ -229,39 +273,39 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
           {/* Alert Message for Hacker Deterrent */}
           <div style={{ color: '#fca5a5', background: 'rgba(239, 68, 68, 0.08)', padding: '0.65rem', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.15)', marginBottom: '0.75rem', lineHeight: '1.4' }}>
-            <strong style={{ color: '#ef4444' }}>ATENÇÃO:</strong> Tentativas de acesso não autorizado, força bruta ou varredura de portas serão registradas e reportadas imediatamente às autoridades competentes de segurança cibernética. Seus metadados de conexão estão sendo gravados em tempo real.
+            <strong style={{ color: '#ef4444' }}>ATENÇÃO:</strong> {t('login.warningNotice')}
           </div>
 
           {/* Live Data Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.4rem', color: '#94a3b8' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '4px 6px', borderRadius: '4px' }}>
-              <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}><Globe size={11} /> Endereço IP:</span>
+              <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}><Globe size={11} /> {t('login.ipAddress', 'Endereço IP:')}</span>
               <strong style={{ color: '#38bdf8' }}>{secData.ip}</strong>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '4px 6px', borderRadius: '4px' }}>
-              <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}><Terminal size={11} /> Geolocalização:</span>
+              <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}><Terminal size={11} /> {t('login.geolocation', 'Geolocalização:')}</span>
               <span style={{ color: '#cbd5e1', textAlign: 'right' }}>
                 {secData.city && secData.city !== 'Detectando...' ? `${secData.city}, ${secData.region} - ${secData.country}` : secData.country}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '4px 6px', borderRadius: '4px' }}>
-              <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}><Compass size={11} /> Provedor (ISP):</span>
+              <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}><Compass size={11} /> {t('login.isp', 'Provedor (ISP):')}</span>
               <span style={{ color: '#cbd5e1', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '240px' }} title={secData.isp}>
                 {secData.isp}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '4px 6px', borderRadius: '4px' }}>
-              <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}><Cpu size={11} /> Sistema / Hardware:</span>
+              <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}><Cpu size={11} /> {t('login.systemHardware', 'Sistema / Hardware:')}</span>
               <span style={{ color: '#cbd5e1' }}>
                 {secData.os} ({secData.cores} Cores)
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '4px 6px', borderRadius: '4px' }}>
-              <span style={{ color: '#64748b' }}>Navegador / Resolução:</span>
+              <span style={{ color: '#64748b' }}>{t('login.browserResolution', 'Navegador / Resolução:')}</span>
               <span style={{ color: '#cbd5e1' }}>
                 {secData.browser} @ {secData.screenRes.split(' ')[0]}
               </span>
@@ -269,7 +313,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
             {secData.gpu && secData.gpu !== 'Não detectada' && (
               <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '4px 6px', borderRadius: '4px', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                <span style={{ color: '#64748b' }}>GPU / Vídeo:</span>
+                <span style={{ color: '#64748b' }}>{t('login.gpuVideo', 'GPU / Vídeo:')}</span>
                 <span style={{ color: '#a7f3d0', fontSize: '0.65rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '240px' }} title={secData.gpu}>
                   {secData.gpu.replace("ANGLE (", "").replace(" Direct3D11 vs_5_0 ps_5_0)", "")}
                 </span>
@@ -279,7 +323,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
           {/* Footer of card */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.65rem', color: '#4ade80' }}>
-            <ShieldCheck size={12} /> Assinatura Digital TLS_AES_256_GCM ativada para este terminal.
+            <ShieldCheck size={12} /> {t('login.tlsSignature', 'Assinatura Digital TLS_AES_256_GCM ativada para este terminal.')}
           </div>
         </div>
       )}

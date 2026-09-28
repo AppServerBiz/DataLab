@@ -6,6 +6,7 @@ import {
   ChevronRight, Database, Clock, ArrowUpRight, ShieldAlert, Edit2, Award, Zap, TrendingDown
 } from 'lucide-react';
 import { fetchRobots, fetchPortfolios, fetchComparativo, fetchPortfolioStats } from '../api';
+import { useLanguage } from '../LanguageContext';
 import { Bar, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement,
@@ -28,6 +29,7 @@ const ROBOT_COLORS = [
 ];
 
 const Home = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [data, setData] = useState({
     robots: [] as any[],
@@ -243,7 +245,7 @@ const Home = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--text-muted)' }}>
         <div style={{ textAlign: 'center' }}>
           <Activity className="spin" size={32} style={{ marginBottom: '1rem', color: 'var(--accent-blue)' }} />
-          <p>Sincronizando DataLab...</p>
+          <p>{t('common.syncing', 'Sincronizando DataLab...')}</p>
         </div>
       </div>
     );
@@ -253,9 +255,9 @@ const Home = () => {
     <div className="animate-in" style={{ paddingBottom: '3rem' }}>
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
-        <h1 className="section-title" style={{ marginBottom: '0.5rem' }}>Visão Geral</h1>
+        <h1 className="section-title" style={{ marginBottom: '0.5rem' }}>{t('home.title', 'Visão Geral')}</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          Bem-vindo ao centro de comando DataLab. Monitore os melhores ativos, analise eficiência de risco x retorno e gerencie portfólios.
+          {t('home.welcome', 'Bem-vindo ao centro de comando DataLab. Monitore os melhores ativos, analise eficiência de risco x retorno e gerencie portfólios.')}
         </p>
       </div>
 
@@ -266,10 +268,10 @@ const Home = () => {
             <div>
               <h3 style={{ margin: 0, fontSize: '0.95rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Award size={18} style={{ color: 'var(--accent-blue)' }} />
-                Top 5 Robôs por {topRobotsMetric === 'profit' ? 'Lucratividade ($)' : topRobotsMetric === 'dd' ? 'Drawdown ($)' : 'LL/DD (%)'}
+                {t('home.top5Title', 'Top 5 Robôs por')} {topRobotsMetric === 'profit' ? `${t('home.metricProfit', 'Lucratividade')} ($)` : topRobotsMetric === 'dd' ? `${t('home.metricDD', 'Drawdown')} ($)` : t('home.metricLLDD', 'LL/DD (%)')}
               </h3>
               <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Selecione a métrica desejada para visualizar o gráfico dos robôs de maior performance no repositório. Nomes completos exibidos.
+                {t('home.top5Desc', 'Selecione a métrica desejada para visualizar o gráfico dos robôs de maior performance no repositório. Nomes completos exibidos.')}
               </p>
             </div>
             
@@ -284,7 +286,7 @@ const Home = () => {
                   transition: 'all 0.2s'
                 }}
               >
-                Lucratividade
+                {t('home.metricProfit', 'Lucratividade')}
               </button>
               <button 
                 onClick={() => setTopRobotsMetric('dd')}
@@ -295,7 +297,7 @@ const Home = () => {
                   transition: 'all 0.2s'
                 }}
               >
-                Drawdown
+                {t('home.metricDD', 'Drawdown')}
               </button>
               <button 
                 onClick={() => setTopRobotsMetric('lldd')}
@@ -306,7 +308,7 @@ const Home = () => {
                   transition: 'all 0.2s'
                 }}
               >
-                LL/DD %
+                {t('home.metricLLDD', 'LL/DD %')}
               </button>
             </div>
           </div>
@@ -316,7 +318,7 @@ const Home = () => {
               <Bar data={chartData} options={chartOptions as any} />
             ) : (
               <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Nenhum dado de robô aprovado disponível.
+                {t('home.noDataRobots', 'Nenhum dado de robô aprovado disponível.')}
               </div>
             )}
           </div>
@@ -326,10 +328,10 @@ const Home = () => {
         <div style={{ marginBottom: '2rem' }}>
           <div style={{ marginBottom: '1.2rem' }}>
             <h4 style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
-              Top 5 Robôs — Detalhado Risco × Retorno
+              {t('home.top5CardsTitle', 'Top 5 Robôs — Detalhado Risco × Retorno')}
             </h4>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Detalhamento individual de cada robô no repositório com dados de performance e alocação de multiplicadores.
+              {t('home.top5CardsDesc', 'Detalhamento individual de cada robô no repositório com dados de performance e alocação de multiplicadores.')}
             </p>
           </div>
 
@@ -430,14 +432,14 @@ const Home = () => {
             <div>
               <h3 style={{ margin: 0, fontSize: '0.95rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <TrendingUp size={18} style={{ color: 'var(--accent-green)' }} />
-                Curva Combinada Acumulada — Top 5 Robôs ($)
+                {t('home.combinedCurveTitle', 'Curva Combinada Acumulada — Top 5 Robôs ($)')}
               </h3>
               <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Simulação da curva de capital unificada baseada no peso e performance histórica combinada dos 5 robôs líderes.
+                {t('home.combinedCurveDesc', 'Simulação da curva de capital unificada baseada no peso e performance histórica combinada dos 5 robôs líderes.')}
               </p>
             </div>
             <span style={{ fontSize: '0.75rem', fontWeight: 900, background: 'rgba(34, 197, 94, 0.15)', color: 'var(--accent-green)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-              Capital Inicial: $100,000
+              Capital: $100,000
             </span>
           </div>
 
@@ -456,7 +458,7 @@ const Home = () => {
               Central de Ações Data_Lab
             </h3>
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: '1.4' }}>
-              Acesse rapidamente a captura de relatórios MT5, a montagem e simulação de fundos em portfólio ou consulte a IA Nautilus para análises quantitativas avançadas.
+              {t('home.welcome')}
             </p>
           </div>
 
@@ -466,21 +468,21 @@ const Home = () => {
               onClick={() => navigate('/diagnostico')}
               style={{ background: 'rgba(56, 189, 248, 0.12)', color: 'var(--accent-blue)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '0.6rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
-              <UploadCloud size={16} /> CAPTURAR ROBÔS
+              <UploadCloud size={16} /> {t('sidebar.diagnostico')}
             </button>
             <button 
               className="btn" 
               onClick={() => navigate('/portfolio')}
               style={{ background: 'rgba(34, 197, 94, 0.12)', color: 'var(--accent-green)', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '0.6rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
-              <BarChart2 size={16} /> ALOCAÇÃO DE PORTFÓLIO
+              <BarChart2 size={16} /> {t('sidebar.portfolio')}
             </button>
             <button 
               className="btn" 
               onClick={() => navigate('/ia')}
               style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#A855F7', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '0.6rem 1rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
-              <Sparkles size={16} /> AI ANALYTICS
+              <Sparkles size={16} /> {t('sidebar.ia')}
             </button>
           </div>
         </div>
@@ -492,10 +494,10 @@ const Home = () => {
           <div>
             <h3 style={{ margin: 0, fontSize: '0.95rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <TrendingUp size={18} style={{ color: 'var(--accent-green)' }} />
-              Top 5 Melhores Portfólios (Risco × Retorno)
+              {t('home.topPortfoliosTitle', 'Top 5 Melhores Portfólios (Risco × Retorno)')}
             </h3>
             <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Classificados pela maior eficiência de retorno relativo ao drawdown máximo (Fator LL/DD).
+              {t('home.topPortfoliosDesc', 'Classificados pela maior eficiência de retorno relativo ao drawdown máximo (Fator LL/DD).')}
             </p>
           </div>
 
@@ -504,7 +506,7 @@ const Home = () => {
             style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}
             onClick={() => navigate('/portfolio')}
           >
-            Ver Todos
+            {t('common.all', 'Ver Todos')}
           </button>
         </div>
 
@@ -531,41 +533,41 @@ const Home = () => {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: 900, background: 'rgba(34, 197, 94, 0.15)', color: 'var(--accent-green)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                      #{idx + 1} TOP RISCO/RETORNO
+                      #{idx + 1} TOP
                     </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.robotCount} Robôs</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.robotCount} {t('home.robotsCount', 'robôs alocados')}</span>
                   </div>
                   <h4 style={{ margin: '0 0 0.6rem', color: '#fff', fontSize: '1rem', fontWeight: 800 }}>{p.name}</h4>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', fontSize: '0.75rem', marginBottom: '1rem' }}>
                     <div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>Lucro Mês</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>{t('portfolio.monthlyProfit', 'Lucro Mês')}</div>
                       <div style={{ color: 'var(--accent-green)', fontWeight: 800 }}>{fmtCurrency(p.lucroMes)}</div>
                     </div>
                     <div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>DD Máximo</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>{t('common.drawdown', 'DD Máximo')}</div>
                       <div style={{ color: 'var(--accent-red)', fontWeight: 800 }}>{fmtCurrency(p.ddMax)}</div>
                     </div>
                     <div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>ROI Mês</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>{t('common.roi', 'ROI Mês')}</div>
                       <div style={{ color: '#fff', fontWeight: 800 }}>{fmtPct(p.roi)}</div>
                     </div>
                     <div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>Índice LL/DD</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>LL/DD</div>
                       <div style={{ color: 'var(--accent-blue)', fontWeight: 900 }}>{p.llddRatio.toFixed(2)}×</div>
                     </div>
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--accent-green)', fontSize: '0.75rem', fontWeight: 700, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '0.6rem' }}>
-                  <span>Acessar Relatório</span>
+                  <span>{t('home.viewPortfolio', 'Ver Portfólio')}</span>
                   <ChevronRight size={14} />
                 </div>
               </div>
             ))
           ) : (
             <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem', gridColumn: '1 / -1' }}>
-              Nenhum portfólio disponível para cálculo de risco x retorno.
+              {t('home.noPortfolios', 'Nenhum portfólio cadastrado ainda.')}
             </div>
           )}
         </div>
@@ -575,38 +577,38 @@ const Home = () => {
       <div>
         <div style={{ marginBottom: '1rem' }}>
           <h3 style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>
-            Resumo Operacional de Ativos
+            {t('portfolio.metricsOverview', 'Resumo Operacional de Ativos')}
           </h3>
         </div>
 
         <div className="grid-cards">
           <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/repositorio')}>
             <div className="flex-between">
-              <h2 className="card-title">Estratégias Aprovadas</h2>
+              <h2 className="card-title">{t('repo.approvedRobots', 'Estratégias Aprovadas')}</h2>
               <Database size={20} className="text-blue" />
             </div>
             <div className="value-highlight">{data.robots.length}</div>
-            <p className="text-muted">No repositório pronto para uso</p>
+            <p className="text-muted">{t('repo.subtitle')}</p>
           </div>
 
           <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/portfolio')}>
             <div className="flex-between">
-              <h2 className="card-title">Portfólios Ativos</h2>
+              <h2 className="card-title">{t('sidebar.portfolio')}</h2>
               <Briefcase size={20} className="text-green" />
             </div>
             <div className="value-highlight">{data.portfolios.length}</div>
-            <p className="text-muted">Fundos em acompanhamento</p>
+            <p className="text-muted">{t('home.topPortfoliosTitle')}</p>
           </div>
 
           <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/diagnostico')}>
             <div className="flex-between">
-              <h2 className="card-title">Diagnósticos Pendentes</h2>
+              <h2 className="card-title">{t('diag.title')}</h2>
               <Clock size={20} className="text-yellow" />
             </div>
             <div className="value-highlight" style={{ color: data.pending > 0 ? 'var(--accent-red)' : 'inherit' }}>
               {data.pending}
             </div>
-            <p className="text-muted">Relatórios aguardando validação</p>
+            <p className="text-muted">{t('repo.pendingRobots')}</p>
           </div>
         </div>
       </div>

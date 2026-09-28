@@ -10,6 +10,7 @@ import IA from './pages/IA';
 import StrategyStudio from './pages/StrategyStudio';
 import PortfolioReport from './pages/PortfolioReport';
 import Login from './pages/Login';
+import { LanguageProvider } from './LanguageContext';
 import './index.css';
 
 export const AppContext = createContext<any>(null);
@@ -18,11 +19,13 @@ function App() {
   const [pendingBacktests, setPendingBacktests] = useState<any[]>([]);
 
   return (
-    <AppContext.Provider value={{ pendingBacktests, setPendingBacktests }}>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </AppContext.Provider>
+    <LanguageProvider>
+      <AppContext.Provider value={{ pendingBacktests, setPendingBacktests }}>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </AppContext.Provider>
+    </LanguageProvider>
   );
 }
 

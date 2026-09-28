@@ -8,7 +8,10 @@ import {
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { RobotTable, DDModal, InfoModal } from './Diagnostico';
+import { useLanguage } from '../LanguageContext';
+
 const Repositorio = () => {
+  const { t } = useLanguage();
   const [robots, setRobots] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem('nautilus_repositorio_cache_v2');
@@ -85,34 +88,34 @@ const Repositorio = () => {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
           <Loader size={32} style={{ animation: 'spin 1s linear infinite', marginBottom: '1rem' }} />
-          <p>Sincronizando repositório...</p>
+          <p>{t('common.syncing', 'Sincronizando repositório...')}</p>
         </div>
       ) : (
         <>
           <div className="flex-between" style={{ marginBottom: '1.8rem' }}>
-            <h1 className="section-title" style={{ margin: 0, fontSize: '1.2rem' }}>Repositório de Estratégias</h1>
+            <h1 className="section-title" style={{ margin: 0, fontSize: '1.2rem' }}>{t('repo.title', 'Repositório de Estratégias')}</h1>
             <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', fontSize: '0.8rem' }} onClick={() => load()}>
-              <RefreshCw size={13} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Sincronizando...' : 'Atualizar'}
+              <RefreshCw size={13} className={isSyncing ? 'spin' : ''} /> {isSyncing ? t('common.syncing', 'Sincronizando...') : t('common.update', 'Atualizar')}
             </button>
           </div>
 
           {pending.length > 0 && (
             <section style={{ marginBottom: '2.5rem' }}>
-              <h2 style={{ color: 'var(--accent-blue)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '0.8rem' }}>Sessão de Diagnóstico</h2>
+              <h2 style={{ color: 'var(--accent-blue)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '0.8rem' }}>{t('repo.pendingRobots', 'Robôs Pendentes')}</h2>
               <RobotTable robots={pending} onApprove={handleApprove} onDelete={handleDelete} onDD={setDdRobot} onInfo={setInfoRobot} actionLoading={actionLoading} showApproveBtn={true} />
             </section>
           )}
 
           {approved.length > 0 && (
             <section>
-              <h2 style={{ color: 'var(--accent-green)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '0.8rem' }}>Diagnósticos Aprovados</h2>
+              <h2 style={{ color: 'var(--accent-green)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '0.8rem' }}>{t('repo.approvedRobots', 'Robôs Aprovados')}</h2>
               <RobotTable robots={approved} onApprove={handleApprove} onDelete={handleDelete} onDD={setDdRobot} onInfo={setInfoRobot} actionLoading={actionLoading} showApproveBtn={false} />
             </section>
           )}
 
           {robots.length === 0 && (
             <div style={{ textAlign: 'center', padding: '6rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.01)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.05)' }}>
-               <p>Repositório vazio. Aprove robôs no Diagnóstico para arquivá-los aqui.</p>
+               <p>{t('repo.noRobots', 'Repositório vazio. Aprove robôs no Diagnóstico para arquivá-los aqui.')}</p>
             </div>
           )}
         </>
@@ -122,11 +125,11 @@ const Repositorio = () => {
       {infoRobot && <InfoModal robot={infoRobot} onClose={() => setInfoRobot(null)} />}
       <ConfirmModal
         isOpen={!!confirmDelete}
-        title="Remover do Repositório"
-        message={`Deseja remover definitivamente "${confirmDelete?.name}" do repositório?`}
+        title={t('repo.confirmDeleteTitle', 'Remover do Repositório')}
+        message={`${t('repo.confirmDeleteMsg', 'Deseja remover definitivamente do repositório?')} "${confirmDelete?.name}"`}
         onConfirm={executeDelete}
         onCancel={() => setConfirmDelete(null)}
-        confirmLabel="Remover"
+        confirmLabel={t('common.delete', 'Remover')}
       />
     </div>
   );

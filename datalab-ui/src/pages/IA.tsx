@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bot, User, Send, ChevronRight, Briefcase, Database, Sparkles, Loader2, Trash2 } from 'lucide-react';
 import { fetchRobots, fetchPortfolios, fetchIAInfo, chatWithIA } from '../api';
+import { useLanguage } from '../LanguageContext';
 
 interface Message {
   role: 'user' | 'model';
@@ -8,6 +9,7 @@ interface Message {
 }
 
 const IA = () => {
+  const { t } = useLanguage();
   const [robots, setRobots] = useState<any[]>([]);
   const [portfolios, setPortfolios] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<{ type: 'robot' | 'portfolio', id: string, name: string } | null>(null);
@@ -86,12 +88,12 @@ const IA = () => {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 4rem)' }}>
       <div className="flex-between mb-4">
         <div>
-          <h1 className="section-title" style={{ marginBottom: '0.2rem' }}>AI Analytics</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Analista quantitativo focado em seus dados históricos</p>
+          <h1 className="section-title" style={{ marginBottom: '0.2rem' }}>{t('ai.title', 'AI Analytics')}</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t('ai.selectEntity', 'Analista quantitativo focado em seus dados históricos')}</p>
         </div>
         {messages.length > 1 && (
           <button className="btn btn-danger" onClick={clearChat} style={{ padding: '0.5rem 1rem' }}>
-            <Trash2 size={16} /> Limpar Chat
+            <Trash2 size={16} /> {t('common.clear', 'Limpar Chat')}
           </button>
         )}
       </div>
@@ -103,10 +105,10 @@ const IA = () => {
           
           <div className="card" style={{ padding: '1rem' }}>
             <h2 className="card-title" style={{ fontSize: '0.7rem', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Database size={14} /> Robôs Aprovados
+              <Database size={14} /> {t('repo.approvedRobots', 'Robôs Aprovados')}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {robots.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.5 }}>Nenhum robô aprovado.</p>}
+              {robots.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.5 }}>{t('repo.noRobots', 'Nenhum robô aprovado.')}</p>}
               {robots.map(r => (
                 <div 
                   key={r.id} 
@@ -123,10 +125,10 @@ const IA = () => {
 
           <div className="card" style={{ padding: '1rem' }}>
             <h2 className="card-title" style={{ fontSize: '0.7rem', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Briefcase size={14} /> Portfólios
+              <Briefcase size={14} /> {t('sidebar.portfolio', 'Portfólios')}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {portfolios.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.5 }}>Nenhum portfólio criado.</p>}
+              {portfolios.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.5 }}>{t('home.noPortfolios', 'Nenhum portfólio criado.')}</p>}
               {portfolios.map(p => (
                 <div 
                   key={p.id} 
@@ -149,8 +151,8 @@ const IA = () => {
           {!selectedItem ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.4, textAlign: 'center', padding: '2rem' }}>
               <Bot size={64} style={{ marginBottom: '1.5rem' }} />
-              <h3 style={{ fontFamily: 'var(--font-header)', fontSize: '1.2rem', marginBottom: '1rem' }}>Selecione um Robô ou Portfólio</h3>
-              <p style={{ maxWidth: '400px' }}>Clique em um item na lateral para carregar o histórico diário e iniciar a análise com a IA.</p>
+              <h3 style={{ fontFamily: 'var(--font-header)', fontSize: '1.2rem', marginBottom: '1rem' }}>{t('ai.selectEntity', 'Selecione um Robô ou Portfólio')}</h3>
+              <p style={{ maxWidth: '400px' }}>{t('ai.askPlaceholder', 'Clique em um item na lateral para carregar o histórico diário e iniciar a análise com a IA.')}</p>
             </div>
           ) : (
             <>
@@ -158,11 +160,11 @@ const IA = () => {
               <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)' }}>
                 <Sparkles size={20} className="text-blue" />
                 <div>
-                  <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Conversando sobre:</div>
+                  <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{t('common.details', 'Conversando sobre:')}</div>
                   <div style={{ fontWeight: 700, fontSize: '1rem' }}>{selectedItem.name}</div>
                 </div>
                 {loadingContext && <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--accent-blue)' }}>
-                  <Loader2 size={16} className="animate-spin" /> Carregando Histórico...
+                  <Loader2 size={16} className="animate-spin" /> {t('common.syncing', 'Carregando Histórico...')}
                 </div>}
               </div>
 
@@ -211,7 +213,7 @@ const IA = () => {
                 <div style={{ display: 'flex', gap: '0.8rem', position: 'relative' }}>
                   <input 
                     className="input-field" 
-                    placeholder="Pergunte sobre lucros em datas, drawdowns ou análise geral..." 
+                    placeholder={t('ai.askPlaceholder', 'Pergunte sobre lucros em datas, drawdowns ou análise geral...')} 
                     style={{ borderRadius: '24px', paddingRight: '4rem' }}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}

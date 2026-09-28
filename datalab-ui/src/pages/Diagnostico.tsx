@@ -13,6 +13,7 @@ import {
   FileText, Table, UploadCloud, Loader, CheckCircle, GitMerge, AlertTriangle, Plus, Trash, GitCompare
 } from 'lucide-react';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { useLanguage } from '../LanguageContext';
 import axios from 'axios';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
@@ -222,6 +223,7 @@ export const InfoModal = ({ robot, onClose }: { robot: any; onClose: () => void 
 
 // ────────────────────────────── Main Component ──────────────────────────────
 const Diagnostico = () => {
+  const { t } = useLanguage();
   const [robots, setRobots] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem('nautilus_diagnostico_cache_v2');
@@ -417,12 +419,12 @@ const Diagnostico = () => {
   return (
     <div>
       <div className="flex-between" style={{ marginBottom: '1.8rem' }}>
-        <h1 className="section-title" style={{ margin: 0, fontSize: '1.2rem' }}>Diagnóstico Estratégico</h1>
+        <h1 className="section-title" style={{ margin: 0, fontSize: '1.2rem' }}>{t('diag.title', 'Diagnóstico Estratégico')}</h1>
         <div className="flex-gap">
           <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', fontSize: '0.8rem' }} onClick={() => load()}>
-            <RefreshCw size={13} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Sincronizando...' : 'Atualizar'}
+            <RefreshCw size={13} className={isSyncing ? 'spin' : ''} /> {isSyncing ? t('common.syncing', 'Sincronizando...') : t('common.update', 'Atualizar')}
           </button>
-          {pending.length > 0 && <button className="btn btn-danger" style={{ fontSize: '0.8rem' }} onClick={() => clearComparativo().then(load)}><Trash2 size={13} /> Limpar Diagnóstico</button>}
+          {pending.length > 0 && <button className="btn btn-danger" style={{ fontSize: '0.8rem' }} onClick={() => clearComparativo().then(load)}><Trash2 size={13} /> {t('diag.clearComparative', 'Limpar Diagnóstico')}</button>}
         </div>
       </div>
 
