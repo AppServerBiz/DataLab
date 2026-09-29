@@ -11,6 +11,7 @@ import {
   Legend,
   Filler
 } from 'chart.js';
+import { useLanguage } from '../LanguageContext';
 
 ChartJS.register(
   CategoryScale,
@@ -40,6 +41,8 @@ type PeriodFilter = '2026' | '12m' | '24m' | '36m' | '60m' | 'all';
 // Cache to prevent repetitive external fetching on minor renders
 let cachedCdiData: { date: string; value: number }[] = [];
 let cachedIbovData: { date: string; value: number }[] = [];
+let cachedSp500Data: { date: string; value: number }[] = [];
+let cachedTreasuryData: { date: string; value: number }[] = [];
 
 // Helper to normalize any date string to YYYY-MM month key
 const getMonthKey = (dayStr: string): string => {
@@ -63,16 +66,21 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   combinedCurve = [],
   printMode = false
 }) => {
+  const { t } = useLanguage();
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>('12m');
   const [syncingCdi, setSyncingCdi] = useState(false);
   const [benchmarks, setBenchmarks] = useState<{ [key: string]: boolean }>({
     PORTFOLIO: true,
     IBOV: true,
-    CDI: true
+    CDI: true,
+    SP500: true,
+    TREASURY: true
   });
 
   const [realCdi, setRealCdi] = useState<{ date: string; value: number }[]>(cachedCdiData);
   const [realIbov, setRealIbov] = useState<{ date: string; value: number }[]>(cachedIbovData);
+  const [realSp500, setRealSp500] = useState<{ date: string; value: number }[]>(cachedSp500Data);
+  const [realTreasury, setRealTreasury] = useState<{ date: string; value: number }[]>(cachedTreasuryData);
 
   const handleSyncCdi = async () => {
     try {
@@ -110,7 +118,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     }
   };
 
-  // 1. Fetch CDI and IBOV via backend proxy (bypasses CORS)
+  // 1. Fetch Benchmarks via backend proxy (bypasses CORS)
   useEffect(() => {
     if (combinedCurve.length === 0) return;
 
@@ -197,6 +205,48 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           generateFallbackIbov(sortedDays);
         });
     }
+
+    // Fetch S&P 500 via backend proxy (Yahoo Finance ^GSPC)
+    if (realSp500.length === 0) {
+      fetch('/api/benchmarks/sp500')
+        .then(res => res.json())
+        .then(data => {
+          if (data && Array.isArray(data.prices) && data.prices.length > 0) {
+            const parsed = data.prices.map((p: any) => ({
+              date: p.date,
+              value: parseFloat(p.close)
+            }));
+            cachedSp500Data = parsed;
+            setRealSp500(parsed);
+          } else {
+            generateFallbackSp500(sortedDays);
+          }
+        })
+        .catch(() => {
+          generateFallbackSp500(sortedDays);
+        });
+    }
+
+    // Fetch US Treasury via backend proxy (Yahoo Finance IEF - 7-10Y Treasury Bond)
+    if (realTreasury.length === 0) {
+      fetch('/api/benchmarks/ustreasury')
+        .then(res => res.json())
+        .then(data => {
+          if (data && Array.isArray(data.prices) && data.prices.length > 0) {
+            const parsed = data.prices.map((p: any) => ({
+              date: p.date,
+              value: parseFloat(p.close)
+            }));
+            cachedTreasuryData = parsed;
+            setRealTreasury(parsed);
+          } else {
+            generateFallbackTreasury(sortedDays);
+          }
+        })
+        .catch(() => {
+          generateFallbackTreasury(sortedDays);
+        });
+    }
   }, [combinedCurve]);
 
   const generateFallbackCdi = (sortedDays: string[]) => {
@@ -208,7 +258,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
     const fallback = Array.from(monthSet).map(date => ({
       date,
-      value: 0.0095 // ~0.95% a.m. (fallback de segurança)
+      value: 0.0095 // ~0.95% a.m.
     }));
 
     cachedCdiData = fallback;
@@ -218,7 +268,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const generateFallbackIbov = (sortedDays: string[]) => {
     let baseValue = 115000;
     const points = sortedDays.map((day, idx) => {
-      const t = idx / (sortedDays.length - 1);
+      const t = idx / (sortedDays.length - 1 || 1);
       const wave = Math.sin(t * Math.PI * 2.2) * 8000;
       const noise = (Math.sin(idx * 0.5) + Math.cos(idx * 0.8)) * 1200;
       const trend = t * 15000;
@@ -229,6 +279,66 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     });
     cachedIbovData = points;
     setRealIbov(points);
+  };
+
+  const generateFallbackSp500 = (sortedDays: string[]) => {
+    let baseValue = 4200;
+    const points = sortedDays.map((day, idx) => {
+      const t = idx / (sortedDays.length - 1 || 1);
+      const wave = Math.sin(t * Math.PI * 2.0) * 300;
+      const trend = t * 1600;
+      return {
+        date: day,
+        value: baseValue + trend + wave
+      };
+    });
+    cachedSp500Data = points;
+    setRealSp500(points);
+  };
+
+  const generateFallbackTreasury = (sortedDays: string[]) => {
+    let baseValue = 95;
+    const points = sortedDays.map((day, idx) => {
+      const t = idx / (sortedDays.length - 1 || 1);
+      const trend = t * 3.5;
+      return {
+        date: day,
+        value: baseValue + trend
+      };
+    });
+    cachedTreasuryData = points;
+    setRealTreasury(points);
+  };
+
+  // Helper to map benchmark price series to monthlySampled points and compute cumulative %
+  const mapPriceSeriesToReturn = (
+    monthlySampled: Array<{ day: string }>,
+    rawPoints: Array<{ date: string; value: number }>
+  ) => {
+    if (!rawPoints || rawPoints.length === 0) return [];
+
+    const mappedPrices = monthlySampled.map(p => {
+      const pMonth = getMonthKey(p.day);
+      // Try exact or month match
+      const monthMatch = rawPoints.find(item => getMonthKey(item.date) === pMonth);
+      if (monthMatch) return monthMatch.value;
+
+      // Find closest date
+      let closest = rawPoints[0];
+      let minDist = Infinity;
+      const targetTime = new Date(p.day).getTime();
+      for (const item of rawPoints) {
+        const dist = Math.abs(new Date(item.date).getTime() - targetTime);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = item;
+        }
+      }
+      return closest ? closest.value : rawPoints[0].value;
+    });
+
+    const initialPrice = mappedPrices[0] || 1;
+    return mappedPrices.map(v => ((v - initialPrice) / initialPrice) * 100);
   };
 
   // Group daily points to monthly points (end of each month) to present clean month-by-month changes
@@ -270,7 +380,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
     if (monthlySampled.length === 0) return null;
 
-    const baseProfit = monthlySampled[0].balanceProfit || monthlySampled[0].profit || 0;
+    const baseProfit = monthlySampled[0].balanceProfit !== undefined ? monthlySampled[0].balanceProfit : (monthlySampled[0].profit || 0);
     
     // Labels formatted as "Jan/26", "Fev/26"
     const labels = monthlySampled.map(p => {
@@ -298,81 +408,93 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         data: portfolioSeries,
         borderColor: '#38BDF8', // DataLab Accent Blue
         backgroundColor: 'transparent',
-        borderWidth: 2.5,
+        borderWidth: 2.8,
         tension: 0.25,
         pointRadius: 4,
-        pointHoverRadius: 6
+        pointHoverRadius: 6,
+        order: 1
       });
     }
 
-    // 2. REAL IBOV Cumulative % Return (Month-over-month)
+    // 2. REAL IBOV Cumulative % Return
     if (benchmarks.IBOV && realIbov.length > 0) {
-      const ibovPricesMapped = monthlySampled.map(p => {
-        const match = realIbov.find(item => item.date === p.day);
-        if (match) return match.value;
-        // Find closest date close to p.day
-        let closest = realIbov[0];
-        let minDist = Infinity;
-        const targetTime = new Date(p.day).getTime();
-        for (const item of realIbov) {
-          const dist = Math.abs(new Date(item.date).getTime() - targetTime);
-          if (dist < minDist) {
-            minDist = dist;
-            closest = item;
-          }
-        }
-        return closest ? closest.value : 100000;
-      });
-
-      const initialIbovPrice = ibovPricesMapped[0] || 100000;
-      const ibovSeries = ibovPricesMapped.map(v => ((v - initialIbovPrice) / initialIbovPrice) * 100);
-
+      const ibovSeries = mapPriceSeriesToReturn(monthlySampled, realIbov);
       datasets.push({
-        label: 'IBOV',
+        label: 'IBOVESPA',
         data: ibovSeries,
-        borderColor: '#F59E0B', // DataLab Gold/Yellow
+        borderColor: '#F59E0B', // Gold / Amber
         backgroundColor: 'transparent',
-        borderWidth: 1.5,
+        borderWidth: 1.8,
         tension: 0.25,
         pointRadius: 3,
-        pointHoverRadius: 5
+        pointHoverRadius: 5,
+        order: 2
       });
     }
 
     // 3. REAL CDI Cumulative % Return compounding month-by-month (série 4391)
     if (benchmarks.CDI && realCdi.length > 0) {
-      // Collect all month keys in the sampled range
       const monthKeys = monthlySampled.map(p => getMonthKey(p.day));
-
-      // Fast lookup map for monthly CDI rate
       const cdiMap = new Map<string, number>();
       realCdi.forEach(item => cdiMap.set(item.date, item.value));
 
       let compoundedFactor = 1.0;
       const cdiSeries = monthKeys.map((mk, idx) => {
-        if (idx === 0) {
-          return 0; // Base month starts at 0%
-        }
-        // Fallback rate ~0.95% if missing for a specific month
+        if (idx === 0) return 0;
         const rate = cdiMap.get(mk) ?? 0.0095;
         compoundedFactor *= (1 + rate);
         return (compoundedFactor - 1) * 100;
       });
 
       datasets.push({
-        label: 'CDI',
+        label: 'CDI (BCB)',
         data: cdiSeries,
-        borderColor: '#94A3B8', // DataLab Muted Gray
+        borderColor: '#94A3B8', // Slate / Gray
         backgroundColor: 'transparent',
-        borderWidth: 1.5,
+        borderWidth: 1.8,
+        borderDash: [4, 4],
         tension: 0.1,
         pointRadius: 3,
-        pointHoverRadius: 5
+        pointHoverRadius: 5,
+        order: 3
+      });
+    }
+
+    // 4. S&P 500 Cumulative % Return (International)
+    if (benchmarks.SP500 && realSp500.length > 0) {
+      const spSeries = mapPriceSeriesToReturn(monthlySampled, realSp500);
+      datasets.push({
+        label: 'S&P 500',
+        data: spSeries,
+        borderColor: '#10B981', // Emerald Green
+        backgroundColor: 'transparent',
+        borderWidth: 1.8,
+        tension: 0.25,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        order: 4
+      });
+    }
+
+    // 5. US Treasury 7-10Y Cumulative % Return (International)
+    if (benchmarks.TREASURY && realTreasury.length > 0) {
+      const treasurySeries = mapPriceSeriesToReturn(monthlySampled, realTreasury);
+      datasets.push({
+        label: 'Tesouro Americano (10Y)',
+        data: treasurySeries,
+        borderColor: '#A855F7', // Purple
+        backgroundColor: 'transparent',
+        borderWidth: 1.8,
+        borderDash: [5, 3],
+        tension: 0.2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        order: 5
       });
     }
 
     return { labels, datasets };
-  }, [combinedCurve, selectedPeriod, capital, benchmarks, realCdi, realIbov, portfolioName]);
+  }, [combinedCurve, selectedPeriod, capital, benchmarks, realCdi, realIbov, realSp500, realTreasury, portfolioName]);
 
   const toggleBenchmark = (key: string) => {
     setBenchmarks(prev => ({ ...prev, [key]: !prev[key] }));
@@ -415,7 +537,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
                 letterSpacing: '1px'
               }}
             >
-              Evolução de Rentabilidade Mensal vs Benchmarks
+              {t('report.benchmarkEvolution', 'Evolução de Rentabilidade Mensal vs Benchmarks')}
             </h3>
           </div>
 
@@ -538,93 +660,237 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               fontSize: '0.8rem'
             }}
           >
-            Carregando dados oficiais (BCB)...
+            Carregando dados de benchmarks...
           </div>
         )}
       </div>
 
-      {/* Dynamic DataLab Style Legends */}
+      {/* Dynamic DataLab Style Legends with Brazilian vs International Groups */}
       <div
         style={{
           display: 'flex',
-          justifyContent: 'center',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: '1.5rem',
-          marginTop: '1.2rem',
-          fontSize: '0.7rem',
-          fontWeight: '700',
-          color: '#64748B'
+          gap: '0.9rem',
+          marginTop: '1.4rem',
+          paddingTop: '1rem',
+          borderTop: printMode ? '1px solid #E2E8F0' : '1px solid rgba(255, 255, 255, 0.05)',
+          fontSize: '0.72rem',
+          fontWeight: '700'
         }}
       >
-        <div
-          onClick={() => toggleBenchmark('PORTFOLIO')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            cursor: 'pointer',
-            opacity: benchmarks.PORTFOLIO ? 1 : 0.35,
-            transition: 'opacity 0.2s'
-          }}
-        >
-          <span
+        {/* Main Portfolio Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div
+            onClick={() => toggleBenchmark('PORTFOLIO')}
+            title="Clique para mostrar/ocultar do gráfico"
             style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: '#38BDF8',
-              display: 'inline-block'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              cursor: 'pointer',
+              opacity: benchmarks.PORTFOLIO ? 1 : 0.35,
+              transition: 'all 0.2s',
+              background: benchmarks.PORTFOLIO ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
+              padding: '0.3rem 0.75rem',
+              borderRadius: '6px',
+              border: '1px solid',
+              borderColor: benchmarks.PORTFOLIO ? 'rgba(56, 189, 248, 0.3)' : 'rgba(255, 255, 255, 0.05)'
             }}
-          />
-          <span style={{ color: benchmarks.PORTFOLIO ? '#38BDF8' : '#64748B' }}>
-            {portfolioName ? portfolioName.toUpperCase() : 'PORTFÓLIO'}
-          </span>
+          >
+            <span
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                background: '#38BDF8',
+                display: 'inline-block'
+              }}
+            />
+            <span style={{ color: benchmarks.PORTFOLIO ? '#38BDF8' : '#64748B', textTransform: 'uppercase' }}>
+              {portfolioName ? portfolioName.toUpperCase() : 'PORTFÓLIO'}
+            </span>
+          </div>
         </div>
 
+        {/* Group Comparison Sections */}
         <div
-          onClick={() => toggleBenchmark('IBOV')}
           style={{
             display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
             alignItems: 'center',
-            gap: '0.4rem',
-            cursor: 'pointer',
-            opacity: benchmarks.IBOV ? 1 : 0.35,
-            transition: 'opacity 0.2s'
+            gap: '1.5rem',
+            width: '100%'
           }}
         >
-          <span
+          {/* Brazilian Benchmarks Group */}
+          <div
             style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: '#F59E0B',
-              display: 'inline-block'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              background: printMode ? '#F8FAFC' : 'rgba(255, 255, 255, 0.02)',
+              padding: '0.35rem 0.8rem',
+              borderRadius: '8px',
+              border: printMode ? '1px solid #E2E8F0' : '1px solid rgba(255, 255, 255, 0.06)'
             }}
-          />
-          <span style={{ color: benchmarks.IBOV ? '#F59E0B' : '#64748B' }}>IBOVESPA</span>
-        </div>
+          >
+            <span
+              style={{
+                fontSize: '0.65rem',
+                color: printMode ? '#64748B' : '#94A3B8',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginRight: '0.2rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              🇧🇷 Brasil:
+            </span>
 
-        <div
-          onClick={() => toggleBenchmark('CDI')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            cursor: 'pointer',
-            opacity: benchmarks.CDI ? 1 : 0.35,
-            transition: 'opacity 0.2s'
-          }}
-        >
-          <span
+            {/* IBOVESPA */}
+            <div
+              onClick={() => toggleBenchmark('IBOV')}
+              title="Clique para mostrar/ocultar IBOVESPA"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+                opacity: benchmarks.IBOV ? 1 : 0.35,
+                transition: 'opacity 0.2s',
+                padding: '0.2rem 0.45rem',
+                borderRadius: '4px',
+                background: benchmarks.IBOV ? 'rgba(245, 158, 11, 0.1)' : 'transparent'
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#F59E0B',
+                  display: 'inline-block'
+                }}
+              />
+              <span style={{ color: benchmarks.IBOV ? '#F59E0B' : '#64748B' }}>IBOVESPA</span>
+            </div>
+
+            {/* CDI */}
+            <div
+              onClick={() => toggleBenchmark('CDI')}
+              title="Clique para mostrar/ocultar CDI"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+                opacity: benchmarks.CDI ? 1 : 0.35,
+                transition: 'opacity 0.2s',
+                padding: '0.2rem 0.45rem',
+                borderRadius: '4px',
+                background: benchmarks.CDI ? 'rgba(148, 163, 184, 0.1)' : 'transparent'
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#94A3B8',
+                  display: 'inline-block'
+                }}
+              />
+              <span style={{ color: benchmarks.CDI ? (printMode ? '#334155' : '#E2E8F0') : '#64748B' }}>CDI (BCB)</span>
+            </div>
+          </div>
+
+          {/* International Benchmarks Group */}
+          <div
             style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: '#94A3B8',
-              display: 'inline-block'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              background: printMode ? '#F8FAFC' : 'rgba(255, 255, 255, 0.02)',
+              padding: '0.35rem 0.8rem',
+              borderRadius: '8px',
+              border: printMode ? '1px solid #E2E8F0' : '1px solid rgba(255, 255, 255, 0.06)'
             }}
-          />
-          <span style={{ color: benchmarks.CDI ? '#E2E8F0' : '#64748B' }}>CDI (BCB)</span>
+          >
+            <span
+              style={{
+                fontSize: '0.65rem',
+                color: printMode ? '#64748B' : '#94A3B8',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginRight: '0.2rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              🌐 Internacional:
+            </span>
+
+            {/* S&P 500 */}
+            <div
+              onClick={() => toggleBenchmark('SP500')}
+              title="Clique para mostrar/ocultar S&P 500"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+                opacity: benchmarks.SP500 ? 1 : 0.35,
+                transition: 'opacity 0.2s',
+                padding: '0.2rem 0.45rem',
+                borderRadius: '4px',
+                background: benchmarks.SP500 ? 'rgba(16, 185, 129, 0.1)' : 'transparent'
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#10B981',
+                  display: 'inline-block'
+                }}
+              />
+              <span style={{ color: benchmarks.SP500 ? '#10B981' : '#64748B' }}>S&P 500</span>
+            </div>
+
+            {/* Tesouro Americano */}
+            <div
+              onClick={() => toggleBenchmark('TREASURY')}
+              title="Clique para mostrar/ocultar Tesouro Americano (10Y)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+                opacity: benchmarks.TREASURY ? 1 : 0.35,
+                transition: 'opacity 0.2s',
+                padding: '0.2rem 0.45rem',
+                borderRadius: '4px',
+                background: benchmarks.TREASURY ? 'rgba(168, 85, 247, 0.1)' : 'transparent'
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#A855F7',
+                  display: 'inline-block'
+                }}
+              />
+              <span style={{ color: benchmarks.TREASURY ? '#A855F7' : '#64748B' }}>Tesouro Americano (10Y)</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

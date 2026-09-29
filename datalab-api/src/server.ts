@@ -2266,18 +2266,81 @@ app.post('/api/benchmarks/cdi/sync', async (req, res) => {
   }
 });
 
+// Helper to fetch monthly series from Yahoo Finance
+async function fetchYahooMonthly(symbol: string) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=10y`;
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+  });
+  if (!response.ok) {
+    throw new Error(`Yahoo Finance returned status ${response.status} for ${symbol}`);
+  }
+  const data: any = await response.json();
+  const result = data?.chart?.result?.[0];
+  const timestamps = result?.timestamp || [];
+  const adjclose = result?.indicators?.adjclose?.[0]?.adjclose;
+  const quoteClose = result?.indicators?.quote?.[0]?.close || [];
+  const closes = (adjclose && adjclose.length > 0) ? adjclose : quoteClose;
+
+  const prices: { date: string; close: number }[] = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const val = closes[i];
+    if (val !== null && val !== undefined && !isNaN(val)) {
+      const d = new Date(timestamps[i] * 1000);
+      const dateStr = d.toISOString().slice(0, 10);
+      prices.push({ date: dateStr, close: Number(val) });
+    }
+  }
+  return prices;
+}
+
 // GET /api/benchmarks/ibov?start=YYYY-MM-DD&end=YYYY-MM-DD
-// Proxies IBOV historical quotes
+// Proxies IBOV historical quotes (tries multtrader then Yahoo Finance ^BVSP)
 app.get('/api/benchmarks/ibov', async (req, res) => {
   try {
     let start = (req.query.start as string) || '2020-01-01';
     let end = (req.query.end as string) || '2030-12-31';
-    const url = `https://api.cotacoes.multtrader.com/historical/BVSP?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
-    const response = await fetch(url);
-    const data = await response.json();
-    res.json(data);
+    try {
+      const url = `https://api.cotacoes.multtrader.com/historical/BVSP?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+      const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && Array.isArray(data.prices) && data.prices.length > 0) {
+          return res.json(data);
+        }
+      }
+    } catch (e) {
+      // Multtrader failed, fallback to Yahoo Finance ^BVSP
+    }
+
+    const prices = await fetchYahooMonthly('^BVSP');
+    res.json({ symbol: 'BVSP', prices });
   } catch (err) {
     console.error('IBOV proxy error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// GET /api/benchmarks/sp500
+// Proxies S&P 500 (^GSPC) historical monthly prices
+app.get('/api/benchmarks/sp500', async (req, res) => {
+  try {
+    const prices = await fetchYahooMonthly('^GSPC');
+    res.json({ symbol: 'SP500', prices });
+  } catch (err) {
+    console.error('SP500 proxy error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// GET /api/benchmarks/ustreasury
+// Proxies US Treasury Bond ETF (IEF - 7-10 Year Treasury Bond Total Return)
+app.get('/api/benchmarks/ustreasury', async (req, res) => {
+  try {
+    const prices = await fetchYahooMonthly('IEF');
+    res.json({ symbol: 'US_TREASURY_10Y', name: 'US Treasury 7-10Y (IEF)', prices });
+  } catch (err) {
+    console.error('US Treasury proxy error:', err);
     res.status(500).json({ error: String(err) });
   }
 });
