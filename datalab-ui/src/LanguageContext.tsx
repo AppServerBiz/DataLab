@@ -148,9 +148,9 @@ export const translations = {
   'portfolio.newPortfolio': { pt: 'Novo Portfólio', en: 'New Portfolio', es: 'Nuevo Portafolio' },
   'portfolio.fundCapital': { pt: 'Capital do Fundo', en: 'Fund Capital', es: 'Capital del Fondo' },
   'portfolio.targetDD': { pt: 'DD Alvo do Fundo', en: 'Target DD', es: 'DD Objetivo' },
-  'portfolio.lock': { pt: 'Travar Portfólio', en: 'Lock Portfolio', es: 'Bloquear Portafolio' },
-  'portfolio.unlock': { pt: 'Destravar Portfólio', en: 'Unlock Portfolio', es: 'Desbloquear Portafolio' },
-  'portfolio.exportReport': { pt: 'Relatório Executivo (PDF)', en: 'Executive Report (PDF)', es: 'Informe Ejecutivo (PDF)' },
+  'portfolio.lock': { pt: 'Travar', en: 'Lock', es: 'Bloquear' },
+  'portfolio.unlock': { pt: 'Destravar', en: 'Unlock', es: 'Desbloquear' },
+  'portfolio.exportReport': { pt: 'Relatório', en: 'Report', es: 'Informe' },
   'portfolio.optimizeWeights': { pt: 'Otimizar Pesos', en: 'Optimize Weights', es: 'Optimizar Pesos' },
   'portfolio.availableRobots': { pt: 'Robôs Disponíveis', en: 'Available Robots', es: 'Robots Disponibles' },
   'portfolio.allocatedRobots': { pt: 'Robôs no Portfólio', en: 'Portfolio Robots', es: 'Robots en el Portafolio' },
@@ -163,7 +163,7 @@ export const translations = {
   'portfolio.correlationMatrix': { pt: 'Matriz de Correlação e Risco', en: 'Correlation & Risk Matrix', es: 'Matriz de Correlación y Riesgo' },
   'portfolio.equityCurve': { pt: 'Curva de Patrimônio Consolidada', en: 'Consolidated Equity Curve', es: 'Curva de Patrimonio Consolidada' },
   'portfolio.confirmDelete': { pt: 'Excluir Portfólio', en: 'Delete Portfolio', es: 'Eliminar Portafolio' },
-  'portfolio.copy': { pt: 'Duplicar Portfólio', en: 'Duplicate Portfolio', es: 'Duplicar Portafolio' },
+  'portfolio.copy': { pt: 'Duplicar', en: 'Duplicate', es: 'Duplicar' },
 
   // Detailed Portfolio Quadrants & Metrics
   'portfolio.calculatingMetrics': { pt: 'Calculando métricas do portfólio...', en: 'Calculating portfolio metrics...', es: 'Calculando métricas del portafolio...' },
