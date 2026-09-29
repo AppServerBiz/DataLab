@@ -1122,7 +1122,7 @@ const PortfolioDetail = ({ portfolio, onBack, onRefreshList }: any) => {
                 <div className="card chart-row" style={{ padding: '1.2rem', height: '340px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('portfolio.chartIndividualDD', 'Drawdown Individual por Robô (%)')}</h3>
-                    <span title="Cálculo Individual em Tempo Real: Plota a curva contínua de drawdown em tempo real de cada robô no histórico, ponderada pelo respectivo peso e normalizada em porcentagem do capital do portfólio." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>{t('portfolio.howCalculated', 'Como é calculado?')}</span>
+                    <span title="Cálculo Individual em Tempo Real: Plota a curva contínua de drawdown em tempo real de cada robô no histórico, ponderada pelo respectivo peso e normalizada em porcentagem do capital do portfólio. Não há soma entre os robôs, apenas sobreposição das curvas individuais para comparação direta." style={{ cursor: 'help', fontSize: '0.6rem', color: 'var(--accent-blue)', textDecoration: 'underline' }}>{t('portfolio.howCalculated', 'Como é calculado?')}</span>
                   </div>
                   <div style={{ height: '260px' }}>
                     <Line 

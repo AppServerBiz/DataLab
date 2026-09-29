@@ -687,7 +687,7 @@ const PortfolioReport = () => {
                 <div style={{ width: '4px', height: '14px', background: '#000' }}></div>
                 {t('portfolio.chartIndividualDD', 'Drawdown Individual por Robô (%)')}
               </h3>
-              <span title="Cálculo Individual em Tempo Real: Plota a curva contínua de drawdown em tempo real de cada robô no histórico, ponderada pelo respectivo peso e normalizada em porcentagem do capital do portfólio." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">{t('portfolio.howCalculated', 'Como é calculado?')}</span>
+              <span title="Cálculo Individual em Tempo Real: Plota a curva contínua de drawdown em tempo real de cada robô no histórico, ponderada pelo respectivo peso e normalizada em porcentagem do capital do portfólio. Não há soma entre os robôs, apenas sobreposição das curvas individuais para comparação direta." style={{ cursor: 'help', fontSize: '10px', color: '#0b57d0', textDecoration: 'underline' }} className="no-print">{t('portfolio.howCalculated', 'Como é calculado?')}</span>
             </div>
             <div style={{ height: '350px', background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', padding: '15px' }}>
               <Line 
