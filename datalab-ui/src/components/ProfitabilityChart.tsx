@@ -72,8 +72,8 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const [syncingCdi, setSyncingCdi] = useState(false);
   const [benchmarks, setBenchmarks] = useState<{ [key: string]: boolean }>({
     PORTFOLIO: true,
-    IBOV: true,
-    CDI: true,
+    IBOV: false,
+    CDI: false,
     SP500: true,
     TREASURY: true,
     FEDFUNDS: true
@@ -570,6 +570,27 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     setBenchmarks(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Toggle all benchmarks in a group (Brasil: IBOV, CDI | Internacional: SP500, TREASURY, FEDFUNDS)
+  const toggleGroup = (group: 'BR' | 'INT') => {
+    setBenchmarks(prev => {
+      if (group === 'BR') {
+        const isAnyActive = prev.IBOV || prev.CDI;
+        return { ...prev, IBOV: !isAnyActive, CDI: !isAnyActive };
+      } else {
+        const isAnyActive = prev.SP500 || prev.TREASURY || prev.FEDFUNDS;
+        return {
+          ...prev,
+          SP500: !isAnyActive,
+          TREASURY: !isAnyActive,
+          FEDFUNDS: !isAnyActive
+        };
+      }
+    });
+  };
+
+  const isBrazilActive = benchmarks.IBOV || benchmarks.CDI;
+  const isInternationalActive = benchmarks.SP500 || benchmarks.TREASURY || benchmarks.FEDFUNDS;
+
   const periodOptions: PeriodFilter[] = ['2026', '12m', '24m', '36m', '60m'];
 
   return (
@@ -806,16 +827,24 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               border: printMode ? '1px solid #E2E8F0' : '1px solid rgba(255, 255, 255, 0.06)'
             }}
           >
+            {/* Clickable Hyperlink for Brasil */}
             <span
+              onClick={() => toggleGroup('BR')}
+              title={isBrazilActive ? 'Clique para desabilitar todos os benchmarks do Brasil' : 'Clique para habilitar todos os benchmarks do Brasil'}
               style={{
                 fontSize: '0.65rem',
-                color: printMode ? '#64748B' : '#94A3B8',
+                color: isBrazilActive ? '#38BDF8' : (printMode ? '#94A3B8' : '#64748B'),
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 marginRight: '0.2rem',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.3rem'
+                gap: '0.3rem',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textUnderlineOffset: '3px',
+                fontWeight: isBrazilActive ? '800' : '600',
+                transition: 'all 0.15s ease'
               }}
             >
               🇧🇷 Brasil:
@@ -890,16 +919,24 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               border: printMode ? '1px solid #E2E8F0' : '1px solid rgba(255, 255, 255, 0.06)'
             }}
           >
+            {/* Clickable Hyperlink for Internacional */}
             <span
+              onClick={() => toggleGroup('INT')}
+              title={isInternationalActive ? 'Clique para desabilitar todos os benchmarks internacionais' : 'Clique para habilitar todos os benchmarks internacionais'}
               style={{
                 fontSize: '0.65rem',
-                color: printMode ? '#64748B' : '#94A3B8',
+                color: isInternationalActive ? '#38BDF8' : (printMode ? '#94A3B8' : '#64748B'),
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 marginRight: '0.2rem',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.3rem'
+                gap: '0.3rem',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textUnderlineOffset: '3px',
+                fontWeight: isInternationalActive ? '800' : '600',
+                transition: 'all 0.15s ease'
               }}
             >
               🌐 Internacional:
