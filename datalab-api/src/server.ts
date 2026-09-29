@@ -2334,13 +2334,53 @@ app.get('/api/benchmarks/sp500', async (req, res) => {
 });
 
 // GET /api/benchmarks/ustreasury
-// Proxies US Treasury Bond ETF (IEF - 7-10 Year Treasury Bond Total Return)
+// Proxies US Treasury 10Y Bond (IEF - 7-10 Year Treasury Bond Total Return with mark-to-market)
 app.get('/api/benchmarks/ustreasury', async (req, res) => {
   try {
     const prices = await fetchYahooMonthly('IEF');
-    res.json({ symbol: 'US_TREASURY_10Y', name: 'US Treasury 7-10Y (IEF)', prices });
+    res.json({ symbol: 'US_TREASURY_10Y', name: 'T-Bond 10Y (Marcação a Mercado)', prices });
   } catch (err) {
     console.error('US Treasury proxy error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// GET /api/benchmarks/fedfunds
+// Proxies Federal Funds Effective Rate (equivalente direto ao CDI americano, taxa acumulada livre de risco)
+app.get('/api/benchmarks/fedfunds', async (req, res) => {
+  try {
+    let rates: { date: string; rate: number }[] = [];
+    try {
+      const resp = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=FEDFUNDS', {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(3500)
+      });
+      if (resp.ok) {
+        const text = await resp.text();
+        const lines = text.trim().split('\n');
+        for (let i = 1; i < lines.length; i++) {
+          const [d, v] = lines[i].split(',');
+          const num = parseFloat(v);
+          if (d && !isNaN(num)) {
+            rates.push({ date: d.slice(0, 7), rate: num });
+          }
+        }
+      }
+    } catch (e) {
+      // Fallback via Yahoo Finance ^IRX (13-week T-Bill annualized rate)
+    }
+
+    if (rates.length === 0) {
+      const irxPrices = await fetchYahooMonthly('^IRX');
+      rates = irxPrices.map(p => ({
+        date: p.date.slice(0, 7),
+        rate: p.close
+      }));
+    }
+
+    res.json({ symbol: 'FED_FUNDS', name: 'Fed Funds Rate', rates });
+  } catch (err) {
+    console.error('Fed Funds proxy error:', err);
     res.status(500).json({ error: String(err) });
   }
 });
@@ -2348,3 +2388,4 @@ app.get('/api/benchmarks/ustreasury', async (req, res) => {
 app.listen(port, () => {
   console.log(`API Nautilus DataLab running on port ${port}`);
 });
+

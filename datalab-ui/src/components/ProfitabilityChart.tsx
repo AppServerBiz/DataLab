@@ -43,6 +43,7 @@ let cachedCdiData: { date: string; value: number }[] = [];
 let cachedIbovData: { date: string; value: number }[] = [];
 let cachedSp500Data: { date: string; value: number }[] = [];
 let cachedTreasuryData: { date: string; value: number }[] = [];
+let cachedFedFundsData: { date: string; rate: number }[] = [];
 
 // Helper to normalize any date string to YYYY-MM month key
 const getMonthKey = (dayStr: string): string => {
@@ -74,13 +75,15 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     IBOV: true,
     CDI: true,
     SP500: true,
-    TREASURY: true
+    TREASURY: true,
+    FEDFUNDS: true
   });
 
   const [realCdi, setRealCdi] = useState<{ date: string; value: number }[]>(cachedCdiData);
   const [realIbov, setRealIbov] = useState<{ date: string; value: number }[]>(cachedIbovData);
   const [realSp500, setRealSp500] = useState<{ date: string; value: number }[]>(cachedSp500Data);
   const [realTreasury, setRealTreasury] = useState<{ date: string; value: number }[]>(cachedTreasuryData);
+  const [realFedFunds, setRealFedFunds] = useState<{ date: string; rate: number }[]>(cachedFedFundsData);
 
   const handleSyncCdi = async () => {
     try {
@@ -247,6 +250,27 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           generateFallbackTreasury(sortedDays);
         });
     }
+
+    // Fetch Fed Funds via backend proxy (FRED / Yahoo Finance IRX)
+    if (realFedFunds.length === 0) {
+      fetch('/api/benchmarks/fedfunds')
+        .then(res => res.json())
+        .then(data => {
+          if (data && Array.isArray(data.rates) && data.rates.length > 0) {
+            const parsed = data.rates.map((r: any) => ({
+              date: r.date, // YYYY-MM
+              rate: parseFloat(r.rate)
+            }));
+            cachedFedFundsData = parsed;
+            setRealFedFunds(parsed);
+          } else {
+            generateFallbackFedFunds(sortedDays);
+          }
+        })
+        .catch(() => {
+          generateFallbackFedFunds(sortedDays);
+        });
+    }
   }, [combinedCurve]);
 
   const generateFallbackCdi = (sortedDays: string[]) => {
@@ -263,6 +287,22 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
     cachedCdiData = fallback;
     setRealCdi(fallback);
+  };
+
+  const generateFallbackFedFunds = (sortedDays: string[]) => {
+    const monthSet = new Set<string>();
+    sortedDays.forEach(day => {
+      const key = getMonthKey(day);
+      if (key) monthSet.add(key);
+    });
+
+    const fallback = Array.from(monthSet).map(date => ({
+      date,
+      rate: 3.65 // ~3.65% annualized
+    }));
+
+    cachedFedFundsData = fallback;
+    setRealFedFunds(fallback);
   };
 
   const generateFallbackIbov = (sortedDays: string[]) => {
@@ -476,16 +516,15 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
       });
     }
 
-    // 5. US Treasury 7-10Y Cumulative % Return (International)
+    // 5. T-Bond 10Y (Marcação a Mercado - ETF IEF 7-10Y)
     if (benchmarks.TREASURY && realTreasury.length > 0) {
       const treasurySeries = mapPriceSeriesToReturn(monthlySampled, realTreasury);
       datasets.push({
-        label: 'Tesouro Americano (10Y)',
+        label: 'T-Bond 10Y (Marcação Mercado)',
         data: treasurySeries,
         borderColor: '#A855F7', // Purple
         backgroundColor: 'transparent',
         borderWidth: 1.8,
-        borderDash: [5, 3],
         tension: 0.2,
         pointRadius: 3,
         pointHoverRadius: 5,
@@ -493,8 +532,39 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
       });
     }
 
+    // 6. Fed Funds Rate (Acumulado Livre de Risco - Equivalente ao CDI nos EUA)
+    if (benchmarks.FEDFUNDS && realFedFunds.length > 0) {
+      const monthKeys = monthlySampled.map(p => getMonthKey(p.day));
+      const fedMap = new Map<string, number>();
+      realFedFunds.forEach(item => fedMap.set(item.date, item.rate));
+
+      let compoundedFactor = 1.0;
+      const fedSeries = monthKeys.map((mk, idx) => {
+        if (idx === 0) return 0;
+        // Annualized rate in % (e.g. 5.33 -> 5.33% / 100)
+        const annRate = fedMap.get(mk) ?? 3.65;
+        // Monthly compounding: (1 + annRate/100)^(1/12) - 1
+        const monthlyRate = Math.pow(1 + (annRate / 100), 1 / 12) - 1;
+        compoundedFactor *= (1 + monthlyRate);
+        return (compoundedFactor - 1) * 100;
+      });
+
+      datasets.push({
+        label: 'Fed Funds (Acumulado)',
+        data: fedSeries,
+        borderColor: '#EC4899', // Pink / Rose
+        backgroundColor: 'transparent',
+        borderWidth: 1.8,
+        borderDash: [4, 4],
+        tension: 0.1,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        order: 6
+      });
+    }
+
     return { labels, datasets };
-  }, [combinedCurve, selectedPeriod, capital, benchmarks, realCdi, realIbov, realSp500, realTreasury, portfolioName]);
+  }, [combinedCurve, selectedPeriod, capital, benchmarks, realCdi, realIbov, realSp500, realTreasury, realFedFunds, portfolioName]);
 
   const toggleBenchmark = (key: string) => {
     setBenchmarks(prev => ({ ...prev, [key]: !prev[key] }));
@@ -863,10 +933,10 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
               <span style={{ color: benchmarks.SP500 ? '#10B981' : '#64748B' }}>S&P 500</span>
             </div>
 
-            {/* Tesouro Americano */}
+            {/* T-Bond 10Y (Marcação a Mercado) */}
             <div
               onClick={() => toggleBenchmark('TREASURY')}
-              title="Clique para mostrar/ocultar Tesouro Americano (10Y)"
+              title="Clique para mostrar/ocultar T-Bond 10Y (Marcação a Mercado)"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -888,7 +958,35 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
                   display: 'inline-block'
                 }}
               />
-              <span style={{ color: benchmarks.TREASURY ? '#A855F7' : '#64748B' }}>Tesouro Americano (10Y)</span>
+              <span style={{ color: benchmarks.TREASURY ? '#A855F7' : '#64748B' }}>T-Bond 10Y (Mercado)</span>
+            </div>
+
+            {/* Fed Funds Rate (Acumulado) */}
+            <div
+              onClick={() => toggleBenchmark('FEDFUNDS')}
+              title="Clique para mostrar/ocultar Fed Funds (Acumulado Livre de Risco)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+                opacity: benchmarks.FEDFUNDS ? 1 : 0.35,
+                transition: 'opacity 0.2s',
+                padding: '0.2rem 0.45rem',
+                borderRadius: '4px',
+                background: benchmarks.FEDFUNDS ? 'rgba(236, 72, 153, 0.1)' : 'transparent'
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#EC4899',
+                  display: 'inline-block'
+                }}
+              />
+              <span style={{ color: benchmarks.FEDFUNDS ? '#EC4899' : '#64748B' }}>Fed Funds (Acumulado)</span>
             </div>
           </div>
         </div>
