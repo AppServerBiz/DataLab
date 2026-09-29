@@ -841,8 +841,6 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
                 alignItems: 'center',
                 gap: '0.3rem',
                 cursor: 'pointer',
-                textDecoration: 'underline',
-                textUnderlineOffset: '3px',
                 fontWeight: isBrazilActive ? '800' : '600',
                 transition: 'all 0.15s ease'
               }}
@@ -933,8 +931,6 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
                 alignItems: 'center',
                 gap: '0.3rem',
                 cursor: 'pointer',
-                textDecoration: 'underline',
-                textUnderlineOffset: '3px',
                 fontWeight: isInternationalActive ? '800' : '600',
                 transition: 'all 0.15s ease'
               }}
