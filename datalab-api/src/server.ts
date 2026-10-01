@@ -940,10 +940,11 @@ app.get('/api/portfolios/:id/stats', async (req, res) => {
 
     // 3. Trailing 12-Month (TTM) Analytics
     const lastDateStr = sortedDays[sortedDays.length - 1];
-    const lastDate = new Date(lastDateStr);
-    const date12m = new Date(lastDate);
-    date12m.setFullYear(lastDate.getFullYear() - 1);
-    const date12mStr = date12m.toISOString().split('T')[0];
+    // Build the cutoff with the same separator as the day keys ("YYYY.MM.DD" from MT reports),
+    // otherwise the string comparison below mixes "." and "-" and the window covers ~24 months.
+    const dateSep = lastDateStr.includes('.') ? '.' : '-';
+    const [lastY, lastM, lastD] = lastDateStr.split(/[-.]/);
+    const date12mStr = [String(Number(lastY) - 1), lastM, lastD].join(dateSep);
 
     const windowRecent = combinedCurve.filter(c => c.day >= date12mStr);
     const windowPast = combinedCurve.filter(c => c.day < date12mStr);
